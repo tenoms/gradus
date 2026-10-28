@@ -1,0 +1,27 @@
+.math-report-share {
+  display: flex;
+  gap: 10px 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+.math-report-share p {
+  font-size: 12px;
+  color: var(--muted, #8b899c);
+  margin: 0;
+  flex: 1;
+  min-width: 210px;
+}
+.math-report-share > span {
+  font-size: 13px;
+  flex-basis: 100%;
+  color: #5c4c99;
+}
+.math-report-share .math-report-share-error {
+  color: #ac3e51;
+}
+@media print {
+  .math-report-share {
+    display: none;
+  }
+}

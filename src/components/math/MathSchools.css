@@ -1,0 +1,240 @@
+.math-schools {
+  display: flex;
+  flex-direction: column;
+  gap: 21px;
+}
+.math-school-intro {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+}
+.math-school-intro .path-icon {
+  margin: 0;
+  width: 52px;
+  height: 52px;
+}
+.math-school-intro h2 {
+  font-size: 19px;
+  margin: 8px 0;
+}
+.math-school-intro p:not(.eyebrow) {
+  font-size: 11px;
+  color: #81748e;
+}
+.math-school-intro > .pill {
+  margin-left: auto;
+}
+.math-school-filters {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 24px;
+}
+.math-school-filters > select {
+  width: 155px;
+}
+.math-school-filters > .subtle {
+  margin-left: auto;
+  white-space: nowrap;
+}
+.math-school-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #9d8bb5;
+  flex: 1;
+  max-width: 390px;
+}
+.math-schools-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 13px;
+}
+.math-school-card {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  text-align: left;
+  padding: 20px 14px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  transition: border-color 0.2s;
+  background: #fff;
+}
+.math-school-card:hover {
+  border-color: #bea9db;
+  background: #fcfaff;
+}
+.math-school-symbol {
+  width: 43px;
+  height: 43px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: #f1ecfa;
+  color: #9278bb;
+}
+.math-school-card h3 {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #6d5c7e;
+}
+.math-school-card p {
+  font-size: 9px;
+  color: #887694;
+  margin-top: 6px;
+}
+.math-school-card > svg {
+  margin-left: auto;
+  color: #b4a2c9;
+  width: 14px;
+}
+.math-school-more {
+  display: flex;
+  margin: 25px auto 0;
+}
+.math-school-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #9381a5;
+  padding: 36px 12px;
+  font-size: 11px;
+}
+.math-school-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin: 23px 0 30px;
+}
+.math-school-detail-head .math-school-symbol {
+  width: 56px;
+  height: 56px;
+}
+.math-school-detail-head h2 {
+  font-size: 21px;
+  color: #665276;
+}
+.math-school-detail-head p {
+  font-size: 11px;
+  color: #8f7d9e;
+  margin-top: 7px;
+}
+.math-school-detail-head > .btn {
+  margin-left: auto;
+}
+.math-school-cascades {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px 22px;
+}
+.math-school-subjects {
+  margin-top: 15px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+.math-school-subject-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 13px;
+}
+.math-school-subject-grid article {
+  background: #faf8fe;
+  border: 1px solid #eee7f6;
+  border-radius: 8px;
+  padding: 20px;
+}
+.math-school-subject-grid article > span {
+  font-size: 10px;
+  color: #8e79a2;
+}
+.math-school-subject-grid article h3 {
+  font-size: 12px;
+  line-height: 1.9;
+  margin: 12px 0 8px;
+  color: #655274;
+}
+.math-school-subject-grid article p {
+  font-size: 10px;
+  color: #857092;
+}
+.math-school-compare th:not(:first-child),
+.math-school-compare td:not(:first-child) {
+  min-width: 190px;
+}
+.math-school-compare td:first-child {
+  min-width: 110px;
+}
+.math-school-compare td {
+  white-space: normal;
+  line-height: 1.8;
+}
+.math-school-compare .icon-button {
+  margin-left: 5px;
+}
+@media (max-width: 1100px) {
+  .math-schools-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .math-school-intro {
+    gap: 11px;
+    padding: 18px 14px;
+    align-items: flex-start;
+  }
+  .math-school-intro .path-icon {
+    width: 36px;
+    height: 36px;
+  }
+  .math-school-intro h2 {
+    font-size: 15px;
+  }
+  .math-school-intro p:not(.eyebrow) {
+    font-size: 10px;
+  }
+  .math-school-intro > .pill {
+    display: none;
+  }
+  .math-school-filters {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .math-school-search {
+    flex-basis: 100%;
+    max-width: none;
+  }
+  .math-school-filters > select {
+    width: 155px;
+  }
+  .math-schools-grid {
+    grid-template-columns: 1fr;
+  }
+  .math-school-card {
+    padding: 16px;
+  }
+  .math-school-detail-head {
+    flex-wrap: wrap;
+  }
+  .math-school-detail-head > .btn {
+    margin-left: 0;
+    flex-basis: 100%;
+    margin-top: 3px;
+  }
+  .math-school-detail-head h2 {
+    font-size: 18px;
+  }
+  .math-school-cascades {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .math-school-subject-grid {
+    grid-template-columns: 1fr;
+  }
+  .math-school-subjects .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

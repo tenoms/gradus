@@ -1,0 +1,77 @@
+.math-question-insights {
+  margin: 20px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 15px;
+}
+.math-question-insights > summary {
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--accent);
+}
+.math-question-insights h4 {
+  margin: 18px 0 10px;
+}
+.mqi-loading {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+.mqi-capacity > div {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mqi-frequencies {
+  display: grid;
+  gap: 12px;
+}
+.mqi-frequencies > section {
+  border-top: 1px solid var(--border);
+}
+.mqi-frequencies dl {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 12px 0;
+}
+.mqi-frequencies dl > div {
+  display: grid;
+  gap: 7px;
+}
+.mqi-frequencies dt {
+  color: var(--muted);
+  font-size: 10px;
+}
+.mqi-frequencies dd {
+  margin: 0;
+  color: var(--ink);
+  font-size: 15px;
+}
+.mqi-frequencies details {
+  font-size: 11px;
+  color: var(--muted);
+}
+.mqi-years {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  padding: 10px 0;
+}
+.mqi-years > span {
+  background: #f7f5fb;
+  border-radius: 5px;
+  padding: 5px 8px;
+}
+.mqi-years strong {
+  color: var(--ink);
+  font-size: 11px;
+  margin-left: 5px;
+}
+@media (max-width: 600px) {
+  .mqi-frequencies dl {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

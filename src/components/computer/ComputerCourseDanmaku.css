@@ -1,0 +1,207 @@
+.ccd-danmaku {
+  margin: 16px 0 24px;
+  border: 1px solid #e4ebf4;
+  border-radius: 10px;
+  padding: 18px;
+  background: #fbfcfe;
+}
+.ccd-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+.ccd-heading h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #8093af;
+}
+.ccd-heading h4 > span {
+  font-size: 10px;
+  font-weight: 400;
+  color: #a0adbf;
+}
+.ccd-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: #99a9be;
+  font-size: 10px;
+  cursor: pointer;
+}
+.ccd-form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 15px 0;
+}
+.ccd-form .input {
+  flex: 1;
+  min-width: 60px;
+  font-size: 11px;
+}
+.ccd-form .btn {
+  font-size: 11px;
+  padding: 9px 13px;
+  white-space: nowrap;
+}
+.ccd-position {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: #9cacc1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.ccd-list {
+  border-top: 1px solid #e8eef6;
+  padding-top: 14px;
+}
+.ccd-list summary {
+  font-size: 11px;
+  color: #95a6be;
+  cursor: pointer;
+  line-height: 1.9;
+}
+.ccd-list summary small {
+  font-size: 9px;
+  color: #abb6c6;
+  margin-left: 10px;
+}
+.ccd-list ol {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  max-height: 210px;
+  overflow: auto;
+}
+.ccd-list li + li {
+  border-top: 1px solid #eff3f8;
+}
+.ccd-list button {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  border: 0;
+  background: transparent;
+  padding: 10px 8px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  color: #8f9fb5;
+  font-size: 11px;
+  line-height: 1.7;
+  border-radius: 5px;
+}
+.ccd-list button:disabled {
+  cursor: default;
+}
+.ccd-list li.active button {
+  background: #edf3fb;
+  color: #728db5;
+}
+.ccd-list time {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: #a2b0c4;
+  white-space: nowrap;
+}
+.ccd-list button > span {
+  overflow-wrap: anywhere;
+}
+.ccd-empty {
+  font-size: 11px;
+  color: #a8b4c5;
+  line-height: 1.9;
+  margin: 15px 0 3px;
+}
+.ccd-notice {
+  font-size: 11px;
+  color: #7e9e8f;
+  line-height: 1.8;
+}
+.ccd-error {
+  font-size: 11px;
+  color: #bf8c81;
+  line-height: 1.8;
+}
+.ccd-video-host {
+  position: relative;
+}
+.ccd-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: calc(100% - 48px);
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 2;
+  contain: paint;
+}
+.ccd-overlay > span {
+  position: absolute;
+  left: 100%;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 500;
+  color: #fff;
+  text-shadow:
+    0 1px 3px #000,
+    1px 0 3px #000,
+    -1px 0 3px #000;
+  animation-name: ccd-fly;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  max-width: none;
+}
+@keyframes ccd-fly {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-100% - 100vw));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ccd-overlay > span {
+    animation: none;
+    left: 10%;
+    white-space: normal;
+    max-width: 80%;
+    font-size: 13px;
+  }
+}
+@media (max-width: 620px) {
+  .ccd-danmaku {
+    padding: 14px;
+  }
+  .ccd-form {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .ccd-position {
+    flex-basis: 100%;
+  }
+  .ccd-form .input {
+    font-size: 10px;
+  }
+  .ccd-overlay > span {
+    font-size: 12px;
+  }
+  .ccd-list button {
+    gap: 12px;
+  }
+  .ccd-list summary small {
+    display: block;
+    margin-left: 0;
+  }
+}

@@ -1,0 +1,497 @@
+.math-exams {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.math-exam-status {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  min-height: 100px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.math-exam-error {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background: #fff3f1;
+  border-radius: 12px;
+  padding: 18px;
+  color: #b35353;
+  font-size: 13px;
+  margin: 15px 0;
+}
+.math-exam-error .btn {
+  flex: none;
+}
+.math-exam-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.math-exam-toolbar > .input {
+  flex: 1;
+  min-width: 130px;
+}
+.math-exam-select {
+  max-width: 150px;
+}
+.math-exam-back {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 13px;
+  padding: 10px 0;
+  margin-bottom: 14px;
+  cursor: pointer;
+}
+.math-exam-info {
+  margin: 18px 0;
+  font-size: 13px;
+  max-width: 680px;
+}
+.math-exam-info > div {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  padding: 12px 0;
+  gap: 20px;
+}
+.math-exam-info dt {
+  color: var(--muted);
+  width: 100px;
+  flex: none;
+}
+.math-exam-info dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.math-exam-badge {
+  display: inline-flex;
+  padding: 4px 9px;
+  background: #f3effb;
+  border-radius: 6px;
+  color: var(--accent);
+  font-size: 11px;
+}
+.math-exam-list-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--border);
+}
+.math-exam-list-row:last-of-type {
+  border-bottom: 0;
+}
+.math-exam-list-row h3 {
+  margin: 10px 0;
+  font-size: 15px;
+}
+.math-exam-list-row p {
+  margin: 5px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.math-exam-grow {
+  flex: 1;
+  min-width: 0;
+}
+.math-exam-paper-icon {
+  width: 48px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #f4f1fa;
+  color: var(--accent);
+  flex: none;
+}
+.math-exam-pager {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 24px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.math-exam-summary {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+  margin: 25px 0;
+}
+.math-exam-summary > span {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-size: 14px;
+  color: var(--muted);
+}
+.math-exam-summary strong {
+  color: var(--accent);
+  font-size: 20px;
+}
+.math-exam-muted {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+.math-exam-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  max-width: 850px;
+  margin-top: 24px;
+}
+.math-exam-form > label {
+  display: flex;
+  gap: 10px;
+  flex-direction: column;
+  font-size: 13px;
+  color: var(--muted);
+}
+.math-exam-form-actions {
+  display: flex;
+  gap: 12px;
+  grid-column: 1/-1;
+}
+.math-exam-scope {
+  grid-column: 1/-1;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  max-height: 350px;
+  overflow: auto;
+}
+.math-exam-scope legend {
+  font-size: 13px;
+  color: var(--muted);
+  padding: 0 8px;
+}
+.math-exam-scope label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--ink);
+}
+.math-exam-scope input {
+  accent-color: var(--accent);
+}
+.math-exam-link {
+  display: inline-flex;
+  gap: 8px;
+  color: var(--accent);
+  font-size: 13px;
+  text-decoration: none;
+}
+.math-exam-notice {
+  background: #f1faf6;
+  color: #398871;
+  font-size: 13px;
+  padding: 14px 18px;
+  border-radius: 10px;
+}
+.math-exam-runner-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+.math-exam-runner-top > .math-exam-back {
+  margin: 0;
+}
+.math-exam-runner-top > strong {
+  flex: 1;
+  font-size: 14px;
+}
+.math-exam-timer {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+.math-exam-timer.warning {
+  color: #c8873d;
+}
+.math-exam-progress {
+  height: 4px;
+  background: #f0edf6;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 24px 0;
+}
+.math-exam-progress > span {
+  height: 100%;
+  background: var(--accent);
+  display: block;
+}
+.math-exam-sheet {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+  gap: 10px;
+  margin: 24px 0;
+  max-height: 300px;
+  overflow: auto;
+}
+.math-exam-sheet > button {
+  height: 40px;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 8px;
+  color: var(--muted);
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+.math-exam-sheet > button.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.math-exam-sheet > button.saved {
+  border-color: #65b49d;
+}
+.math-exam-question-title {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  font-size: 12px;
+  color: var(--muted);
+  margin: 24px 0;
+}
+.math-exam-saved {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  color: #41947e;
+  margin-left: auto;
+}
+.math-exam-question {
+  font-size: 16px;
+  line-height: 1.9;
+  margin: 24px 0;
+}
+.math-exam-options {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  margin: 24px 0;
+}
+.math-exam-option {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  color: var(--ink);
+  padding: 15px;
+}
+.math-exam-option > .rich-content {
+  flex: 1;
+}
+.math-exam-option > span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 13px;
+  flex: none;
+}
+.math-exam-option.active {
+  background: #f7f4fc;
+  border-color: var(--accent);
+}
+.math-exam-option.active > span {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.math-exam-written {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 16px;
+}
+.math-exam-written textarea {
+  width: 100%;
+  resize: vertical;
+}
+.math-exam-analysis {
+  border-radius: 14px;
+  background: #f7f6fa;
+  padding: 22px;
+  margin: 24px 0;
+  font-size: 14px;
+  line-height: 1.8;
+}
+.math-exam-analysis h3 {
+  font-size: 15px;
+  margin-top: 0;
+}
+.math-exam-self-score {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 20px;
+}
+.math-exam-self-score input {
+  max-width: 110px;
+}
+.math-exam-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding-top: 24px;
+  margin-top: 24px;
+  border-top: 1px solid var(--border);
+}
+.math-exam-actions > button:last-child {
+  margin-left: auto;
+}
+.math-exam-report {
+  padding: 22px;
+  background: #f7f4fc;
+  border-radius: 14px;
+}
+.math-exam-report h3 {
+  margin-top: 0;
+}
+.math-exam-report p {
+  font-size: 13px;
+  color: var(--muted);
+}
+.math-exam-ranking-row {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.math-exam-ranking-row > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.math-exam-ranking-row > div > span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.math-exam-rank {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #f3effb;
+  color: var(--accent);
+  font-size: 13px;
+}
+.math-exam-preview > .btn {
+  margin-top: 18px;
+}
+.math-exam-preview > h2 {
+  font-size: 25px;
+}
+.math-exam-runner .rich-content img {
+  max-width: 100%;
+  height: auto;
+}
+.math-exams .tabs {
+  flex-wrap: wrap;
+}
+.math-exam-runner button:disabled,
+.math-exams button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+@media (max-width: 700px) {
+  .math-exam-form {
+    grid-template-columns: 1fr;
+  }
+  .math-exam-list-row {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .math-exam-grow {
+    min-width: 180px;
+  }
+  .math-exam-summary {
+    gap: 18px;
+  }
+  .math-exam-summary strong {
+    font-size: 17px;
+  }
+  .math-exam-runner-top > strong {
+    display: none;
+  }
+  .math-exam-runner-top > .btn {
+    margin-left: auto;
+  }
+  .math-exam-actions > button:last-child {
+    margin-left: 0;
+  }
+  .math-exam-actions > .btn {
+    flex: 1;
+    justify-content: center;
+    white-space: nowrap;
+  }
+  .math-exam-toolbar > .btn {
+    flex: 1;
+  }
+  .math-exam-scope {
+    grid-template-columns: 1fr 1fr;
+  }
+  .math-exam-form-actions {
+    flex-wrap: wrap;
+  }
+  .math-exam-self-score {
+    flex-wrap: wrap;
+  }
+  .math-exam-self-score input {
+    width: 100px;
+  }
+}
+
+.math-exam-upload {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+.math-exam-upload input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  cursor: pointer;
+}
+.math-exam-answer-image {
+  max-width: 100%;
+  max-height: 350px;
+  border-radius: 10px;
+  object-fit: contain;
+}

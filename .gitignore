@@ -1,0 +1,12 @@
+wx*-computer/
+wx*-math/
+yyb.txt
+.DS_Store
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+.data/
+*.tsbuildinfo
+artifacts/

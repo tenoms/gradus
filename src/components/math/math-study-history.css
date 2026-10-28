@@ -1,0 +1,133 @@
+.msh-tabs {
+  overflow-x: auto;
+  white-space: nowrap;
+  flex-wrap: nowrap !important;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+.msh-tabs > button {
+  font-size: 11px !important;
+  flex-shrink: 0;
+}
+.msh-capacity {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 20px 0;
+}
+.msh-capacity > button {
+  display: grid;
+  gap: 7px;
+  text-align: left;
+  background: #faf8fd;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 15px;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+}
+.msh-capacity > button.active {
+  background: #f1ebfa;
+  border-color: #c5b5e3;
+  color: var(--accent);
+}
+.msh-capacity span {
+  font-size: 11px;
+}
+.msh-capacity strong {
+  font:
+    24px Georgia,
+    serif;
+  color: var(--ink);
+}
+.msh-capacity small {
+  font-size: 9px;
+  line-height: 1.6;
+}
+.msh-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 18px 0;
+  font-size: 10px;
+  color: var(--muted);
+}
+.msh-toolbar > span {
+  margin-right: auto;
+}
+.msh-toolbar label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.msh-toolbar select {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 10px;
+}
+.msh-records > button {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  padding: 18px 0;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: none;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+}
+.msh-records > button > span {
+  flex: 1;
+  min-width: 0;
+}
+.msh-records strong {
+  display: block;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.msh-records small {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.8;
+  margin-top: 5px;
+}
+.msh-records .rich-content {
+  font-size: 11px;
+  line-height: 1.8;
+  max-height: 100px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.msh-more {
+  display: flex;
+  margin: 24px auto 8px;
+}
+.msh-end {
+  text-align: center;
+  font-size: 10px;
+  color: var(--muted);
+  padding: 20px;
+  margin: 0;
+}
+@media (max-width: 500px) {
+  .msh-capacity {
+    gap: 7px;
+  }
+  .msh-capacity > button {
+    padding: 12px;
+  }
+  .msh-toolbar {
+    flex-wrap: wrap;
+  }
+  .msh-records .math-list-icon {
+    width: 35px;
+    height: 35px;
+  }
+}

@@ -1,0 +1,64 @@
+.math-voice-recorder {
+  padding: 22px;
+  background: #f8f5fc;
+  border: 1px solid #e8def4;
+  border-radius: 12px;
+  margin-top: 22px;
+  display: grid;
+  gap: 18px;
+}
+.math-voice-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--accent);
+  flex-wrap: wrap;
+}
+.math-voice-heading strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.math-voice-heading span {
+  font-size: 10px;
+  color: var(--muted);
+  margin-left: auto;
+}
+.math-voice-actions {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.math-voice-recorder audio {
+  width: 100%;
+  height: 40px;
+}
+.math-voice-upload {
+  position: relative;
+  overflow: hidden;
+}
+.math-voice-upload input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+.math-voice-recorder .math-error-text {
+  font-size: 11px;
+  line-height: 1.8;
+  margin: 0;
+}
+@media (max-width: 600px) {
+  .math-voice-recorder {
+    padding: 18px;
+  }
+  .math-voice-actions .btn {
+    font-size: 11px;
+  }
+  .math-voice-heading span {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+}

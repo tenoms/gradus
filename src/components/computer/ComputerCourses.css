@@ -1,0 +1,213 @@
+.cc-courses {
+  display: flex;
+  flex-direction: column;
+  gap: 19px;
+}
+.cc-course-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 5px 0 14px;
+}
+.cc-course-title h2 {
+  font-size: 22px;
+  color: #654c77;
+  margin: 9px 0 12px;
+}
+.cc-course-title p:not(.eyebrow) {
+  color: #80698f;
+  font-size: 11px;
+  max-width: 750px;
+  line-height: 1.9;
+}
+.cc-details-tabs {
+  border-top: 1px solid #ece5f4;
+  margin-top: 27px;
+  padding-top: 23px;
+  margin-bottom: 20px;
+}
+.cc-introduction > img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.cc-introduction .rich-content {
+  font-size: 13px;
+}
+.cc-files {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cc-file-locked {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 14px;
+  border: 1px solid #eee6f4;
+  border-radius: 7px;
+  color: #8e789b;
+  font-size: 11px;
+}
+.cc-file-locked small {
+  margin-left: auto;
+  font-size: 9px;
+}
+.cc-small-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  color: #9782a6;
+  padding: 35px 15px;
+  gap: 14px;
+}
+.cc-small-empty p {
+  font-size: 11px;
+}
+.cc-review {
+  padding: 20px 0;
+  border-bottom: 1px solid #eee6f5;
+}
+.cc-review-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.cc-review-head > img {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 50%;
+}
+.cc-review-head > div {
+  flex: 1;
+  min-width: 0;
+}
+.cc-review-head strong {
+  font-size: 11px;
+  color: #7b5c8b;
+  font-weight: 500;
+}
+.cc-review-head small {
+  display: block;
+  font-size: 9px;
+  color: #8c739c;
+  margin-top: 6px;
+}
+.cc-review-head > span {
+  font-size: 9px;
+  background: #f2edf9;
+  color: #806298;
+  padding: 5px 8px;
+  border-radius: 5px;
+}
+.cc-review .rich-content {
+  font-size: 12px;
+  color: #785f87;
+}
+.cc-review-images {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.cc-review-images img {
+  max-width: 135px;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.cc-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  margin-top: 20px;
+  color: #81678f;
+  font-size: 9px;
+}
+.cc-pagination .btn {
+  font-size: 9px;
+  padding: 6px 10px;
+  min-height: 29px;
+}
+.cc-lesson-files {
+  padding: 0 7px 15px 30px;
+}
+.cc-lesson-files summary {
+  cursor: pointer;
+  font-size: 10px;
+  color: #89649d;
+  padding: 3px 0 8px;
+}
+.cc-lesson-files a,
+.cc-lesson-files span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #8c7499;
+  font-size: 9px;
+  line-height: 1.8;
+  margin: 6px 0;
+  overflow-wrap: anywhere;
+}
+.cc-lesson-files a:hover {
+  color: var(--accent);
+}
+.cc-lesson-row {
+  border-bottom: 1px solid #f1eaf6;
+}
+.cc-courses .computer-lesson-list .computer-lesson {
+  border: 0;
+}
+.cc-courses .computer-player > .computer-toolbar {
+  margin-top: 16px;
+}
+.cc-courses .computer-player > .computer-toolbar > label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #846b96;
+}
+@media (max-width: 600px) {
+  .cc-course-title {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .cc-course-title h2 {
+    font-size: 18px;
+  }
+  .cc-course-title p:not(.eyebrow) {
+    font-size: 10px;
+  }
+  .cc-introduction .rich-content {
+    font-size: 12px;
+  }
+  .cc-file-locked {
+    font-size: 10px;
+    padding: 11px;
+    flex-wrap: wrap;
+  }
+  .cc-file-locked small {
+    width: 100%;
+    margin: 0 0 0 24px;
+  }
+  .cc-review-head > span {
+    font-size: 8px;
+    white-space: nowrap;
+  }
+  .cc-review .rich-content {
+    font-size: 11px;
+  }
+  .cc-review-images img {
+    max-width: 100px;
+    height: 95px;
+  }
+  .cc-courses .computer-player > .computer-toolbar {
+    gap: 9px;
+  }
+}

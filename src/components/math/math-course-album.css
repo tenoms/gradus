@@ -1,0 +1,166 @@
+.math-course-album {
+  padding: 18px 0;
+}
+.mca-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.mca-actions .btn {
+  font-size: 11px;
+  padding: 8px 11px;
+}
+.mca-catalogs {
+  display: grid;
+  gap: 10px;
+  margin: 20px 0;
+}
+.mca-catalogs > button {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid #e4ecf6;
+  border-radius: 9px;
+  background: #fafcfe;
+  padding: 18px;
+  text-align: left;
+  color: #8a9db7;
+  cursor: pointer;
+}
+.mca-catalogs > button > span {
+  flex: 1;
+}
+.mca-catalogs strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.mca-catalogs small {
+  display: block;
+  font-size: 10px;
+  color: #a6b5c8;
+  margin-top: 7px;
+}
+.mca-catalogs > button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.mca-content {
+  padding: 18px 10px;
+  border-top: 1px solid #e8eef6;
+  margin: 10px 0;
+  color: #8d9eb6;
+  font-size: 12px;
+  line-height: 1.9;
+}
+.mca-content .mca-content {
+  padding-left: 18px;
+}
+.mca-content.last {
+  border-left: 3px solid #cbdced;
+  padding-left: 15px;
+}
+.mca-content-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.mca-content-heading h4 {
+  font-size: 14px;
+  font-weight: 500;
+  color: #8095b2;
+  margin: 8px 0 15px;
+}
+.mca-position {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: 0;
+  font-size: 10px;
+  color: #a4b4ca;
+  cursor: pointer;
+  padding: 6px;
+}
+.mca-work {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  justify-content: space-between;
+  background: #f3f7fc;
+  padding: 16px;
+  border-radius: 8px;
+  margin: 15px 0;
+  font-size: 11px;
+  color: #99abc3;
+  flex-wrap: wrap;
+}
+.mca-files {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 15px 0;
+}
+.mca-files:empty {
+  display: none;
+}
+.mca-files .btn {
+  font-size: 10px;
+}
+.mca-intro-images {
+  display: grid;
+  gap: 10px;
+}
+.mca-intro-images img {
+  max-width: 100%;
+  height: auto;
+}
+.mca-feedback {
+  padding: 22px;
+  background: #f6f9fd;
+  border: 1px solid #e0eaf6;
+  border-radius: 10px;
+  margin: 20px 0;
+}
+.mca-feedback h4 {
+  font-size: 14px;
+  color: #8b9fba;
+}
+.mca-feedback fieldset {
+  border: 0;
+  padding: 0;
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: #9aaec7;
+  margin: 20px 0;
+}
+.mca-feedback fieldset label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+@media (max-width: 650px) {
+  .mca-content {
+    padding: 14px 0;
+  }
+  .mca-content .mca-content {
+    padding-left: 10px;
+  }
+  .mca-work {
+    padding: 13px;
+    gap: 12px;
+  }
+  .mca-feedback {
+    padding: 16px;
+  }
+  .mca-actions {
+    margin-bottom: 15px;
+  }
+  .mca-content-heading h4 {
+    font-size: 12px;
+  }
+}

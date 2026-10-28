@@ -1,0 +1,143 @@
+.mmt-chapters {
+  padding: 20px 24px !important;
+}
+.mmt-chapters > label {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+.mmt-chapters .input {
+  flex: 1;
+  min-width: 160px;
+}
+.mmt-reading {
+  padding: 28px !important;
+}
+.mmt-node {
+  padding: 10px 0;
+  font-size: 14px;
+  line-height: 1.9;
+}
+.mmt-node h3 {
+  font-size: 17px;
+  line-height: 1.7;
+  margin: 15px 0;
+  color: var(--ink);
+}
+.mmt-node .rich-content {
+  margin: 12px 0;
+}
+.mmt-exercise-group {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 20px 0;
+}
+.mmt-group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 18px;
+  color: var(--accent);
+  background: #f8f5fc;
+  flex-wrap: wrap;
+}
+.mmt-group-header strong {
+  font-size: 12px;
+  margin-right: auto;
+}
+.mmt-group-header .btn {
+  font-size: 11px;
+}
+.mmt-question-preview {
+  width: 100%;
+  display: flex;
+  align-items: start;
+  gap: 13px;
+  padding: 18px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: #fff;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  color: var(--ink);
+}
+.mmt-question-preview > span {
+  width: 25px;
+  height: 25px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  background: #f5f0fb;
+  border-radius: 6px;
+  color: var(--accent);
+  font-size: 11px;
+}
+.mmt-question-preview .rich-content {
+  margin: 0;
+  flex: 1;
+  font-size: 13px;
+  line-height: 1.9;
+  max-height: 120px;
+  overflow: hidden;
+}
+.mmt-question-preview > svg {
+  flex-shrink: 0;
+  margin-top: 5px;
+  color: var(--muted);
+}
+.mmt-question {
+  overflow: hidden;
+}
+.mmt-analysis {
+  margin-top: 28px;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+.mmt-analysis h3 {
+  font-size: 16px;
+  color: var(--accent);
+}
+.mmt-analysis h4 {
+  font-size: 12px;
+  margin: 20px 0 10px;
+}
+.mmt-analysis section {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+}
+.mmt-marks {
+  padding: 18px 24px !important;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.mmt-marks > span {
+  font-size: 11px;
+}
+@media (max-width: 600px) {
+  .mmt-reading {
+    padding: 18px !important;
+  }
+  .mmt-group-header {
+    padding: 14px;
+  }
+  .mmt-question-preview {
+    padding: 14px;
+    gap: 9px;
+  }
+  .mmt-marks {
+    padding: 18px !important;
+  }
+  .mmt-chapters {
+    padding: 18px !important;
+  }
+  .mmt-chapters > label {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+}

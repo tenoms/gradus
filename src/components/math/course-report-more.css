@@ -1,0 +1,152 @@
+.mcrm > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 8px 0;
+}
+.mcrm-tabs {
+  margin: 18px 0;
+  flex-wrap: wrap;
+}
+.mcrm-own {
+  background: #f3effd;
+  padding: 14px 18px;
+  border-radius: 12px;
+}
+.mcrm-ranking {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0;
+}
+.mcrm-ranking li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 10px;
+  border-bottom: 1px solid #eeeaf6;
+}
+.mcrm-ranking li.mine {
+  background: #f8f5fe;
+}
+.mcrm-rank {
+  width: 28px;
+  text-align: center;
+  color: #62517f;
+  font-weight: 700;
+}
+.mcrm-ranking img,
+.mcrm-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #eae5f7;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.mcrm-name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.mcrm-ranking button {
+  border: 1px solid #ded8ee;
+  border-radius: 9px;
+  padding: 7px 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: white;
+  color: #65537d;
+}
+.mcrm-ranking .liked {
+  color: #a32c58;
+  background: #fff1f6;
+}
+.mcrm-ranking strong {
+  white-space: nowrap;
+}
+.mcrm-last {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 18px 0;
+}
+.mcrm-last > div {
+  padding: 18px 24px;
+  background: #f4f0fc;
+  border-radius: 12px;
+  flex: 1;
+}
+.mcrm-last strong {
+  display: block;
+  font-size: 30px;
+  margin-top: 10px;
+}
+.mcrm-last strong span {
+  font-size: 14px;
+  font-weight: 400;
+}
+.mcrm-bins > div {
+  display: grid;
+  grid-template-columns: 82px 1fr 60px;
+  gap: 12px;
+  align-items: center;
+  margin: 12px 0;
+  font-size: 13px;
+}
+.mcrm-bins > div > div {
+  height: 9px;
+  background: #f0ecf9;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.mcrm-bins i {
+  display: block;
+  height: 100%;
+  background: #7a5fd0;
+  border-radius: 6px;
+}
+.mcrm-accuracy {
+  text-align: center;
+  padding: 22px;
+}
+.mcrm-accuracy strong {
+  display: block;
+  font-size: 30px;
+  margin: 10px 0;
+}
+.mcrm-accuracy p {
+  font-size: 13px;
+}
+.mcrm .field-label {
+  margin-top: 18px;
+}
+@media (max-width: 600px) {
+  .mcrm-ranking li {
+    gap: 7px;
+    padding: 12px 0;
+    font-size: 12px;
+  }
+  .mcrm-rank {
+    width: 18px;
+  }
+  .mcrm-ranking img,
+  .mcrm-avatar {
+    width: 27px;
+    height: 27px;
+  }
+  .mcrm-ranking button {
+    padding: 6px;
+  }
+  .mcrm-tabs button {
+    font-size: 12px;
+  }
+  .mcrm-bins > div {
+    grid-template-columns: 74px 1fr 47px;
+    gap: 8px;
+  }
+}
