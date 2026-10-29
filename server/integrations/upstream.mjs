@@ -3,7 +3,6 @@ import { createCipheriv, createDecipheriv, createHash } from "node:crypto";
 import { tokenMetadata } from "./token-lifecycle.mjs";
 import { withMathStation } from "./math-request.mjs";
 import { readRuntimeConfig } from "../infrastructure/runtime-config.mjs";
-import publicConfiguration from "../../config/public.json" with { type: "json" };
 const iv = Buffer.from("59b87344b54f3197");
 const key = (seed) => Buffer.from(createHash("md5").update(seed).digest("hex"));
 export function encryptMath(value) {
@@ -254,7 +253,7 @@ async function loginPlatformWith(config, request, name, account) {
           name: account.nickname || "学习者",
           previewUrl: /^https?:\/\//.test(account.avatar || "")
             ? account.avatar
-            : publicConfiguration.computer.defaultAvatarUrl,
+            : "",
         }),
       },
     );

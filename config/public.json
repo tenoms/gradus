@@ -10,8 +10,7 @@
       { "id": "704332467330486272", "name": "操作系统", "examCategory": 1 },
       { "id": "707889875399086080", "name": "计算机网络", "examCategory": 1 },
       { "id": "708024163360706560", "name": "C语言程序设计", "examCategory": 1 }
-    ],
-    "defaultAvatarUrl": "https://static.computer-upstream.invalid/images/wechat/avatar/logo.png"
+    ]
   },
   "media": {
     "polyvSdkUrl": "https://player.polyv.net/resp/vod-player/latest/player.js"
