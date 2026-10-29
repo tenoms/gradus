@@ -8,6 +8,7 @@ import {
   LoaderCircle,
   RefreshCw,
   Star,
+  X,
 } from "lucide-react";
 import RichContent from "../RichContent";
 import LearningWorkbench from "../learning/LearningWorkbench";
@@ -42,8 +43,9 @@ import ComputerQuestionTools, {
 import { ComputerExamReport } from "./ComputerReports";
 import ComputerKnowledgeTags from "./ComputerKnowledgeTags";
 import ComputerQuestionVideo from "./ComputerQuestionVideo";
-import { computerAnswerMode, computerChoiceAnswer, computerImmediateChoice } from "./question-workflow.mjs";
+import { computerAnalysisVisible, computerAnswerMode, computerChoiceAnswer, computerDraftScope, computerImmediateChoice, computerOptionFeedback, computerQuestionProgress } from "./question-workflow.mjs";
 import "./question-workflow.css";
+import "../learning/answer-progress.css";
 function Status({
   loading,
   error,
@@ -128,7 +130,7 @@ export default function ExerciseSession({
     type = Number(question.exerciseType),
     answer = answers[id] || "",
     isReadOnly = !!launch.readOnly,
-    hasSubmitted = isReadOnly || (isPaper ? finished : !!submitted[id] || skipped.includes(id)),
+    hasSubmitted = computerAnalysisVisible(launch, !!submitted[id], finished, skipped.includes(id)),
     total = Number(launch.data.exerciseTotalNumber || questions.length),
     examId = launch.data.examId || launch.data.examinationId,
     score = Number(
@@ -138,7 +140,7 @@ export default function ExerciseSession({
       !!launch.redo || [3, 10, 18, 19].includes(launch.examType),
     category = launch.examCategory || 1;
   const immediateChoice = computerImmediateChoice(launch, type);
-  const storageKey = `study:computer:draft:${session.user?.id || session.account?.ref || "guest"}:${launch.majorId}:${category}:${examId || launch.chapterId || "random"}:${launch.examType}:${launch.examGroupId || ""}:${launch.redo ? `${launch.redo.kind}:${launch.redo.dateFlag}:${launch.redo.sort}` : ""}`;
+  const storageKey = `study:computer:draft:${computerDraftScope(session)}:${launch.majorId}:${category}:${examId || launch.chapterId || "random"}:${launch.examType}:${launch.examGroupId || ""}:${launch.redo ? `${launch.redo.kind}:${launch.redo.dateFlag}:${launch.redo.sort}` : ""}`;
   useEffect(() => {
     async function restore() {
       let index = Number(launch.data.initialIndex || 0);
@@ -486,20 +488,21 @@ export default function ExerciseSession({
           </div>
           <p className="computer-sheet-help">点击题号跳转，答案草稿会保留。</p>
           <div className="computer-sheet-legend">
-            <span><i className="saved" /> 已保存</span>
+            <span><i className="correct" /> 已答对</span>
+            <span><i className="incorrect" /> 回答错误</span>
+            <span><i className="saved" /> 已保存，待核对</span>
             <span><i className="draft" /> 有草稿</span>
             <span><i /> 未作答</span>
           </div>
           <div className="computer-sheet">
             {Array.from({ length: total }, (_, i) => {
               const questionId = String(questions[i]?.exerciseId || questions[i]?.id || launch.data.examExerciseIdList?.[i] || "");
-              const isSkipped = skipped.includes(questionId);
-              const saved = !!submitted[questionId] || isSkipped;
-              const drafted = !!answers[questionId];
+              const progress = computerQuestionProgress(launch, submitted[questionId], !!answers[questionId], finished, skipped.includes(questionId));
               return (
                 <button
-                  className={`${i === current ? "active" : ""} ${saved ? "answered" : drafted ? "drafted" : ""} ${isSkipped ? "skipped" : ""}`}
-                  aria-label={`第 ${i + 1} 题，${isSkipped ? "已跳过" : saved ? "已保存" : drafted ? "有草稿" : "未作答"}`}
+                  className={`${i === current ? "active" : ""} answer-progress-${progress.state}`}
+                  aria-label={`第 ${i + 1} 题，${progress.label}`}
+                  title={progress.label}
                   aria-current={i === current ? "step" : undefined}
                   disabled={loading}
                   key={i}
@@ -542,7 +545,7 @@ export default function ExerciseSession({
       {finished && !finalReport && (
         <div className="computer-notice"><p>试卷已提交。报告需要从学习平台读取。</p><button className="btn btn-secondary" disabled={loading} onClick={() => void refreshSubmittedReport()}><RefreshCw size={15} />重试读取报告</button></div>
       )}
-      <div className="computer-question-columns with-analysis">
+      <div className={`computer-question-columns ${hasSubmitted ? "with-analysis" : ""}`}>
       <div className="computer-question-answer">
       <RichContent
         content={String(
@@ -551,7 +554,7 @@ export default function ExerciseSession({
         className="computer-question-stem"
       />
       {!hasSubmitted && <p className="computer-answer-hint">{isPaper
-        ? "答案保留为草稿，可随时查看已返回的解析。"
+        ? "答案保留为草稿，交卷后查看答案与解析。"
         : immediateChoice
           ? "点选答案即保存，并显示解析。"
           : type === 2 ? "本题可多选，选好后提交。" : "完成后提交答案，也可按 Ctrl / ⌘ + Enter。"}</p>}
@@ -575,11 +578,12 @@ export default function ExerciseSession({
                 option.questionStem ?? String.fromCharCode(65 + index),
               ),
               selected =
-                type === 2 ? answer.split(",").includes(key) : answer === key;
+                type === 2 ? answer.split(",").includes(key) : answer === key,
+              feedback = computerOptionFeedback(key, question.exerciseAnswer, selected, hasSubmitted);
             return (
               <button
                 key={index}
-                className={`computer-option ${selected ? "active" : ""} ${hasSubmitted && String(question.exerciseAnswer).split(",").includes(key) ? "correct" : ""} ${hasSubmitted && selected && !String(question.exerciseAnswer).split(",").includes(key) ? "incorrect" : ""}`}
+                className={`computer-option ${selected ? "active" : ""} ${feedback}`}
                 disabled={hasSubmitted || loading}
                 aria-pressed={selected}
                 onClick={() => {
@@ -592,7 +596,7 @@ export default function ExerciseSession({
                 <RichContent
                   content={option.questionAnswer || option.content}
                 />
-                {selected && <Check size={17} />}
+                {feedback === "incorrect" ? <X size={19} aria-label="回答错误" /> : (feedback === "correct" || selected) && <Check size={19} aria-label={feedback === "correct" ? "正确答案" : "已选择"} />}
               </button>
             );
           })}
@@ -694,7 +698,7 @@ export default function ExerciseSession({
         </div>
       )}
       </div>
-      <div className="computer-analysis" aria-label="答案与解析">
+      {hasSubmitted && <div className="computer-analysis" aria-label="答案与解析">
           <h3>答案与解析</h3>
           {skipped.includes(id) && <p className="computer-dim">本题已跳过，未计为实际作答。</p>}
           {launch.voice && safeLink(answer.split("$-$")[0]) && (
@@ -735,7 +739,7 @@ export default function ExerciseSession({
               })()}
             </div>
           )}
-        </div>
+        </div>}
       </div>
       {noteVisible && (
         <div className="computer-note">

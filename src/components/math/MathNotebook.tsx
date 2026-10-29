@@ -1,3 +1,4 @@
+import { useMathLearningPlan } from "./MathLearningPlan";
 import { loadBookNotes } from "./notebook-data.mjs";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
@@ -73,10 +74,11 @@ export default function MathNotebook({
   initialKind: NoteKind;
   renderQuestion: (row: MathRow) => ReactNode;
 }) {
+  const { subject } = useMathLearningPlan();
+  useEffect(() => setCatalog("0"), [subject]);
   const [kind, setKind] = useState<NoteKind>(initialKind),
     [origin, setOrigin] = useState("book"),
     [bank, setBank] = useState(0),
-    [subject, setSubject] = useState("数一"),
     [catalog, setCatalog] = useState("0"),
     [book, setBook] = useState("0"),
     [search, setSearch] = useState(""),
@@ -295,25 +297,6 @@ export default function MathNotebook({
     );
   return (
     <div className="math-workspace">
-      <div className="math-section-heading">
-        <div>
-          <span className="eyebrow">REVIEW & REFLECTION</span>
-          <h2>把易错点，整理成自己的知识</h2>
-          <p>分类、复习和批量整理，与数学平台保持同步。</p>
-        </div>
-        <button
-          className="btn btn-secondary"
-          disabled={busy}
-          onClick={() => {
-            categories.reload();
-            entries.reload();
-            books.reload();
-          }}
-        >
-          <RefreshCw size={15} />
-          刷新记录
-        </button>
-      </div>
       <div className="panel mn-toolbar">
         <div className="tabs">
           {(["错题", "收藏", "笔记"] as NoteKind[]).map((k) => (
@@ -344,6 +327,18 @@ export default function MathNotebook({
             题库记录
           </button>
         </div>
+        <button
+          className="btn btn-secondary"
+          disabled={busy}
+          onClick={() => {
+            categories.reload();
+            entries.reload();
+            books.reload();
+          }}
+        >
+          <RefreshCw size={15} />
+          刷新记录
+        </button>
       </div>
       {origin === "book" ? (
         <div className="mn-layout">
@@ -358,19 +353,7 @@ export default function MathNotebook({
                 <FolderPlus size={18} />
               </button>
             </div>
-            <select
-              className="input"
-              aria-label="笔记数学类别"
-              value={subject}
-              onChange={(e) => {
-                setSubject(e.target.value);
-                setCatalog("0");
-              }}
-            >
-              {["数一", "数二", "数三"].map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
+            <p className="math-muted">{subject} · 我的备考分类</p>
             <button
               className={`mn-catalog ${catalog === "0" ? "active" : ""}`}
               onClick={() => setCatalog("0")}

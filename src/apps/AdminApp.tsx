@@ -74,7 +74,7 @@ export default function AdminApp() {
         <header className="management-header"><div><button className="icon-button management-menu" aria-label={mobileOpen ? "收起管理导航" : "展开管理导航"} aria-controls="management-sidebar" aria-expanded={mobileOpen} onClick={() => setMobileOpen(!mobileOpen)}>{mobileOpen ? <X size={21} /> : <Menu size={21} />}</button><span>管理空间 <i>/</i> <strong>{activeLabel}</strong></span></div><div><Link className="management-account" to="/account" aria-label="管理账号"><ShieldCheck size={17} /><span>{session.user.displayName}</span></Link><button className="management-logout" aria-label="退出管理" onClick={() => void logout()} disabled={loggingOut}><LogOut size={16} /><span>{loggingOut ? "退出中…" : "退出管理"}</span></button></div></header>
         <main id="management-content" className="management-content" tabIndex={-1}>
           {error && <div className="error-banner" role="alert"><CircleAlert size={17} /><span>{error}</span><button className="text-link" onClick={() => void refresh()}>重试</button></div>}
-          <Suspense fallback={<Loading />}><Routes><Route path="/account" element={<><div className="page-heading"><h1>管理账号</h1></div><PasswordSettings /></>} /><Route path="/*" element={<AdminWorkspace />} /></Routes></Suspense>
+          <Suspense fallback={<Loading />}><Routes><Route path="/account" element={<><h1 className="sr-only">管理账号</h1><PasswordSettings /></>} /><Route path="/*" element={<AdminWorkspace />} /></Routes></Suspense>
           <footer className="management-footer">知序 · 学习系统管理 <span>配置平台，连接学习</span></footer>
         </main>
       </div>

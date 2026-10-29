@@ -26,6 +26,13 @@ export function mathQuestionChoice(options, question = {}, { readOnly = false } 
   return { multiple, immediate: options.length > 0 && answers.length === 1 && !multiple && !readOnly };
 }
 
+/** Do not grade a draft or a self-assessed question without a machine answer key. */
+export function mathOptionFeedback(option, options, selected, checked) {
+  if (!checked || !options.some(item => Number(item.IsAnswer) === 1)) return "";
+  if (Number(option.IsAnswer) === 1) return "math-choice-correct";
+  return selected ? "math-choice-incorrect" : "";
+}
+
 /** BusValue may contain a Polyv VID or a direct video URL in the original schema. */
 export function mathQuestionMedia(row) {
   const video = /视频|录播/.test(`${row.BusType || ""} ${row.Type || ""}`) || !!(row.PolyvVID || row.PlayVid || row.Vid || row.vid);

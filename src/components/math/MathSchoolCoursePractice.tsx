@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, BookOpen, CheckCircle2, LoaderCircle } from "lucide-react";
 import MathQuestionReader from "./MathQuestionReader";
+import { answerProgress } from "../learning/answer-progress.mjs";
+import "../learning/answer-progress.css";
 import { mathData, mathGet, mathRows } from "../../platforms/math";
 import type { MathRow } from "../../platforms/math";
 import { courseApi } from "./math-courses";
@@ -181,18 +183,22 @@ export default function MathSchoolCoursePractice(props: Props) {
               className="panel math-answer-sheet"
               aria-label="针对性训练答题卡"
             >
-              {rows.map((q, i) => (
+              {rows.map((q, i) => {
+                const record = q._c_course_users_record,
+                  progress = answerProgress({ saved: Number(record?.ID) > 0, correct: Number(record?.AnswerState) === 1 ? true : Number(record?.AnswerState) === 0 ? false : undefined });
+                return (
                 <button
                   disabled={busy}
-                  aria-label={`第 ${i + 1} 题${Number(q._c_course_users_record?.ID) > 0 ? "，已作答" : ""}`}
+                  aria-label={`第 ${i + 1} 题，${progress.label}`}
                   aria-current={index === i ? "step" : undefined}
                   key={q.QuestionID || i}
-                  className={`${index === i ? "active" : ""} ${Number(q._c_course_users_record?.ID) > 0 ? "answered" : ""}`}
+                  className={`${index === i ? "active" : ""} answer-progress-${progress.state}`}
+                  title={progress.label}
                   onClick={() => move(i)}
                 >
                   {i + 1}
                 </button>
-              ))}
+              ); })}
             </div>
           )}
           {row && (

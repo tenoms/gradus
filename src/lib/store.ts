@@ -27,6 +27,7 @@ export interface StudyData {
   tasks: StudyTask[];
   activities: Activity[];
   goalMinutes: number;
+  mathPlan?: { subject: string; stage: string };
 }
 const defaultData = emptyStudyData();
 let scope = "guest";
@@ -84,6 +85,7 @@ export function toggleTask(id: string) {
 }
 export function deleteTask(id: string) { change({ kind: "task.delete", taskId: id }); }
 export function setGoal(goalMinutes: number) { change({ kind: "goal.set", goalMinutes }); }
+export function setMathPlan(mathPlan: NonNullable<StudyData["mathPlan"]>) { change({ kind: "math-plan.set", mathPlan }); }
 export function recordActivity(activity: Omit<Activity, "id" | "at">) {
   change({ kind: "activity.add", activity: { ...activity, id: crypto.randomUUID(), at: new Date().toISOString() } });
 }

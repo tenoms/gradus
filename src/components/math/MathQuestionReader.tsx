@@ -11,10 +11,13 @@ import {
   LoaderCircle,
   RefreshCw,
   Star,
+  X,
 } from "lucide-react";
 import RichContent from "../RichContent";
+import { normalizeMathAnalysisContent } from "./math-analysis-content.mjs";
 import MathQuestionStem from "./MathQuestionStem";
-import { mathQuestionChoice, mathQuestionMedia, mathQuestionPrompt } from "./math-question-presentation.mjs";
+import { mathOptionFeedback, mathQuestionChoice, mathQuestionMedia, mathQuestionPrompt } from "./math-question-presentation.mjs";
+import "./math-choice-feedback.css";
 import LearningWorkbench, { LearningWorkbenchScope } from "../learning/LearningWorkbench";
 import MathNoteEditor from "./MathNoteEditor";
 import MathDiscussion from "./MathDiscussion";
@@ -383,10 +386,13 @@ function QuestionReader({
           <MathQuestionStem {...prompt} />
           {options.length > 0 && (
             <div className="math-options">
-              {options.map((o, i) => (
+              {options.map((o, i) => {
+                const isSelected = selected.includes(String(o.ID));
+                const feedback = mathOptionFeedback(o, options, isSelected, result !== undefined || (!!readOnly && !saving) || !!analysis);
+                return (
                 <button
                   key={o.ID || i}
-                  className={selected.includes(String(o.ID)) ? "selected" : ""}
+                  className={`${isSelected ? "selected" : ""} ${feedback}`}
                   disabled={readOnly || saving}
                   aria-pressed={selected.includes(String(o.ID))}
                   onClick={() => {
@@ -405,9 +411,9 @@ function QuestionReader({
                 >
                   <span>{String.fromCharCode(65 + i)}</span>
                   <RichContent content={o.Content} />
-                  {selected.includes(String(o.ID)) && <Check size={16} />}
+                  {feedback === "math-choice-incorrect" ? <X size={18} aria-label="回答错误" /> : feedback === "math-choice-correct" && <Check size={18} aria-label="正确答案" />}
                 </button>
-              ))}
+              );})}
             </div>
           )}
           {!options.length && !selfAssessmentOnly && (
@@ -676,14 +682,16 @@ function AnalysisBlock({
   row: MathRow;
   onModel?: (row: MathRow) => void;
 }) {
-  const content =
+  const content = normalizeMathAnalysisContent(
     (row.BusUrl === "知识库" && row._question_code?.Content) ||
     row.Content ||
     row.Analysis ||
     row.Context ||
     row.Contexts ||
-    row.QuestionTxt;
+    row.QuestionTxt,
+  );
   const media = mathQuestionMedia(row);
+  if (!content && media.kind === "none") return null;
   if (media.kind === "video" || media.kind === "polyv") return <section className="math-analysis-block math-video-analysis">
     {content && content !== media.url && <RichContent content={content} />}
     <MediaFile row={row} />

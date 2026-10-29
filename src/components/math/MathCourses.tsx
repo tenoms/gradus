@@ -1,3 +1,5 @@
+import { useMathLearningPlan } from "./MathLearningPlan";
+import { matchesMathSubject } from "./learning-plan-model.mjs";
 import MathVideoFeedback from "./MathVideoFeedback";
 import Pagination from "../Pagination";
 import { usePagination } from "../../lib/pagination";
@@ -1895,12 +1897,13 @@ function Product({
 
 export default function MathCourses({ stuid }: { stuid: string }) {
   const catalogRef = useRef<HTMLDivElement>(null);
+  const { subject } = useMathLearningPlan();
+  const [allSubjects, setAllSubjects] = useState(false);
   const [tab, setTab] = useState("owned"),
     [product, setProduct] = useState<Row>(),
     [paper, setPaper] = useState<Row>(),
     [resume, setResume] = useState<Row>(),
-    [search, setSearch] = useState(""),
-    [subject, setSubject] = useState("全部");
+    [search, setSearch] = useState("");
   const remote = useContent(`course-list-${stuid}-${tab}`, () =>
     tab === "owned"
       ? courseApi.products(stuid)
@@ -1921,14 +1924,12 @@ export default function MathCourses({ stuid }: { stuid: string }) {
   const all = mathRows(remote.data).filter(
     (r) =>
       courseLabel(r).toLowerCase().includes(search.toLowerCase()) &&
-      (subject === "全部" ||
-        !r.BusValue ||
-        ["通用", subject].includes(String(r.BusValue))),
+      (allSubjects || matchesMathSubject(r, subject)),
   );
   const pagination = usePagination({
     total: all.length,
     pageSize: 30,
-    resetKey: JSON.stringify([stuid, tab, subject, search]),
+    resetKey: JSON.stringify([stuid, tab, subject, allSubjects, search]),
   });
   const rows = all.slice(pagination.start, pagination.end);
   if (product)
@@ -1961,9 +1962,6 @@ export default function MathCourses({ stuid }: { stuid: string }) {
     );
   return (
     <div className="math-courses">
-      <div className="mc-intro">
-        <h2>数学课程</h2>
-      </div>
       {tab === "owned" && lastTarget && (
         <div className="panel mc-resume">
           <span>
@@ -2009,18 +2007,7 @@ export default function MathCourses({ stuid }: { stuid: string }) {
             </button>
           ))}
         </div>
-        <select
-          className="input mc-subject"
-          aria-label="数学课程类别"
-          value={subject}
-          onChange={(e) => {
-            setSubject(e.target.value);
-          }}
-        >
-          {["全部", "数一", "数二", "数三"].map((v) => (
-            <option key={v}>{v}</option>
-          ))}
-        </select>
+        <button className="btn btn-secondary" onClick={() => setAllSubjects(!allSubjects)}>{allSubjects ? "全部科目 · 回到我的目标" : `${subject} · 浏览全部科目`}</button>
         <label className="mc-search">
           <Search size={17} />
           <input

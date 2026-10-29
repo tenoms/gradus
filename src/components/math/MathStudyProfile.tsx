@@ -12,8 +12,11 @@ import {
 import type { MathRow } from "../../platforms/math";
 import { studyProfilePayload } from "./account-model.mjs";
 import "./math-account.css";
+import { useMathLearningPlan } from "./MathLearningPlan";
+import { initialMathSubject } from "./learning-plan-model.mjs";
 
 export default function MathStudyProfile({ user }: { user: MathRow }) {
+  const { subject: targetSubject, setSubject: setTargetSubject } = useMathLearningPlan();
   const { refresh } = useSession(),
     [form, setForm] = useState<MathRow>({}),
     [provinces, setProvinces] = useState<MathRow[]>([]),
@@ -25,7 +28,7 @@ export default function MathStudyProfile({ user }: { user: MathRow }) {
     [error, setError] = useState("");
   const [nickname, setNickname] = useState(String(user.UserNick || "")),
     [avatar, setAvatar] = useState(String(user.HeadImg || "")),
-    [subject, setSubject] = useState(String(user.SubjectType || "数一"));
+    [subject, setSubject] = useState(targetSubject || initialMathSubject(user.SubjectType));
   const stuid = String(user.StuID || "");
   useEffect(() => {
     let active = true;
@@ -126,6 +129,7 @@ export default function MathStudyProfile({ user }: { user: MathRow }) {
         "/api/sys_users_info/Inner_sys_users_info",
         studyProfilePayload(form, stuid),
       );
+      setTargetSubject(subject);
       await refresh();
       setNotice(
         "个人资料与考研档案已同步。资料奖励按平台规则发放，可在积分流水查看。",

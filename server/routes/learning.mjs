@@ -2,25 +2,35 @@ import express from "express";
 import { ApiError, bearer, encryptMathMaster } from "../upstream.mjs";
 import { firstScorePayload } from "../first-score.mjs";
 import { publicPlatformResponse, validatePlatformRequest, injectMathUser, cleanAccount, publicSession } from "../platform-policy.mjs";
+import { publicYybSettings, userYybOverride } from "../user-yyb.mjs";
 
 export function createLearningRouter({ service, identities, connections, auth }) {
   const router = express.Router();
   const authenticated = auth.require;
   router.use("/auth", auth.router);
+  router.get("/account/yyb", authenticated, (req, res) => res.json(publicYybSettings(identities.yybSettings(req.studySession.user.id), req.studySession.user.yybRef)));
+  router.put("/account/yyb", authenticated, (req, res) => {
+    const result = identities.saveYybSettings(req.studySession.user.id, req.body);
+    connections.delete(req.studySession.user.id);
+    res.json(result);
+  });
   router.get("/study/data", authenticated, (req, res) => res.json(identities.studyData(req.studySession.user.id)));
   router.put("/study/data", authenticated, (req, res) => res.json(identities.saveStudyData(req.studySession.user.id, req.body?.data, req.body?.revision)));
   router.get("/announcements", authenticated, (req, res) => res.json({ announcements: identities.listAnnouncements() }));
   router.get("/auth/accounts", authenticated, async (req, res) => {
-    const ref = req.studySession.user.yybRef;
-    if (!ref) return res.json({ accounts: [] });
-    const accounts = await service.yybRequest("/accounts");
-    res.json({ accounts: accounts.map(cleanAccount).filter(account => account.ref === ref) });
+    const user = req.studySession.user;
+    const settings = identities.yybSettings(user.id);
+    if (settings.mode === "system" && !user.yybRef) return res.json({ accounts: [] });
+    const accounts = await service.yybRequest("/accounts", undefined, undefined, userYybOverride(settings));
+    if (!Array.isArray(accounts)) throw new ApiError("YYB 学习账号目录格式不正确", 502);
+    res.json({ accounts: accounts.map(cleanAccount).filter(account => settings.mode === "custom" || account.ref === user.yybRef) });
   });
   router.get("/auth/avatar/:ref", async (req, res) => {
     const session = auth.read(req);
     if (!session) throw new ApiError("请先登录学习空间", 401);
-    if (session.user.yybRef !== req.params.ref) throw new ApiError("此学习账号未分配给当前用户", 403);
-    const config = service.getConfig().yyb;
+    const settings = identities.yybSettings(session.user.id);
+    if (settings.mode === "system" && session.user.yybRef !== req.params.ref) throw new ApiError("此学习账号未分配给当前用户", 403);
+    const config = userYybOverride(settings) || service.getConfig().yyb;
     const response = await fetch(`${config.baseUrl}/accounts/avatar?ref=${encodeURIComponent(req.params.ref)}`, {
       headers: config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}, signal: AbortSignal.timeout(15000),
     });
@@ -29,18 +39,24 @@ export function createLearningRouter({ service, identities, connections, auth })
   });
   router.post("/auth/connect", authenticated, async (req, res) => {
     const user = req.studySession.user;
-    const ref = String(req.body?.ref || user.yybRef || "");
-    if (!user.yybRef || ref !== user.yybRef) throw new ApiError("请先由管理员分配学习账号", 403);
-    const accounts = await service.yybRequest("/accounts");
+    let settings = identities.yybSettings(user.id);
+    const ref = String(req.body?.ref || (settings.mode === "custom" ? settings.ref : user.yybRef) || "");
+    if (settings.mode === "system" && (!user.yybRef || ref !== user.yybRef)) throw new ApiError("请先由管理员分配学习账号", 403);
+    if (!ref || ref.length > 160) throw new ApiError("请选择要连接的学习账号", 400);
+    const yyb = userYybOverride(settings);
+    const accounts = await service.yybRequest("/accounts", undefined, undefined, yyb);
+    if (!Array.isArray(accounts)) throw new ApiError("YYB 学习账号目录格式不正确", 502);
     const source = accounts.find(account => String(account.id ?? account.ref) === ref);
-    if (!source) throw new ApiError("分配的学习账号在 YYB 中不可用，请联系管理员", 404);
+    if (!source) throw new ApiError(settings.mode === "custom" ? "当前 YYB 中没有这个学习账号，请重新选择" : "分配的学习账号在 YYB 中不可用，请联系管理员", 404);
+    settings = identities.selectYybAccount(user.id, ref);
     const account = cleanAccount(source);
     const remembered = connections.get(user.id);
-    const session = { user, account, platforms: remembered?.expires > Date.now() && remembered.account.ref === ref ? { ...remembered.platforms } : {} };
+    const session = { user: identities.user(user.id), account, yybMode: settings.mode, yybRevision: settings.revision,
+      platforms: remembered?.expires > Date.now() && remembered.account.ref === ref && (remembered.yybMode || "system") === settings.mode && (remembered.yybRevision || 0) === settings.revision ? { ...remembered.platforms } : {} };
     await Promise.all(["math", "computer"].map(async name => {
       if (!service.getConfig()[name].enabled) { session.platforms[name] = { connected: false, error: "管理员已停用此学习平台" }; return; }
       if (session.platforms[name]?.connected) return;
-      try { session.platforms[name] = await service.loginPlatform(name, { ...source, ref }); }
+      try { session.platforms[name] = await service.loginPlatform(name, { ...source, ref }, yyb); }
       catch (error) { session.platforms[name] = { connected: false, error: error.message }; }
     }));
     session.expires = Date.now() + 24 * 60 * 60 * 1000;
@@ -264,7 +280,7 @@ export function createLearningRouter({ service, identities, connections, auth })
     } catch (error) {
       if (error.status !== 401) throw error;
       try {
-        platform = await service.loginPlatform(name, req.studySession.account);
+        platform = await service.loginPlatform(name, req.studySession.account, userYybOverride(identities.yybSettings(req.studySession.user.id)));
         req.studySession.platforms[name] = platform;
         if (name === "math") input = injectMathUser(input, platform, service.getConfig().math.stationId);
         await respond();

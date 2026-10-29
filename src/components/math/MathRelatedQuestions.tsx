@@ -1,3 +1,5 @@
+import { useMathLearningPlan } from "./MathLearningPlan";
+import { mathMenuTree } from "./learning-plan-model.mjs";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
@@ -30,8 +32,12 @@ import {
   relatedResetPayload,
   relatedProperties,
   relatedPropertyGroups,
+  matchesRelatedSubject,
+  isRelatedSubjectScope,
 } from "../../platforms/math-related-model";
 import RichContent from "../RichContent";
+import { answerProgress } from "../learning/answer-progress.mjs";
+import "../learning/answer-progress.css";
 import { relatedPackageRows } from "../../platforms/math-related-packages";
 import { recordStudy } from "../../lib/store";
 import "./MathRelatedQuestions.css";
@@ -88,7 +94,7 @@ function State({
     return (
       <div className="math-state">
         <LoaderCircle className="spin" size={22} />
-        <p>正在读取分类题库…</p>
+        <p>正在读取考点刷题…</p>
       </div>
     );
   if (error)
@@ -121,11 +127,12 @@ export default function MathRelatedQuestions({
   stuid: string;
   renderQuestion: (props: RelatedReaderProps) => ReactNode;
 }) {
-  const [source, setSource] = useState("分类题库");
+  const { subject } = useMathLearningPlan();
+  const [source, setSource] = useState("考点刷题");
   const [collection, setCollection] = useState<Collection>();
   const [product, setProduct] = useState<MathRow>();
   const menus = useData(`related-menu-${stuid}-${source}`, async () => {
-    if (source === "分类题库")
+    if (source === "考点刷题")
       return mathCommand("GetRelQuestionMenu_zyk", {
         StuID: stuid,
         System_Station_ID: 1,
@@ -139,7 +146,11 @@ export default function MathRelatedQuestions({
     return { data: relatedPackageRows(mathRows(catalog)) };
   });
   const [query, setQuery] = useState("");
-  const rows = mathRows(menus.data).filter(row => !query || [row.StandardName, row.ProductName, row.Name].join(" ").includes(query));
+  const allRows = mathRows(menus.data);
+  const matches = (row: MathRow) => !query || [row.StandardName, row.ProductName, row.Name].join(" ").includes(query);
+  const tree = mathMenuTree(allRows).filter(row => subject !== "数二" || !/概率/.test(String(row.StandardName || row.Name || "")));
+  const visibleTree = (nodes: MathRow[]): MathRow[] => nodes.flatMap(row => { const children = visibleTree(row.children || []); return matches(row) || children.length ? [{ ...row, children: matches(row) ? row.children : children }] : []; });
+  const rows = source === "考点刷题" ? visibleTree(tree) : allRows.filter(matches);
   if (collection)
     return (
       <RelatedCollection
@@ -166,17 +177,10 @@ export default function MathRelatedQuestions({
     );
   return (
     <div className="math-workspace">
-      <div className="math-section-heading">
-        <div>
-          <span className="eyebrow">ORGANIZED QUESTION BANK</span>
-          <h2>按知识结构，把题目做透</h2>
-          <p>分类筛题、练习测试与掌握标记，连接原平台的刷题记录。</p>
-        </div>
-      </div>
       <div className="panel">
         <div className="math-toolbar">
           <div className="tabs">
-            {["分类题库", "真题书籍包", "推荐刷题包"].map((t) => (
+            {["考点刷题", "真题书籍包", "推荐刷题包"].map((t) => (
               <button
                 key={t}
                 className={t === source ? "active" : ""}
@@ -192,7 +196,7 @@ export default function MathRelatedQuestions({
             <Search size={16} />
             <input
               placeholder="搜索题库名称…"
-              aria-label="搜索分类题库"
+              aria-label="搜索考点刷题"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -205,33 +209,10 @@ export default function MathRelatedQuestions({
           retry={menus.reload}
         />
         <div className="math-content-list">
-          {rows.map((r, i) => (
-            <button
-              key={r.ID || i}
-              onClick={() =>
-                source === "分类题库"
-                  ? setCollection({
-                      ID: r.ID,
-                      name: r.StandardName || r.Name || "分类题库",
-                      type: 0,
-                      count: r.QuestionCount,
-                    })
-                  : setProduct(r)
-              }
-            >
-              <div className="math-list-icon">
-                <BookOpen size={21} />
-              </div>
-              <span>
-                <strong>
-                  {r.StandardName || r.ProductName || r.Name || "数学题库"}
-                </strong>
-                <small>
-                  {source === "分类题库"
-                    ? `${r.QuestionCount || r.Count || "—"} 道题目${r.FinishedCount ? ` · 已练 ${r.FinishedCount} 道` : ""}`
-                    : `${r.books?.length || 0} 本书籍`}
-                </small>
-              </span>
+          {source === "考点刷题" ? <ExamPointMenu rows={rows} onChoose={r => setCollection({ ID: r.ID, name: r.StandardName || r.Name || "考点刷题", type: 0, count: r.QuestionCount })} /> : rows.map((r, i) => (
+            <button key={r.ID || i} onClick={() => setProduct(r)}>
+              <div className="math-list-icon"><BookOpen size={21} /></div>
+              <span><strong>{r.ProductName || r.Name || "数学题库"}</strong><small>{r.books?.length || 0} 本书籍</small></span>
               <ChevronRight size={18} />
             </button>
           ))}
@@ -240,6 +221,10 @@ export default function MathRelatedQuestions({
     </div>
   );
 }
+function ExamPointMenu({ rows, onChoose }: { rows: MathRow[]; onChoose: (row: MathRow) => void }) {
+  return <>{rows.map(row => row.children?.length ? <details className="math-point-group" key={row.ID} open><summary>{row.StandardName || row.Name}<span>{row.children.length} 个章节</span></summary><div className="math-content-list"><ExamPointMenu rows={row.children} onChoose={onChoose} /></div></details> : <button key={row.ID} onClick={() => onChoose(row)}><div className="math-list-icon"><BookOpen size={21} /></div><span><strong>{row.StandardName || row.Name || "考点刷题"}</strong><small>{row.QuestionCount || row.Count || "—"} 道题目 · 已练 {row.FinishedCount || 0} 道</small></span><ChevronRight size={18} /></button>)}</>;
+}
+
 function PackageDetail({
   row,
   back,
@@ -388,6 +373,8 @@ function RelatedCollection({
   back: () => void;
   renderQuestion: (props: RelatedReaderProps) => ReactNode;
 }) {
+  const { subject } = useMathLearningPlan();
+  const [allSubjects, setAllSubjects] = useState(false);
   const [year, setYear] = useState("全部");
   const [selectedProperties, setSelectedProperties] = useState<
     Record<string, string[]>
@@ -401,6 +388,7 @@ function RelatedCollection({
   const [busy, setBusy] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [local, setLocal] = useState<Record<number, MathRow>>({});
+  useEffect(() => { setCurrent(undefined); setLimit(60); setAllSubjects(false); setSelectedProperties({}); }, [subject]);
   const scope = collection.type === 0 ? 0 : collection.ID;
   const remote = useData(
     `related-questions-${collection.ID}-${collection.type}`,
@@ -460,9 +448,10 @@ function RelatedCollection({
   ]
     .sort()
     .reverse();
-  const filtered = rows.filter(
+  const filtered = definitions.loading || definitions.error ? [] : rows.filter(
     (r) =>
       (year === "全部" || String(r.BookYear) === year) &&
+      (allSubjects || matchesRelatedSubject(r, subject, propertyRows)) &&
       matchesRelatedProperties(r, selectedProperties, propertyRows) &&
       (status === "全部" ||
         (status === "未做" && !r.State) ||
@@ -558,7 +547,7 @@ function RelatedCollection({
     <div className="math-workspace">
       <button className="math-back" onClick={back}>
         <ArrowLeft size={16} />
-        返回分类题库
+        返回考点刷题
       </button>
       <div className="math-section-heading">
         <div>
@@ -581,6 +570,8 @@ function RelatedCollection({
       </div>
       <div className="panel">
         <div className="math-toolbar">
+          <span className="math-tag">{allSubjects ? "全部科目" : `${subject}适用 · 含公共考题`}</span>
+          <button className="math-text-button" onClick={() => { setAllSubjects(!allSubjects); setCurrent(undefined); setLimit(60); setSelectedProperties({}); }}>{allSubjects ? "回到我的备考目标" : "浏览其他科目"}</button>
           <button
             className="btn btn-secondary"
             onClick={() => setFilterShown(!filterShown)}
@@ -634,7 +625,7 @@ function RelatedCollection({
           </button>
           <button
             className="math-icon-button"
-            aria-label="刷新分类题库"
+            aria-label="刷新考点刷题"
             onClick={() => {
               remote.reload();
               logs.reload();
@@ -651,7 +642,7 @@ function RelatedCollection({
               error={definitions.error}
               retry={definitions.reload}
             />
-            {groups.map((g) => (
+            {groups.filter(g => allSubjects || !g.rows.some(isRelatedSubjectScope)).map((g) => (
               <details key={g.id}>
                 <summary>
                   {g.name}
@@ -718,32 +709,32 @@ function RelatedCollection({
           </p>
         )}
         <State
-          loading={remote.loading || logs.loading}
-          error={remote.error || logs.error}
-          empty={!remote.loading && !logs.loading && !filtered.length}
+          loading={remote.loading || logs.loading || definitions.loading}
+          error={remote.error || logs.error || definitions.error}
+          empty={!remote.loading && !logs.loading && !definitions.loading && !definitions.error && !filtered.length}
           retry={() => {
             remote.reload();
             logs.reload();
+            definitions.reload();
           }}
         />
         {!active && (
           <>
             <div className="mrq-question-grid">
-              {filtered.slice(0, limit).map((r) => (
+              {filtered.slice(0, limit).map((r) => {
+                const progress = answerProgress({ saved: !!r.IsSubmit, draft: !!r.State, correct: r.State === 1 ? true : [2, 3].includes(r.State) ? false : undefined });
+                return (
                 <button
                   key={r.QuestionID}
-                  className={r.IsSubmit ? "submitted" : ""}
+                  className={`answer-progress-${progress.state}`}
+                  aria-label={`第 ${r._number} 题，${progress.label}`}
                   onClick={() => setCurrent(Number(r.QuestionID))}
                 >
                   <span className="mrq-number">{r._number}</span>
                   <div>
                     <strong>
                       {r.IsSubmit
-                        ? r.State === 1
-                          ? "已答对"
-                          : r.State === 2
-                            ? "部分掌握"
-                            : "需要巩固"
+                        ? progress.label
                         : r.State
                           ? "待提交"
                           : "开始练习"}
@@ -770,7 +761,7 @@ function RelatedCollection({
                     <ChevronRight size={16} />
                   )}
                 </button>
-              ))}
+              ); })}
             </div>
             {filtered.length > limit && (
               <button

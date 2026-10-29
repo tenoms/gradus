@@ -1,3 +1,5 @@
+import { useMathLearningPlan } from "./MathLearningPlan";
+import { weeklySubjectCode, weeklyStageCode } from "./learning-plan-model.mjs";
 import { useSession } from "../../lib/session";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -10,14 +12,19 @@ import {
   LoaderCircle,
   RefreshCw,
   Trophy,
+  X,
 } from "lucide-react";
 import MathQuestionTools from "./MathQuestionTools";
 import MathTeacherRecommendations from "./MathTeacherRecommendations";
 import MathExamReport, { MathReportDownloads } from "./MathExamReport";
 import { uploadMathAttachment } from "./MathQuestions";
 import RichContent from "../RichContent";
+import MathAnalysisContent from "./MathAnalysisContent";
+import { answerProgress } from "../learning/answer-progress.mjs";
+import "../learning/answer-progress.css";
 import MathQuestionStem from "./MathQuestionStem";
-import { mathQuestionPrompt } from "./math-question-presentation.mjs";
+import { mathOptionFeedback, mathQuestionPrompt } from "./math-question-presentation.mjs";
+import "./math-choice-feedback.css";
 import { mathCommand, mathData, mathGet, mathPost } from "../../platforms/math";
 import { recordActivity } from "../../lib/store";
 import {
@@ -28,6 +35,7 @@ import {
   existingRecord,
   mathExamApi,
   optionRows,
+  optionCorrect,
   parseExamJson,
   questionKey,
   questionMax,
@@ -211,6 +219,18 @@ function PaperRunner({
       0,
     ),
     maxTotal = questions.reduce((sum, q) => sum + questionMax(q), 0);
+  const progressFor = (q: R) => {
+    const record = existingRecord(context, q),
+      savedAnswer = recordAnswer(context, record),
+      currentAnswer = answers[questionKey(q)] || "";
+    return answerProgress({
+      saved: !!record.ID && currentAnswer === savedAnswer,
+      draft: !!currentAnswer || scores[questionKey(q)] !== undefined,
+      correct: correctOptionIds(q).length && savedAnswer ? optionCorrect(q, savedAnswer) : undefined,
+      revealed: finished,
+    });
+  };
+  const currentProgress = progressFor(question);
   useEffect(() => {
     if (!loaded.data) return;
     const d = loaded.data,
@@ -680,16 +700,22 @@ function PaperRunner({
       )}
       {sheet && (
         <div className="math-exam-sheet">
-          {questions.map((q, i) => (
+          {questions.map((q, i) => {
+            const progress = progressFor(q);
+            return (
             <button
-              className={`${current === i ? "active" : ""} ${existingRecord(context, q).ID ? "saved" : ""}`}
+              className={`${current === i ? "active" : ""} answer-progress-${progress.state}`}
               key={i}
+              aria-label={`第 ${i + 1} 题，${progress.label}`}
+              aria-current={current === i ? "step" : undefined}
+              title={progress.label}
               onClick={() => move(i)}
             >
               {i + 1}
-              {existingRecord(context, q).ID && <Check size={10} />}
+              {progress.state === "correct" && <Check size={10} />}
+              {progress.state === "incorrect" && <X size={10} />}
             </button>
-          ))}
+          ); })}
         </div>
       )}
       {(
@@ -699,9 +725,10 @@ function PaperRunner({
             <span>{question.Type || question.QuestionType || "综合题"}</span>
             <span>{max} 分</span>
             {saved && (
-              <span className="math-exam-saved">
-                <Check size={14} />
-                已保存
+              <span className={`math-exam-saved math-exam-result-${currentProgress.state}`}>
+                {currentProgress.state === "correct" && <Check size={14} />}
+                {currentProgress.state === "incorrect" && <X size={14} />}
+                {currentProgress.label}
               </span>
             )}
           </div>
@@ -710,11 +737,12 @@ function PaperRunner({
             <div className="math-exam-options">
               {options.map((option, i) => {
                 const selected = answer.split(",").includes(String(option.ID)),
-                  multiple = correctOptionIds(question).length > 1;
+                  multiple = correctOptionIds(question).length > 1,
+                  feedback = mathOptionFeedback(option, options, selected, finished);
                 return (
                   <button
                     disabled={finished || loading}
-                    className={`math-exam-option ${selected ? "active" : ""}`}
+                    className={`math-exam-option ${selected ? "active" : ""} ${feedback}`}
                     key={option.ID || i}
                     onClick={() =>
                       setAnswers((a) => ({
@@ -737,7 +765,7 @@ function PaperRunner({
                     <RichContent
                       content={option.Content || option.Answer || ""}
                     />
-                    {selected && <Check size={17} />}
+                    {feedback === "math-choice-incorrect" ? <X size={19} aria-label="回答错误" /> : feedback === "math-choice-correct" && <Check size={19} aria-label="正确答案" />}
                   </button>
                 );
               })}
@@ -801,7 +829,7 @@ function PaperRunner({
                     .join("、")}
                 </p>
               )}
-              <RichContent
+              <MathAnalysisContent
                 content={
                   question.Analysis ||
                   question.Answer ||
@@ -813,16 +841,16 @@ function PaperRunner({
               {(Array.isArray(question.Option) ? question.Option : [])
                 .filter((a: R) => !["题干", "选项"].includes(a.Type))
                 .map((a: R, i: number) => (
-                  <RichContent
+                  <MathAnalysisContent
                     key={`option-analysis-${i}`}
                     content={a.Content}
                   />
                 ))}
               {(question._analysis || []).map((a: R, i: number) => (
-                <RichContent key={i} content={a.Content} />
+                <MathAnalysisContent key={i} content={a.Content} />
               ))}
               {parseExamJson(question.Json)?.Steps?.map?.((a: R, i: number) => (
-                <RichContent key={i} content={a.Content || a.content} />
+                <MathAnalysisContent key={i} content={a.Content || a.content} />
               ))}
               {!options.length && !finished && (
                 <label className="math-exam-self-score">
@@ -1322,15 +1350,17 @@ function WeeklyCreator({
   onClose: () => void;
   onCreated: (PaperID: string | number) => void;
 }) {
+  const { subject, stage: planStage } = useMathLearningPlan();
   const configs = useAsync(() => mathExamApi.weeklyConfigs(), "weekly-configs"),
     scopes = useAsync(() => mathExamApi.scopes(), "weekly-scopes"),
     [config, setConfig] = useState(""),
-    [subject, setSubject] = useState("10,13,14,15"),
-    [stage, setStage] = useState("1"),
+    [stage, setStage] = useState(weeklyStageCode(planStage)),
     [name, setName] = useState(""),
     [selected, setSelected] = useState<string[]>([]),
     [loading, setLoading] = useState(false),
     [error, setError] = useState("");
+  useEffect(() => setStage(weeklyStageCode(planStage)), [planStage]);
+  useEffect(() => setSelected([]), [subject]);
   const grouped: R[] = Array.from(
     new Map(
       table(configs.data).map((row) => [
@@ -1349,7 +1379,7 @@ function WeeklyCreator({
         StuID: stuid,
         ID: config,
         code: selected.join(","),
-        busvalue: subject,
+        busvalue: weeklySubjectCode(subject),
         busid: Number(stage),
         name,
       });
@@ -1396,19 +1426,11 @@ function WeeklyCreator({
           />
         </label>
         <label>
-          数学类别
-          <select
-            className="input"
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-          >
-            <option value="10,13,14,15">数一</option>
-            <option value="11,13,15">数二</option>
-            <option value="12,14,15">数三</option>
-          </select>
+          目标科目
+          <input className="input" value={`${subject} · 已沿用备考目标`} readOnly />
         </label>
         <label>
-          备考阶段
+          本卷难度{planStage === "真题" ? "（真题阶段默认强化）" : ""}
           <select
             className="input"
             value={stage}
@@ -1471,8 +1493,8 @@ function WeeklyCreator({
 }
 
 export default function MathExams({ stuid }: { stuid: string }) {
+  const { subject } = useMathLearningPlan();
   const [kind, setKind] = useState("dry"),
-    [subject, setSubject] = useState("数一"),
     [page, setPage] = useState(1),
     [search, setSearch] = useState(""),
     [application, setApplication] = useState<R | null>(null),
@@ -1484,6 +1506,7 @@ export default function MathExams({ stuid }: { stuid: string }) {
     [deleting, setDeleting] = useState(false),
     [deleteError, setDeleteError] = useState(""),
     [deleteNotice, setDeleteNotice] = useState("");
+  useEffect(() => setPage(1), [subject]);
   const list = useAsync(
       () =>
         kind === "weekly"
@@ -1569,21 +1592,7 @@ export default function MathExams({ stuid }: { stuid: string }) {
         ))}
       </div>
       <div className="panel math-exam-toolbar">
-        {kind !== "weekly" && (
-          <select
-            className="input math-exam-select"
-            aria-label="测评数学类别"
-            value={subject}
-            onChange={(e) => {
-              setSubject(e.target.value);
-              setPage(1);
-            }}
-          >
-            {["数一", "数二", "数三"].map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
-        )}
+        {kind !== "weekly" && <span className="math-tag">{subject} · 已沿用备考目标</span>}
         <input
           className="input"
           aria-label="筛选测评"

@@ -287,7 +287,7 @@ function QuestionBank({ launch }: { launch: (s: ExerciseLaunch) => void }) {
   const [searchParams] = useSearchParams();
   const { subjects, reload: reloadSubjects } = useComputerSubjects(),
     [subject, setSubject] = useState<R>(computerSubjects[0]),
-    [mode, setMode] = useState("exam"),
+    [mode, setMode] = useState("practice"),
     [groupChapter, setGroupChapter] = useState<R | null>(null),
     [filter, setFilter] = useState(searchParams.get("q") || ""),
     [loading, setLoading] = useState(false),
@@ -828,7 +828,7 @@ function Resources() {
   );
 }
 
-function ComputerAccount({ onClose }: { onClose: () => void }) {
+export function ComputerAccount({ onClose }: { onClose?: () => void }) {
   const { session, refresh } = useSession(),
     detail = useLoad("/api/user/wx/user/detail"),
     [name, setName] = useState(session.platforms.computer.user?.nickName || ""),
@@ -884,10 +884,10 @@ function ComputerAccount({ onClose }: { onClose: () => void }) {
   const year = new Date().getFullYear() + 1;
   return (
     <div className="computer-workspace">
-      <button className="computer-back" onClick={onClose}>
+      {onClose && <button className="computer-back" onClick={onClose}>
         <ArrowLeft size={16} />
         返回学习
-      </button>
+      </button>}
       <Status
         loading={loading || detail.loading}
         error={error || detail.error}
@@ -1097,9 +1097,9 @@ function ComputerAccount({ onClose }: { onClose: () => void }) {
 
 export default function ComputerWorkspace({ section }: { section: string }) {
   const { session, openLogin } = useSession(),
-    [launch, setLaunch] = useState<ExerciseLaunch | null>(null),
-    [accountOpen, setAccountOpen] = useState(false);
-  useEffect(() => setLaunch(null), [section, session.account?.ref]);
+    [launch, setLaunch] = useState<ExerciseLaunch | null>(null);
+  const connectionIdentity = [session.user?.yyb?.mode, session.user?.yyb?.baseUrl, session.account?.ref, session.platforms.computer.user?.userId].join(":");
+  useEffect(() => setLaunch(null), [section, connectionIdentity]);
   if (!session.authenticated || !session.platforms.computer.connected)
     return (
       <div className="panel computer-auth-gate">
@@ -1133,19 +1133,8 @@ export default function ComputerWorkspace({ section }: { section: string }) {
         onClose={() => setLaunch(null)}
       />
     );
-  if (accountOpen)
-    return <ComputerAccount onClose={() => setAccountOpen(false)} />;
   return (
     <div className="computer-workspace">
-      <div className="computer-account-entry">
-        <button
-          className="computer-text-link"
-          onClick={() => setAccountOpen(true)}
-        >
-          学习账户
-          <ChevronRight size={14} />
-        </button>
-      </div>
       {section === "courses" ? (
         <ComputerCourses />
       ) : section === "exams" ? (
@@ -1161,7 +1150,7 @@ export default function ComputerWorkspace({ section }: { section: string }) {
       ) : section === "resources" ? (
         <Resources />
       ) : (
-        <QuestionBank launch={setLaunch} />
+        <QuestionBank key={section} launch={setLaunch} />
       )}
     </div>
   );

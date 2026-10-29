@@ -2,18 +2,14 @@ import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   BookOpen,
-  Check,
   ChevronRight,
   ExternalLink,
   LoaderCircle,
   RefreshCw,
-  ThumbsDown,
-  ThumbsUp,
 } from "lucide-react";
 import RichContent from "../RichContent";
-import { mathGet, mathPost, mathRows } from "../../platforms/math";
+import { mathGet, mathRows } from "../../platforms/math";
 import type { MathRow } from "../../platforms/math";
-import { mathUpdateListQuery, mathOwnUpdateLogs } from "../../platforms/math-information";
 import "./math-information-resources.css";
 const url = (value: any) =>
   typeof value === "string" && /^https?:\/\//i.test(value) ? value : "";
@@ -73,35 +69,20 @@ function Status({
     </div>
   ) : null;
 }
-export default function MathInformationResources({
-  stuid,
-  kind,
-}: {
-  stuid: string;
-  kind: "knowledge" | "updates";
-}) {
-  const remote = useData(`${kind}-${stuid}`, () =>
-    kind === "knowledge"
-      ? mathGet("/api/headimg_list/GetListByAll", {
-          System_Station_ID: 1,
-          BusType: "考研知识",
-          StuID: stuid,
-          IsValid: 1,
-          Type: -1,
-          IsLayer: 1,
-        })
-      : mathGet(mathUpdateListQuery(stuid).path, mathUpdateListQuery(stuid).query),
+export default function MathInformationResources({ stuid }: { stuid: string }) {
+  const remote = useData(`knowledge-${stuid}`, () =>
+    mathGet("/api/headimg_list/GetListByAll", {
+      System_Station_ID: 1,
+      BusType: "考研知识",
+      StuID: stuid,
+      IsValid: 1,
+      Type: -1,
+      IsLayer: 1,
+    }),
   );
   const [selected, setSelected] = useState<MathRow>();
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
-    [notice, setNotice] = useState("");
-  useEffect(() => {
-    setSelected(undefined);
-    setNotice("");
-    setError("");
-  }, [kind]);
-  if (selected && kind === "knowledge")
+  useEffect(() => setSelected(undefined), [stuid]);
+  if (selected)
     return (
       <KnowledgeArticle
         row={selected}
@@ -109,61 +90,10 @@ export default function MathInformationResources({
         back={() => setSelected(undefined)}
       />
     );
-  const rows = mathRows(remote.data).filter(
-    (r) =>
-      kind !== "updates" ||
-      !r.BusValue ||
-      /^(0001|1900)/.test(String(r.BusValue)) ||
-      new Date(r.BusValue).getTime() <= Date.now(),
-  );
-  const log = async (row: MathRow, type: "give" | "tread" | "read") => {
-    const logs = mathOwnUpdateLogs(row, stuid);
-    const prior = logs.find(
-      (r) =>
-        (type === "read"
-          ? r.BusType === "read"
-          : ["give", "tread"].includes(r.BusType)),
-    );
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      if (prior && type !== "read")
-        await mathPost("/api/content_list_log/Del_content_list_log", {
-          ID: prior.ID,
-        });
-      if ((!prior || prior.BusType !== type) && !(type === "read" && prior))
-        await mathPost("/api/content_list_log/Inner_content_list_log", {
-          BusType: type,
-          BusID: 1,
-          CID: row.ID,
-          BusValue: stuid,
-          System_Station_ID: 1,
-          BusNotes:
-            type === "read" ? "阅读" : type === "give" ? "点赞" : "踩赞",
-        });
-      setNotice(type === "read" ? "已标记为已读" : "反馈已同步");
-      remote.reload();
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setBusy(false);
-    }
-  };
+  const rows = mathRows(remote.data);
   return (
     <section className="math-workspace">
-      <div className="math-section-heading">
-        <div>
-          <span className="eyebrow">
-            {kind === "knowledge" ? "GRADUATE STUDY GUIDE" : "PLATFORM UPDATES"}
-          </span>
-          <h2>{kind === "knowledge" ? "考研知识" : "平台更新"}</h2>
-          <p>
-            {kind === "knowledge"
-              ? "阅读原平台发布的考研知识与学习资料。"
-              : "查看平台发布的功能调整，保留你的阅读与评价记录。"}
-          </p>
-        </div>
+      <div className="math-toolbar">
         <button
           className="btn btn-secondary"
           disabled={remote.loading}
@@ -179,104 +109,26 @@ export default function MathInformationResources({
         empty={!rows.length}
         retry={remote.reload}
       />
-      {error && (
-        <p className="math-error-text" role="alert">
-          {error}
-        </p>
-      )}
-      {notice && (
-        <p className="math-account-notice" role="status">
-          {notice}
-        </p>
-      )}
-      {kind === "knowledge" ? (
-        <div className="panel math-content-list">
-          {rows.map((r, i) => (
-            <button key={r.ID || i} onClick={() => setSelected(r)}>
-              {url(r.HeadImg) ? (
-                <img
-                  className="mir-thumbnail"
-                  src={
-                    String(r.HeadImg)
-                      .replaceAll(".png_yjs", ".png")
-                      .split(";")[0]
-                  }
-                  alt=""
-                />
-              ) : (
-                <div className="math-list-icon">
-                  <BookOpen size={20} />
-                </div>
-              )}
-              <span>
-                <strong>{r.Name || r.Title || r.BusValue || "考研知识"}</strong>
-                <small>{r.Notes || "点击阅读详细内容"}</small>
-              </span>
-              <ChevronRight size={16} />
-            </button>
-          ))}
-        </div>
-      ) : (
-        <div className="mir-updates">
-          {rows.map((r, i) => {
-            const own = mathOwnUpdateLogs(r, stuid);
-            return (
-              <article className="panel" key={r.ID || i}>
-                <div className="mir-update-date">
-                  <time>
-                    {String(r.BusValue || r.AddTime || "")
-                      .replace("T", " ")
-                      .slice(0, 10)}
-                  </time>
-                  {own.some((l: MathRow) => l.BusType === "read") && (
-                    <span>
-                      <Check size={13} />
-                      已读
-                    </span>
-                  )}
-                </div>
-                <RichContent
-                  content={r.Json || r.Content || r.Contexts || r.Title}
-                />
-                <div className="mir-update-actions">
-                  <button
-                    className={
-                      own.some((l: MathRow) => l.BusType === "give")
-                        ? "active"
-                        : ""
-                    }
-                    disabled={busy}
-                    onClick={() => log(r, "give")}
-                    aria-label="赞同这条平台更新"
-                  >
-                    <ThumbsUp size={15} />
-                    {r.Give || 0}
-                  </button>
-                  <button
-                    className={
-                      own.some((l: MathRow) => l.BusType === "tread")
-                        ? "active"
-                        : ""
-                    }
-                    disabled={busy}
-                    onClick={() => log(r, "tread")}
-                    aria-label="不赞同这条平台更新"
-                  >
-                    <ThumbsDown size={15} />
-                    {r.tread || 0}
-                  </button>
-                  {!own.some((l: MathRow) => l.BusType === "read") && (
-                    <button disabled={busy} onClick={() => log(r, "read")}>
-                      <Check size={15} />
-                      标记已读
-                    </button>
-                  )}
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
+      <div className="panel math-content-list">
+        {rows.map((r, i) => (
+          <button key={r.ID || i} onClick={() => setSelected(r)}>
+            {url(r.HeadImg) ? (
+              <img
+                className="mir-thumbnail"
+                src={String(r.HeadImg).replaceAll(".png_yjs", ".png").split(";")[0]}
+                alt=""
+              />
+            ) : (
+              <div className="math-list-icon"><BookOpen size={20} /></div>
+            )}
+            <span>
+              <strong>{r.Name || r.Title || r.BusValue || "考研知识"}</strong>
+              <small>{r.Notes || "点击阅读详细内容"}</small>
+            </span>
+            <ChevronRight size={16} />
+          </button>
+        ))}
+      </div>
     </section>
   );
 }

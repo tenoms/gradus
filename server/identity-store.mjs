@@ -1,10 +1,11 @@
 import { DatabaseSync } from "node:sqlite";
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual, createHash } from "node:crypto";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, chmodSync, existsSync } from "node:fs";
 import path from "node:path";
 import { ApiError } from "./upstream.mjs";
 import { validateStudyData } from "../shared/study-data.mjs";
 import { adminActions } from "../shared/admin-actions.mjs";
+import { defaultYybSettings, publicYybSettings, updateYybSettings } from "./user-yyb.mjs";
 export { validateStudyData } from "../shared/study-data.mjs";
 
 const emptyStudy = () => ({ tasks: [], activities: [], goalMinutes: 60 });
@@ -68,6 +69,10 @@ export function createIdentityStore(filename) {
     CREATE TABLE IF NOT EXISTS study_data (
       user_id TEXT PRIMARY KEY REFERENCES users(id), data TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 0
     );
+    CREATE TABLE IF NOT EXISTS user_yyb (
+      user_id TEXT PRIMARY KEY REFERENCES users(id), mode TEXT NOT NULL CHECK(mode IN ('system','custom')),
+      base_url TEXT NOT NULL DEFAULT '', api_key TEXT NOT NULL DEFAULT '', account_ref TEXT NOT NULL DEFAULT '', revision INTEGER NOT NULL DEFAULT 0
+    );
     CREATE TABLE IF NOT EXISTS audit (
       id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL,
       actor_name TEXT NOT NULL, action TEXT NOT NULL, target_name TEXT NOT NULL, detail TEXT NOT NULL
@@ -76,12 +81,44 @@ export function createIdentityStore(filename) {
       id TEXT PRIMARY KEY, title TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL
     );
   `);
+  if (filename !== ":memory:") for (const file of [filename, `${filename}-wal`, `${filename}-shm`]) if (existsSync(file)) chmodSync(file, 0o600);
   function transaction(work) {
     db.exec("BEGIN IMMEDIATE");
     try { const result = work(); db.exec("COMMIT"); return result; }
     catch (error) { db.exec("ROLLBACK"); throw error; }
   }
   const rowFor = (id) => db.prepare("SELECT * FROM users WHERE id = ?").get(id);
+  function yybSettings(userId) {
+    const row = db.prepare("SELECT * FROM user_yyb WHERE user_id=?").get(userId);
+    return row ? { mode: row.mode, baseUrl: row.base_url, apiKey: row.api_key, ref: row.account_ref, revision: row.revision } : defaultYybSettings();
+  }
+  function userValue(row) {
+    const user = publicIdentity(row);
+    return user ? { ...user, yyb: publicYybSettings(yybSettings(user.id), user.yybRef) } : null;
+  }
+  function writeYybSettings(userId, value) {
+    db.prepare("INSERT INTO user_yyb(user_id,mode,base_url,api_key,account_ref,revision) VALUES(?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET mode=excluded.mode,base_url=excluded.base_url,api_key=excluded.api_key,account_ref=excluded.account_ref,revision=excluded.revision")
+      .run(userId, value.mode, value.baseUrl, value.apiKey, value.ref, value.revision);
+  }
+  function saveYybSettings(userId, input) {
+    const user = userValue(rowFor(userId));
+    if (!user) fail("未找到该用户", 404);
+    return transaction(() => {
+      const value = updateYybSettings(yybSettings(userId), input);
+      writeYybSettings(userId, value);
+      audit(user, "yyb.updated", user, value.mode === "custom" ? "使用自有 YYB 服务" : "使用系统分配的学习账号");
+      return publicYybSettings(value, user.yybRef);
+    });
+  }
+  function selectYybAccount(userId, ref) {
+    const value = yybSettings(userId);
+    if (value.mode !== "custom") return value;
+    const selected = text(ref, 160, "学习账号");
+    if (value.ref === selected) return value;
+    const next = { ...value, ref: selected, revision: value.revision + 1 };
+    writeYybSettings(userId, next);
+    return next;
+  }
   const count = () => Number(db.prepare("SELECT COUNT(*) AS n FROM users").get().n);
   function audit(actor, action, target, detail = "") {
     db.prepare("INSERT INTO audit (at, actor_name, action, target_name, detail) VALUES (?, ?, ?, ?, ?)")
@@ -110,7 +147,7 @@ export function createIdentityStore(filename) {
     }
     if (query.q) { clauses.push("instr(lower(username || ' ' || display_name || ' ' || coalesce(yyb_ref,'')), lower(?)) > 0"); parameters.push(query.q); }
     const result = pageResult("users", clauses.length ? ` WHERE ${clauses.join(" AND ")}` : "", parameters, query, "*", "created_at DESC,id DESC");
-    return { users: result.rows.map(publicIdentity), pagination: result.pagination };
+    return { users: result.rows.map(userValue), pagination: result.pagination };
   }
   function auditPage(input = {}) {
     const query = listQuery(input), clauses = [], parameters = [];
@@ -147,7 +184,7 @@ export function createIdentityStore(filename) {
       const id = randomUUID();
       db.prepare("INSERT INTO users (id,username,display_name,password_hash,role,yyb_ref,created_at) VALUES (?,?,?,?,?,?,?)")
         .run(id, username, displayName, hash, role, yybRef, now());
-      const user = publicIdentity(rowFor(id));
+      const user = userValue(rowFor(id));
       audit(actor || user, setup ? "system.setup" : "user.created", user);
       return user;
     });
@@ -169,7 +206,7 @@ export function createIdentityStore(filename) {
       db.prepare("UPDATE users SET display_name=?,role=?,status=?,yyb_ref=? WHERE id=?")
         .run(displayName, role, status, yybRef, id);
       if (status === "disabled") db.prepare("DELETE FROM auth_sessions WHERE user_id=?").run(id);
-      const user = publicIdentity(rowFor(id));
+      const user = userValue(rowFor(id));
       audit(actor, "user.updated", user, [role !== row.role ? `角色：${role}` : "", status !== row.status ? `状态：${status}` : "", yybRef !== row.yyb_ref ? "更新学习账号分配" : ""].filter(Boolean).join("；"));
       return user;
     });
@@ -182,7 +219,7 @@ export function createIdentityStore(filename) {
     if (!passwordMatches(password, hash) || !row || row.status !== "active") fail("用户名或密码不正确，或账号已停用", 401);
     if (space === "admin" && row.role !== "admin") fail("此账号没有管理空间权限", 403);
     db.prepare("UPDATE users SET last_login_at=? WHERE id=?").run(now(), row.id);
-    const user = publicIdentity(rowFor(row.id));
+    const user = userValue(rowFor(row.id));
     audit(user, "auth.login", user, space);
     return user;
   }
@@ -194,7 +231,7 @@ export function createIdentityStore(filename) {
   }
   function sessionUser(token, space = "learning") {
     if (typeof token !== "string" || token.length > 256) return null;
-    return publicIdentity(db.prepare("SELECT users.* FROM auth_sessions JOIN users ON users.id=auth_sessions.user_id WHERE token_hash=? AND expires>? AND space=? AND users.status='active'")
+    return userValue(db.prepare("SELECT users.* FROM auth_sessions JOIN users ON users.id=auth_sessions.user_id WHERE token_hash=? AND expires>? AND space=? AND users.status='active'")
       .get(tokenHash(token), Date.now(), space));
   }
   function revokeSession(token) {
@@ -220,12 +257,13 @@ export function createIdentityStore(filename) {
     setupRequired: () => count() === 0,
     setup: (input) => createUser(input, null, true),
     createUser, updateUser, login, issueSession, sessionUser, revokeSession,
-    user: (id) => publicIdentity(rowFor(id)),
-    users: () => db.prepare("SELECT * FROM users ORDER BY created_at,id").all().map(publicIdentity),
+    user: (id) => userValue(rowFor(id)),
+    users: () => db.prepare("SELECT * FROM users ORDER BY created_at,id").all().map(userValue),
+    yybSettings, saveYybSettings, selectYybAccount,
     userPage, auditPage, announcementPage,
     resetPassword(id, password, actor) {
       const hash = passwordHash(password);
-      const user = publicIdentity(rowFor(id));
+      const user = userValue(rowFor(id));
       if (!user) fail("未找到该用户", 404);
       transaction(() => {
         db.prepare("UPDATE users SET password_hash=? WHERE id=?").run(hash, id);
@@ -240,7 +278,7 @@ export function createIdentityStore(filename) {
       transaction(() => {
         db.prepare("UPDATE users SET password_hash=? WHERE id=?").run(hash, userId);
         db.prepare("DELETE FROM auth_sessions WHERE user_id=? AND token_hash!=?").run(userId, tokenHash(currentToken));
-        const user = publicIdentity(row);
+        const user = userValue(row);
         audit(user, "auth.password_changed", user, "当前会话保留，其他登录会话已退出");
       });
     },

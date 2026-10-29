@@ -1,3 +1,5 @@
+import { useMathLearningPlan } from "./MathLearningPlan";
+import { groupMathAlbums, mathStages } from "./learning-plan-model.mjs";
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -120,6 +122,8 @@ export default function MathAlbums({
   onQuestion: (row: MathRow) => void;
 }) {
   const { session, refresh } = useSession();
+  const { stage } = useMathLearningPlan();
+  const [stageFilter, setStageFilter] = useState("全部阶段");
   const [myOnly, setMyOnly] = useState(false);
   const profile = useAlbumData(`album-profile-${stuid}`, () =>
     mathCommand("GetUserInfoByStuID", { StuID: stuid, t: Date.now() }),
@@ -412,20 +416,10 @@ export default function MathAlbums({
         </div>
       </div>
     );
-  const visible = mathRows(albums.data).filter(
-    (r) =>
-      (!myOnly || mine.includes(String(r.ID))) &&
-      (!query || mathTitle(r).includes(query)),
-  );
+  const groups = groupMathAlbums(mathRows(albums.data)).map(group => ({ ...group, rows: group.rows.filter(r => (!myOnly || mine.includes(String(r.ID))) && (!query || mathTitle(r).includes(query))) })).filter(group => group.rows.length && (stageFilter === "全部阶段" || group.name === stageFilter));
+  const visible = groups.flatMap(group => group.rows);
   return (
     <div className="math-workspace">
-      <div className="math-section-heading">
-        <div>
-          <span className="eyebrow">CURATED COLLECTIONS</span>
-          <h2>数学专辑与学习资源</h2>
-          <p>按专题与章节深入，把分散的知识连接起来。</p>
-        </div>
-      </div>
       <div className="panel">
         <div className="math-toolbar">
           <div className="tabs">
@@ -449,14 +443,17 @@ export default function MathAlbums({
             />
           </label>
         </div>
+        <div className="math-album-stages" aria-label="专辑备考阶段">
+          {["全部阶段", ...mathStages.map(s => s.name), "专题拓展"].map(name => <button key={name} className={stageFilter === name ? "active" : ""} onClick={() => setStageFilter(name)}>{name}{name === stage ? <small>当前阶段</small> : null}</button>)}
+        </div>
         <Status
           loading={albums.loading}
           error={albums.error}
           empty={!albums.loading && !visible.length}
           retry={albums.reload}
         />
-        <div className="math-album-grid">
-          {visible.map((a, i) => (
+        <div className="math-album-sections">{groups.map(group => <section key={group.name} className="math-album-stage-section"><div className="math-album-stage-heading"><h3>{group.name}阶段{group.name === stage && <span className="math-tag">正在学习</span>}</h3><p>{mathStages.find(s => s.name === group.name)?.description || "围绕专项难点，按需深入学习"} · {group.rows.length} 个专辑</p></div><div className="math-album-grid">
+          {group.rows.map((a, i) => (
             <button
               key={a.ID || i}
               className="math-album-card"
@@ -484,7 +481,7 @@ export default function MathAlbums({
               </div>
             </button>
           ))}
-        </div>
+        </div></section>)}</div>
       </div>
     </div>
   );

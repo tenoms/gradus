@@ -1,4 +1,11 @@
 export type ModelRow = Record<string, any>;
+export function guideStudyPayload(stuid: string, lesson: ModelRow, previous?: ModelRow) {
+  const sameAlbum = previous?.ID && String(previous.AlbumID) === String(lesson.BusID);
+  return {
+    Type: "直播模块", BusID: lesson.ID, AlbumID: lesson.BusID, StuID: stuid, System_Station_ID: 1,
+    ...(sameAlbum ? { ID: previous.ID, AddTime: new Date().toLocaleString("sv-SE", { timeZone: "Asia/Shanghai" }), UpdateColumns: "ID,AddTime" } : {}),
+  };
+}
 export interface ModelContext {
   ProductID?: number | string;
   CourseID?: number | string;

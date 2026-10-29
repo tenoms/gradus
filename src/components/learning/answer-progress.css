@@ -1,0 +1,28 @@
+:is(.computer-session, .math-workspace) :is(.computer-sheet, .math-answer-sheet, .computing-sheet, .math-exam-sheet, .mrq-question-grid) > button.answer-progress-correct {
+  color: #24765a; border-color: #4ba98d; background: #edf8f2;
+}
+:is(.computer-session, .math-workspace) :is(.computer-sheet, .math-answer-sheet, .computing-sheet, .math-exam-sheet, .mrq-question-grid) > button.answer-progress-incorrect {
+  color: #bd334b; border-color: #d96378; background: #fff1f3;
+}
+:is(.computer-session, .math-workspace) :is(.computer-sheet, .math-answer-sheet, .computing-sheet, .math-exam-sheet, .mrq-question-grid) > button.answer-progress-saved {
+  color: #657080; border-color: #c7cdd6; background: #f0f2f5;
+}
+:is(.computer-session, .math-workspace) :is(.computer-sheet, .math-answer-sheet, .computing-sheet, .math-exam-sheet, .mrq-question-grid) > button.answer-progress-draft {
+  color: #7753aa; border-color: #b5a0df; background: #f2edfb;
+}
+:is(.computer-session, .math-workspace) :is(.computer-sheet, .math-answer-sheet, .computing-sheet, .math-exam-sheet, .mrq-question-grid) > button.answer-progress-skipped {
+  color: #8a713e; border-color: #ceb98d; background: #fbf5e8;
+}
+:is(.computer-session, .math-workspace) :is(.computer-sheet, .math-answer-sheet, .computing-sheet, .math-exam-sheet) > button[aria-current="step"] {
+  box-shadow: 0 0 0 2px #d4c7f1;
+}
+.math-workspace .mrq-question-grid > .answer-progress-correct .mrq-number { color: #24765a; background: #dcefe3; }
+.math-workspace .mrq-question-grid > .answer-progress-incorrect .mrq-number { color: #bd334b; background: #f9dce2; }
+.math-workspace .mrq-question-grid > .answer-progress-saved .mrq-number { color: #657080; background: #e1e5eb; }
+.computer-session .computer-sheet-legend i.correct { color: #24765a; border-color: #4ba98d; background: #edf8f2; }
+.computer-session .computer-sheet-legend i.incorrect { color: #bd334b; border-color: #d96378; background: #fff1f3; }
+.computer-session .computer-sheet-legend i.saved { border-color: #c7cdd6; background: #f0f2f5; }
+.math-workspace .math-exam-result-correct { color: #24765a; }
+.math-workspace .math-exam-result-incorrect { color: #bd334b; }
+.math-workspace .math-exam-result-saved { color: #657080; }
+.math-workspace .math-exam-result-draft { color: #7753aa; }

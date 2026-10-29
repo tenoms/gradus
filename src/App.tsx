@@ -2,6 +2,7 @@ import { Component, Suspense, lazy, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
   NavLink,
+  Navigate,
   Route,
   Routes,
   Link,
@@ -30,7 +31,6 @@ import {
   Layers3,
   ListChecks,
   LoaderCircle,
-  LogOut,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
@@ -38,17 +38,17 @@ import {
   Plus,
   RefreshCw,
   Search,
-  Settings2,
   Sigma,
   Sparkles,
   Target,
   Trash2,
   Upload,
+  UserRound,
   Video,
   X,
   Zap,
 } from "lucide-react";
-import { api, emptySession, getSession, setApiIdentity } from "./lib/api";
+import { emptySession, getSession, setApiIdentity } from "./lib/api";
 import type { Platform, Session } from "./lib/api";
 import { SessionContext, useSession } from "./lib/session";
 import { useDialogFocus } from "./lib/focus";
@@ -65,11 +65,11 @@ import {
 import type { StudyTask } from "./lib/store";
 import AuthScreen from "./components/identity/AuthScreen";
 import StudySyncIndicator, { StudySyncNotice } from "./components/identity/StudySyncIndicator";
-import ConnectionDialog from "./components/identity/ConnectionDialog";
 import PasswordSettings from "./components/identity/PasswordSettings";
 import Announcements from "./components/identity/Announcements";
 import Pagination from "./components/Pagination";
 import { usePagination } from "./lib/pagination";
+const PersonalCenter = lazy(() => import("./components/identity/PersonalCenter"));
 const MathWorkspace = lazy(() => import("./pages/MathWorkspace"));
 const ComputerWorkspace = lazy(() => import("./pages/ComputerWorkspace"));
 const navItems = [
@@ -158,7 +158,7 @@ function PlatformGate({
       </h2>
       <p>
         {s?.error ||
-          "通过 yyb 连接原小程序账号，即可读取题库、课程和个人学习记录。"}
+          "在个人中心连接学习账号，即可读取题库、课程和个人学习记录。"}
       </p>
       <button className="btn btn-primary" onClick={openLogin}>
         {session.authenticated ? "管理账号连接" : "连接学习账号"}
@@ -185,12 +185,14 @@ function StudyPage({ platform }: { platform: Platform }) {
   const location = useLocation();
   const section = location.pathname.split("/")[2] || "question-bank";
   const title = sectionTitles[section];
+  const platformUser = session.platforms[platform]?.user || {};
+  const connectionIdentity = [session.user?.yyb?.mode, session.user?.yyb?.baseUrl, session.account?.ref, platformUser.StuID || platformUser.userId || platformUser.ID].join(":");
   return (
     <>
-      <div className="page-heading"><h1>{title?.[0] || "学习空间"}</h1></div>
+      <h1 className="sr-only">{title?.[0] || "学习空间"}</h1>
       <PlatformGate platform={platform}>
         <ErrorBoundary
-          key={`${platform}-${section}-${session.account?.ref || "guest"}`}
+          key={`${platform}-${section}-${connectionIdentity}`}
         >
           <Suspense fallback={<Spinner />}>
             {platform === "math" ? (
@@ -484,7 +486,7 @@ function Dashboard({
                 <small>分钟</small>
               </div>
               <span className="stat-note">
-                目标 {goalMinutes} 分钟 <Link to="/settings">调整</Link>
+                目标 {goalMinutes} 分钟 <Link to="/profile?tab=settings">调整</Link>
               </span>
             </div>
             <div className="stat-card">
@@ -719,7 +721,7 @@ function Plan({ platform, onAdd }: { platform: Platform; onAdd: () => void }) {
     <>
       <div className="page-heading">
         <div>
-          <h1>学习计划</h1>
+          <h1 className="sr-only">学习计划</h1>
         </div>
         <button className="btn btn-primary" onClick={onAdd}>
           <Plus size={16} />
@@ -804,7 +806,7 @@ function Insights() {
     <>
       <div className="page-heading">
         <div>
-          <h1>学习报告</h1>
+          <h1 className="sr-only">学习报告</h1>
         </div>
         <button className="btn btn-secondary" onClick={exportStudyData}>
           <ArrowDownToLine size={16} />
@@ -914,66 +916,11 @@ function Insights() {
   );
 }
 function Settings() {
-  const { session, refresh, openLogin } = useSession();
+  const { session } = useSession();
   const { goalMinutes } = useStudyData();
   const [notice, setNotice] = useState("");
-  const [loggingOut, setLoggingOut] = useState(false);
   return (
     <>
-      <div className="page-heading">
-        <div>
-          <h1>学习设置</h1>
-        </div>
-      </div>
-      <section className="panel settings-panel">
-        <h2>我的学习账号</h2>
-        <div className="settings-row"><div><h3>{session.user?.displayName}</h3><p>{session.user?.username} · 学习空间</p></div><span className="pill success">已登录</span></div>
-        <div className="settings-row">
-          <div>
-            <h3>
-              {session.authenticated
-                ? session.account?.nickname ||
-                  session.account?.name ||
-                  "尚未连接学习平台"
-                : "尚未连接账号"}
-            </h3>
-            <p>使用分配给你的学习账号连接课程和题库。</p>
-          </div>
-          <button className="btn btn-secondary" onClick={openLogin}>
-            {session.authenticated ? "管理连接" : "连接账号"}
-          </button>
-        </div>
-        {(["math", "computer"] as Platform[]).map((p) => (
-          <div className="settings-row" key={p}>
-            <span>{label(p)}</span>
-            <span
-              className={`pill ${session.platforms?.[p]?.connected ? "success" : ""}`}
-            >
-              {session.platforms?.[p]?.connected ? "已连接" : "未连接"}
-            </span>
-          </div>
-        ))}
-        {session.authenticated && (
-          <button
-            className="btn btn-secondary"
-            disabled={loggingOut}
-            onClick={async () => {
-              setLoggingOut(true);
-              try {
-                await api("/api/auth/logout", { method: "POST" });
-                await refresh();
-              } catch (e) {
-                setNotice((e as Error).message);
-              } finally {
-                setLoggingOut(false);
-              }
-            }}
-          >
-            <LogOut size={16} />
-            退出当前账号
-          </button>
-        )}
-      </section>
       {session.user?.role === "admin" && <section className="panel settings-panel"><h2>管理空间</h2><div className="settings-row"><p>系统配置、用户和公告在独立管理空间中维护，需单独登录。</p><a className="btn btn-secondary" href="/admin/">打开管理空间<ArrowUpRight size={15} /></a></div></section>}
       <PasswordSettings />
       <section className="panel settings-panel">
@@ -1052,7 +999,6 @@ export default function App() {
   const [session, setSession] = useState<Session>(emptySession);
   const activeIdentity = useRef<string | undefined>(undefined);
   const [booting, setBooting] = useState(true);
-  const [loginOpen, setLoginOpen] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem("study-sidebar-collapsed") === "1");
@@ -1079,7 +1025,6 @@ export default function App() {
       };
       const nextIdentity = normalized.authenticated ? normalized.user?.id : undefined;
       if (activeIdentity.current !== nextIdentity) {
-        setLoginOpen(false);
         setTaskOpen(false);
         activeIdentity.current = nextIdentity;
       }
@@ -1124,16 +1069,16 @@ export default function App() {
         ? "学习计划"
         : location.pathname === "/insights"
           ? "学习报告"
-          : location.pathname === "/settings"
-            ? "学习设置"
+          : location.pathname === "/profile" || location.pathname === "/settings"
+            ? "个人中心"
             : sectionTitles[location.pathname.split("/")[2]]?.[0] || "学习空间";
   if (booting) return <div className="app-starting"><Spinner text="正在打开你的学习空间…" /></div>;
   if (!session.authenticated) return <AuthScreen space="learning" onAuthenticated={acceptSession} />;
   return (
     <SessionContext.Provider
-      value={{ session, refresh, openLogin: () => setLoginOpen(true) }}
+      value={{ session, refresh, openLogin: () => navigate("/profile?tab=connection") }}
     >
-      <div key={session.user?.id || "guest"} className={`app-shell ${sidebarCollapsed ? "nav-collapsed" : ""}`} inert={loginOpen || taskOpen}>
+      <div key={session.user?.id || "guest"} className={`app-shell ${sidebarCollapsed ? "nav-collapsed" : ""}`} inert={taskOpen}>
         <a className="skip-link" href="#main-content">
           跳到学习内容
         </a>
@@ -1225,9 +1170,9 @@ export default function App() {
                 每一步都有意义。
               </p>
             </div>
-            <NavLink className="nav-item" to="/settings" aria-label="学习设置" title="学习设置">
-              <Settings2 size={19} />
-              <span>学习设置</span>
+            <NavLink className="nav-item" to="/profile" aria-label="个人中心" title="个人中心">
+              <UserRound size={19} />
+              <span>个人中心</span>
             </NavLink>
             <div className="sidebar-footer">
               知序学习空间 <span>v2.0</span>
@@ -1313,11 +1258,9 @@ export default function App() {
               </div>
               <button
                 className={`avatar ${session.authenticated ? "signed-in" : ""}`}
-                title={session.authenticated ? "管理学习账号" : "连接学习账号"}
-                onClick={() => setLoginOpen(true)}
-                aria-label={
-                  session.authenticated ? "管理学习账号" : "连接学习账号"
-                }
+                title="个人中心"
+                onClick={() => navigate("/profile")}
+                aria-label="个人中心"
               >
                 {session.authenticated ? (
                   <GraduationCap size={23} />
@@ -1360,7 +1303,8 @@ export default function App() {
                 }
               />
               <Route path="/insights" element={<Insights />} />
-              <Route path="/settings" element={<Settings />} />
+              <Route path="/profile" element={<Suspense fallback={<Spinner />}><PersonalCenter settings={<Settings />} /></Suspense>} />
+              <Route path="/settings" element={<Navigate to="/profile?tab=settings" replace />} />
               <Route
                 path="*"
                 element={
@@ -1382,9 +1326,6 @@ export default function App() {
           </main>
         </div>
       </div>
-      {loginOpen && (
-        <ConnectionDialog onClose={() => setLoginOpen(false)} refresh={refresh} />
-      )}{" "}
       {taskOpen && (
         <TaskModal platform={platform} onClose={() => setTaskOpen(false)} />
       )}

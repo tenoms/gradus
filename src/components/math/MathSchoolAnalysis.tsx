@@ -83,21 +83,6 @@ export default function MathSchoolAnalysis() {
   );
   return (
     <div className="math-workspace">
-      <div className="math-section-heading">
-        <div>
-          <span className="eyebrow">SCHOOL INSIGHTS</span>
-          <h2>院校分析</h2>
-          <p>查看原平台发布的院校讲解视频与配套资料。</p>
-        </div>
-        <button
-          className="btn btn-secondary"
-          disabled={remote.loading}
-          onClick={remote.reload}
-        >
-          <RefreshCw size={15} />
-          刷新
-        </button>
-      </div>
       <div className="panel">
         <div className="math-toolbar">
           <label className="math-search">
@@ -109,6 +94,14 @@ export default function MathSchoolAnalysis() {
               aria-label="搜索院校分析"
             />
           </label>
+          <button
+            className="btn btn-secondary"
+            disabled={remote.loading}
+            onClick={remote.reload}
+          >
+            <RefreshCw size={15} />
+            刷新
+          </button>
         </div>
         <Status
           loading={remote.loading}

@@ -135,6 +135,13 @@ export function validatePlatformRequest(name, input) {
     throw new ApiError("请求参数格式不正确", 400);
   if (
     name === "math" &&
+    requestPath.startsWith("/api/sys_give/") &&
+    Number(data.Type ?? query.Type) === 3 &&
+    Number(data.BusType ?? query.BusType) === 6
+  )
+    throw new ApiError("此接口不属于已启用的学习能力", 403);
+  if (
+    name === "math" &&
     /^\/api\/Master\/(AutoModel|Model)$/.test(requestPath)
   ) {
     if (
@@ -143,6 +150,16 @@ export function validatePlatformRequest(name, input) {
       excludedCommand.test(data.command)
     )
       throw new ApiError("未启用此数学操作", 403);
+    if (["GetSysGiveAuto", "GetSysGiveAutoLimit"].includes(data.command)) {
+      let parameters;
+      try {
+        parameters = typeof data.data === "string" ? JSON.parse(data.data) : data.data;
+      } catch {
+        throw new ApiError("数学查询参数不是有效的 JSON", 400);
+      }
+      if (Number(parameters?.Type) === 3 && Number(parameters?.BusType) === 6)
+        throw new ApiError("此接口不属于已启用的学习能力", 403);
+    }
   }
   return { path: requestPath, method, data, query };
 }

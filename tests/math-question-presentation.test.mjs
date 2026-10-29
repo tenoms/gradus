@@ -1,6 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hasMathQuestionContent, mathQuestionPrompt, mathQuestionChoice, mathQuestionMedia } from "../src/components/math/math-question-presentation.mjs";
+import { hasMathQuestionContent, mathOptionFeedback, mathQuestionPrompt, mathQuestionChoice, mathQuestionMedia } from "../src/components/math/math-question-presentation.mjs";
+
+test("math choice feedback grades known answers only after checking or handing in", () => {
+  const options = [{ ID: 11, IsAnswer: "1" }, { ID: 12, IsAnswer: 0 }, { ID: 13, IsAnswer: 0 }];
+  for (const option of options) assert.equal(mathOptionFeedback(option, options, true, false), "", "a selected draft or paper in progress does not reveal correctness");
+  assert.equal(mathOptionFeedback(options[1], options, true, true), "math-choice-incorrect");
+  assert.equal(mathOptionFeedback(options[0], options, false, true), "math-choice-correct");
+  assert.equal(mathOptionFeedback(options[2], options, false, true), "");
+  const unknown = [{ ID: 11 }, { ID: 12, IsAnswer: 0 }];
+  assert.equal(mathOptionFeedback(unknown[1], unknown, true, true), "", "self assessment never invents a machine answer key");
+});
 
 test("math prompts prefer resolve text while preserving original scans as a separate reference", () => {
   const image = "https://fixture.example/question.png";

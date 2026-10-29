@@ -12,7 +12,10 @@ export function createSessionSpace({ space, identities, connections }) {
     if (!user || (space === "admin" && user.role !== "admin")) return null;
     if (space === "admin") return { user };
     const remembered = connections.get(user.id);
-    if (remembered && (remembered.expires <= Date.now() || remembered.account.ref !== user.yybRef)) connections.delete(user.id);
+    const yyb = identities.yybSettings(user.id);
+    const ref = yyb.mode === "custom" ? yyb.ref : user.yybRef;
+    if (remembered && (remembered.expires <= Date.now() || remembered.account.ref !== ref ||
+        (remembered.yybMode || "system") !== yyb.mode || (remembered.yybRevision || 0) !== yyb.revision)) connections.delete(user.id);
     const connection = connections.get(user.id);
     return { user, account: connection?.account || null, platforms: connection?.platforms || {} };
   }

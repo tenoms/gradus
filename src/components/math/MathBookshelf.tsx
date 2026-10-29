@@ -1,3 +1,5 @@
+import { useMathLearningPlan } from "./MathLearningPlan";
+import { matchesMathSubject } from "./learning-plan-model.mjs";
 import { useEffect, useRef, useState } from "react";
 import Pagination from "../Pagination";
 import { usePagination } from "../../lib/pagination";
@@ -33,6 +35,7 @@ export default function MathBookshelf({
   onOpenBook: (book: R, lastQuestion?: R) => void;
 }) {
   const catalogRef = useRef<HTMLDivElement>(null);
+  const { subject } = useMathLearningPlan();
   const [data, setData] = useState<{
       user: R;
       books: R[];
@@ -47,7 +50,7 @@ export default function MathBookshelf({
     [version, setVersion] = useState(0),
     [tab, setTab] = useState("shelf"),
     [kind, setKind] = useState("全部"),
-    [subject, setSubject] = useState("全部"),
+    [allSubjects, setAllSubjects] = useState(false),
     [search, setSearch] = useState(""),
     [selected, setSelected] = useState<string[]>([]),
     [managing, setManaging] = useState(false);
@@ -87,9 +90,7 @@ export default function MathBookshelf({
           (kind === "教辅"
             ? row.BusType !== "试卷"
             : row.BusType === "试卷")) &&
-        (subject === "全部" ||
-          row.BusValue === subject ||
-          row.BusValue === "通用") &&
+        (allSubjects || matchesMathSubject(row, subject)) &&
         (!search ||
           [
             row.Name,
@@ -106,7 +107,7 @@ export default function MathBookshelf({
   const pagination = usePagination({
     total: rows.length,
     pageSize: 24,
-    resetKey: JSON.stringify([stuid, tab, kind, subject, search]),
+    resetKey: JSON.stringify([stuid, tab, kind, subject, allSubjects, search]),
   });
   async function add(book: R) {
     if (!data) return;
@@ -249,16 +250,7 @@ export default function MathBookshelf({
               <option key={v}>{v}</option>
             ))}
           </select>
-          <select
-            className="input"
-            aria-label="筛选数学类别"
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-          >
-            {["全部", "数一", "数二", "数三"].map((v) => (
-              <option key={v}>{v}</option>
-            ))}
-          </select>
+          <button className="math-text-button" onClick={() => setAllSubjects(!allSubjects)}>{allSubjects ? "全部科目 · 回到我的目标" : `${subject} · 浏览全部科目`}</button>
           <span>{rows.length} 份资料</span>
           {tab === "shelf" && !!data?.shelf.length && (
             <button

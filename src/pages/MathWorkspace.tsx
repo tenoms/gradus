@@ -1,4 +1,6 @@
 import QuestionReader from "../components/math/MathQuestionReader";
+import { answerProgress } from "../components/learning/answer-progress.mjs";
+import "../components/learning/answer-progress.css";
 import Pagination from "../components/Pagination";
 import { usePagination } from "../lib/pagination";
 import { useEffect, useRef, useState } from "react";
@@ -24,7 +26,6 @@ import {
   X,
 } from "lucide-react";
 import RichContent from "../components/RichContent";
-import MathAccountTools from "../components/math/MathAccountTools";
 import MathNoteEditor from "../components/math/MathNoteEditor";
 import MathNotebook from "../components/math/MathNotebook";
 import MathDiscussion, {
@@ -37,7 +38,9 @@ import MathQuestions, {
 import MathSchools from "../components/math/MathSchools";
 import MathMessages from "../components/math/MathMessages";
 import MathSchoolAnalysis from "../components/math/MathSchoolAnalysis";
-import MathPlatformFeedback from "../components/math/MathPlatformFeedback";
+import MathLearningPlan, { useMathLearningPlan } from "../components/math/MathLearningPlan";
+import MathHighScoreGuide from "../components/math/MathHighScoreGuide";
+import { matchesMathSubject } from "../components/math/learning-plan-model.mjs";
 import MathQrcodeLookup from "../components/math/MathQrcodeLookup";
 import MathInformationResources from "../components/math/MathInformationResources";
 import MathCourses from "../components/math/MathCourses";
@@ -148,8 +151,6 @@ export default function MathWorkspace({ section }: { section: string }) {
   const platform = session.platforms.math;
   const user = platform.user || {};
   const stuid = String(user.StuID || "");
-  const [accountQuestion, setAccountQuestion] = useState<MathRow>();
-  useEffect(() => setAccountQuestion(undefined), [section]);
   if (!platform.connected)
     return (
       <div className="panel math-connect">
@@ -163,20 +164,7 @@ export default function MathWorkspace({ section }: { section: string }) {
       </div>
     );
   let content;
-  if (accountQuestion)
-    content = (
-      <div className="math-workspace">
-        <button
-          className="math-back"
-          onClick={() => setAccountQuestion(undefined)}
-        >
-          <ArrowLeft size={16} />
-          返回学习空间
-        </button>
-        <QuestionReader row={accountQuestion} stuid={stuid} />
-      </div>
-    );
-  else if (section === "practice") content = <PracticeCenter stuid={stuid} />;
+  if (section === "practice") content = <PracticeCenter stuid={stuid} />;
   else if (section === "review" || section === "notes")
     content = (
       <MathNotebook
@@ -193,30 +181,36 @@ export default function MathWorkspace({ section }: { section: string }) {
   else if (section === "resources") content = <ResourceCenter stuid={stuid} />;
   else content = <Library stuid={stuid} />;
   return (
-    <div className="math-workspace">
-      <MathAccountTools user={user} onQuestion={setAccountQuestion} />
+    <MathLearningPlan key={`${session.user?.id}-${stuid}`}><div className="math-workspace">
       {content}
-    </div>
+    </div></MathLearningPlan>
   );
 }
 
 function Library({ stuid }: { stuid: string }) {
   const catalogRef = useRef<HTMLDivElement>(null);
   const [searchParams] = useSearchParams();
-  const remote = useRemote("math-books", mathApi.books);
   const [kind, setKind] = useState("全部");
-  const [subject, setSubject] = useState("全部");
+  const { subject } = useMathLearningPlan();
+  const [allSubjects, setAllSubjects] = useState(false);
   const [year, setYear] = useState("全部");
   const [search, setSearch] = useState(searchParams.get("q") || "");
   const [book, setBook] = useState<MathRow>();
   const [photoShown, setPhotoShown] = useState(false);
-  const [shelfShown, setShelfShown] = useState(false);
+  const [shelfShown, setShelfShown] = useState(!searchParams.get("q")?.trim());
   const [qrShown, setQrShown] = useState(false);
   const [qrQuestion, setQrQuestion] = useState<MathRow>();
+  const remote = useRemote(`math-books-${shelfShown ? "shelf" : "catalog"}`, () =>
+    shelfShown ? Promise.resolve({ data: [] }) : mathApi.books(),
+  );
   const rows = mathRows(remote.data);
   useEffect(() => {
     setSearch(searchParams.get("q") || "");
     setBook(undefined);
+    setShelfShown(!searchParams.get("q")?.trim());
+    setPhotoShown(false);
+    setQrShown(false);
+    setQrQuestion(undefined);
   }, [searchParams]);
   const years = [
     ...new Set(rows.map((r) => String(r.BookYear || "")).filter(Boolean)),
@@ -227,7 +221,7 @@ function Library({ stuid }: { stuid: string }) {
     (r) =>
       (kind === "全部" ||
         (kind === "真题" ? r.BusType === "试卷" : r.BusType !== "试卷")) &&
-      (subject === "全部" || r.BusValue === subject || r.BusValue === "通用") &&
+      (allSubjects || matchesMathSubject(r, subject)) &&
       (year === "全部" || String(r.BookYear) === year) &&
       (!search ||
         [r.Name, r.Author, r.BookAuthor, r.BusValue, r.BookYear]
@@ -238,7 +232,7 @@ function Library({ stuid }: { stuid: string }) {
   const pagination = usePagination({
     total: filtered.length,
     pageSize: 36,
-    resetKey: JSON.stringify([kind, subject, year, search]),
+    resetKey: JSON.stringify([kind, subject, allSubjects, year, search]),
   });
   if (qrQuestion)
     return (
@@ -263,6 +257,7 @@ function Library({ stuid }: { stuid: string }) {
         book={book}
         stuid={stuid}
         back={() => setBook(undefined)}
+        backLabel={shelfShown ? "返回我的书架" : "返回教辅与真题"}
       />
     );
   if (photoShown)
@@ -270,10 +265,13 @@ function Library({ stuid }: { stuid: string }) {
   if (shelfShown)
     return (
       <div className="math-workspace">
-        <button className="math-back" onClick={() => setShelfShown(false)}>
-          <ArrowLeft size={16} />
-          返回全部教辅
-        </button>
+        <div className="panel math-toolbar">
+          <button className="btn btn-secondary" onClick={() => setShelfShown(false)}>
+            <BookOpen size={16} />浏览教辅与真题
+          </button>
+          <button className="btn btn-secondary" onClick={() => setQrShown(true)}>书籍二维码</button>
+          <button className="btn btn-secondary" onClick={() => setPhotoShown(true)}><Camera size={16} />图片搜题</button>
+        </div>
         <MathBookshelf
           stuid={stuid}
           onOpenBook={(selected, lastQuestion) =>
@@ -329,15 +327,7 @@ function Library({ stuid }: { stuid: string }) {
         </div>
         <div className="math-filters">
           <span>学习范围</span>
-          <select
-            aria-label="数学类别"
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-          >
-            {["全部", "数一", "数二", "数三"].map((v) => (
-              <option key={v}>{v}</option>
-            ))}
-          </select>
+          <button className="math-text-button" onClick={() => setAllSubjects(!allSubjects)}>{allSubjects ? "全部科目 · 回到我的目标" : `${subject}与通用资料 · 浏览全部科目`}</button>
           <select
             aria-label="资料年份"
             value={year}
@@ -421,10 +411,12 @@ function BookWorkspace({
   book,
   stuid,
   back,
+  backLabel = "返回资料库",
 }: {
   book: MathRow;
   stuid: string;
   back: () => void;
+  backLabel?: string;
 }) {
   const catalog = useRemote(`book-${book.ID}`, () =>
     mathApi.bookCatalog(book.ID),
@@ -498,7 +490,7 @@ function BookWorkspace({
     <div className="math-workspace">
       <button className="math-back" onClick={back}>
         <ArrowLeft size={16} />
-        返回资料库
+        {backLabel}
       </button>
       <div className="math-section-heading">
         <div>
@@ -662,12 +654,15 @@ function PhotoSearch({ stuid, back }: { stuid: string; back: () => void }) {
 }
 
 function PracticeCenter({ stuid }: { stuid: string }) {
-  const [tab, setTab] = useState("选择题练习");
+  const [params, setParams] = useSearchParams();
+  const names: Record<string, string> = { points: "考点刷题", guide: "高分指南", choice: "选择专项", computing: "计算大题" };
+  const tab = names[params.get("tab") || ""] || "考点刷题";
+  const setTab = (name: string) => setParams(previous => { const next = new URLSearchParams(previous); next.set("tab", Object.keys(names).find(key => names[key] === name) || "points"); return next; });
   return (
     <div className="math-workspace">
       <div className="panel math-community-tabs">
         <div className="tabs">
-          {["选择题练习", "分类题库", "计算大题"].map((t) => (
+          {Object.values(names).map((t) => (
             <button
               key={t}
               className={tab === t ? "active" : ""}
@@ -678,9 +673,11 @@ function PracticeCenter({ stuid }: { stuid: string }) {
           ))}
         </div>
       </div>
-      {tab === "选择题练习" ? (
+      {tab === "选择专项" ? (
         <Practice stuid={stuid} />
-      ) : tab === "分类题库" ? (
+      ) : tab === "高分指南" ? (
+        <MathHighScoreGuide stuid={stuid} />
+      ) : tab === "考点刷题" ? (
         <MathRelatedQuestions
           stuid={stuid}
           renderQuestion={(props) => (
@@ -688,7 +685,7 @@ function PracticeCenter({ stuid }: { stuid: string }) {
               {...props}
               stuid={stuid}
               practice
-              noteSource="选择题库"
+              noteSource="考点刷题"
             />
           )}
         />
@@ -699,10 +696,11 @@ function PracticeCenter({ stuid }: { stuid: string }) {
   );
 }
 function Practice({ stuid }: { stuid: string }) {
-  const [subject, setSubject] = useState("数一");
+  const { subject } = useMathLearningPlan();
   const [mode, setMode] = useState("真题模式");
   const [type, setType] = useState("精选10题");
   const [subjectCode, setSubjectCode] = useState("1");
+  useEffect(() => { if (subject === "数二" && subjectCode === "3") setSubjectCode("1"); }, [subject, subjectCode]);
   const [paper, setPaper] = useState<number>();
   const [paperReview, setPaperReview] = useState(false);
   const [resetCatalog, setResetCatalog] = useState("");
@@ -772,18 +770,7 @@ function Practice({ stuid }: { stuid: string }) {
           </button>
         </div>
         <div className="math-practice-filters">
-          <label>
-            考试类别
-            <select
-              className="input"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-            >
-              {["数一", "数二", "数三"].map((t) => (
-                <option key={t}>{t}</option>
-              ))}
-            </select>
-          </label>
+          <p className="math-muted">已沿用备考目标：{subject}</p>
           <label>
             题目来源
             <select
@@ -817,7 +804,7 @@ function Practice({ stuid }: { stuid: string }) {
             >
               <option value="1">高等数学</option>
               <option value="2">线性代数</option>
-              <option value="3">概率统计</option>
+              {subject !== "数二" && <option value="3">概率统计</option>}
             </select>
           </label>
         </div>
@@ -1088,16 +1075,21 @@ function PracticePaper({
         row && (
           <>
             <div className="math-answer-sheet">
-              {rows.map((r, i) => (
+              {rows.map((r, i) => {
+                const local = answers[r.ID],
+                  progress = answerProgress({ saved: !!r.MyAnswer || Object.hasOwn(answers, r.ID), correct: local ? local.correct : Number(r.State) === 1 ? true : Number(r.State) === 2 ? false : undefined });
+                return (
                 <button
-                  className={`${i === index ? "active" : ""} ${r.MyAnswer || Object.hasOwn(answers, r.ID) ? "answered" : ""}`}
+                  className={`${i === index ? "active" : ""} answer-progress-${progress.state}`}
                   key={r.ID || i}
                   onClick={() => setIndex(i)}
-                  aria-label={`第 ${i + 1} 题`}
+                  aria-label={`第 ${i + 1} 题，${progress.label}`}
+                  aria-current={i === index ? "step" : undefined}
+                  title={progress.label}
                 >
                   {i + 1}
                 </button>
-              ))}
+              ); })}
             </div>
             <QuestionReader
               key={readerVersion}
@@ -1128,12 +1120,15 @@ function PracticePaper({
 }
 
 function ResourceCenter({ stuid }: { stuid: string }) {
-  const [tab, setTab] = useState("数学专辑");
+  const [params, setParams] = useSearchParams();
+  const names: Record<string, string> = { albums: "数学专辑", guide: "高分指南", schools: "院校分析", knowledge: "考研知识" };
+  const tab = names[params.get("tab") || ""] || "数学专辑";
+  const setTab = (name: string) => setParams(previous => { const next = new URLSearchParams(previous); next.set("tab", Object.keys(names).find(key => names[key] === name) || "albums"); return next; });
   return (
     <div className="math-workspace">
       <div className="panel math-community-tabs">
         <div className="tabs">
-          {["数学专辑", "院校分析", "考研知识", "平台更新", "意见反馈"].map(
+          {Object.values(names).map(
             (t) => (
               <button
                 key={t}
@@ -1150,12 +1145,11 @@ function ResourceCenter({ stuid }: { stuid: string }) {
         <Albums stuid={stuid} />
       ) : tab === "院校分析" ? (
         <MathSchoolAnalysis />
-      ) : tab === "意见反馈" ? (
-        <MathPlatformFeedback stuid={stuid} />
+      ) : tab === "高分指南" ? (
+        <MathHighScoreGuide stuid={stuid} />
       ) : (
         <MathInformationResources
           stuid={stuid}
-          kind={tab === "考研知识" ? "knowledge" : "updates"}
         />
       )}
     </div>

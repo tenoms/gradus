@@ -88,6 +88,13 @@
 .admin-user-status.active i { background: #71a48a; }
 .admin-account-value { white-space: nowrap; color: #776b84; font-size: 13px; }
 .admin-account-value.assigned { color: #87729b; }
+.admin-user-yyb { display: grid; justify-items: start; gap: 7px; min-width: 170px; }
+.admin-yyb-endpoint { max-width: 280px; color: #554761; line-height: 1.5; overflow-wrap: anywhere; }
+.admin-yyb-details { padding: 14px; border: 1px solid #eee8f5; border-radius: 10px; margin: 16px 0; }
+.admin-yyb-details h3 { font-size: 13px; margin-bottom: 12px; }
+.admin-yyb-details p, .admin-user-yyb small { color: #776b84; font-size: 12px; line-height: 1.7; }
+.admin-yyb-details p { margin-top: 12px; }
+.admin-page-tools { display: flex; justify-content: flex-end; margin-bottom: 12px; }
 .admin-row-action { display: inline-flex; align-items: center; gap: 3px; color: #8e6daf; font-size: 13px; padding: 7px 0; white-space: nowrap; }
 .admin-list-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 17px; border-top: 1px solid #f1ecf7; margin-top: 8px; color: #776b84; font-size: 13px; }
 .admin-list-footer > span:last-child { display: flex; align-items: center; gap: 6px; }

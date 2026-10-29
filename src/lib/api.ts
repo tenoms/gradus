@@ -13,6 +13,12 @@ export interface PlatformState {
   user?: Record<string, any>;
   error?: string;
 }
+export interface YybConnection {
+  mode: "system" | "custom";
+  baseUrl: string;
+  apiKeyConfigured: boolean;
+  ref: string;
+}
 export interface Session {
   authenticated: boolean;
   space?: ApiSpace;
@@ -22,6 +28,7 @@ export interface Session {
     displayName: string;
     role: "admin" | "learner";
     status: "active" | "disabled";
+    yyb?: YybConnection;
   };
   account?: { ref: string; nickname?: string; name?: string; avatar?: string };
   platforms: Record<Platform, PlatformState>;

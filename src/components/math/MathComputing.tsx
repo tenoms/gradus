@@ -12,10 +12,16 @@ import {
   LoaderCircle,
   RefreshCw,
   RotateCcw,
+  X,
 } from "lucide-react";
 import MathQuestionTools from "./MathQuestionTools";
 import MathQuestionVideo from "./MathQuestionVideo";
 import RichContent from "../RichContent";
+import MathAnalysisContent from "./MathAnalysisContent";
+import { answerProgress } from "../learning/answer-progress.mjs";
+import "../learning/answer-progress.css";
+import { mathOptionFeedback } from "./math-question-presentation.mjs";
+import "./math-choice-feedback.css";
 import { mathData } from "../../platforms/math";
 import { recordActivity } from "../../lib/store";
 import {
@@ -356,15 +362,21 @@ function ComputingPaper({
           )}
           {sheet && (
             <div className="computing-sheet">
-              {questions.map((q, i) => (
+              {questions.map((q, i) => {
+                const answered = !!q.record && (context.mistakes || !!q.record.Answer || Number(q.record.AnswerState) === 1),
+                  progress = answerProgress({ saved: answered, draft: !!answers[String(q.QuestionID)], correct: answered && Number(q.record.AnswerState) === 1 ? true : answered && Number(q.record.AnswerState) === 0 ? false : undefined });
+                return (
                 <button
                   key={i}
-                  className={`${current === i ? "active" : ""} ${q.record ? (Number(q.record.AnswerState) === 1 ? "correct" : "incorrect") : ""}`}
+                  className={`${current === i ? "active" : ""} answer-progress-${progress.state}`}
+                  aria-label={`第 ${i + 1} 题，${progress.label}`}
+                  aria-current={current === i ? "step" : undefined}
+                  title={progress.label}
                   onClick={() => move(i)}
                 >
                   {i + 1}
                 </button>
-              ))}
+              ); })}
             </div>
           )}
           <div className="computing-question-title">
@@ -403,11 +415,12 @@ function ComputingPaper({
           <div className="computing-options">
             {(question.options || []).map((option: R, i: number) => {
               const selected = answer.split(",").includes(String(option.ID)),
-                multiple = computingAnswers(question.options).length > 1;
+                multiple = computingAnswers(question.options).length > 1,
+                feedback = mathOptionFeedback(option, question.options || [], selected, finished || (!!record && String(record.Answer ?? "") === answer));
               return (
                 <button
                   key={option.ID || i}
-                  className={`computing-option ${selected ? "active" : ""}`}
+                  className={`computing-option ${selected ? "active" : ""} ${feedback}`}
                   disabled={
                     loading || finished || (context.mistakes && !!record)
                   }
@@ -430,7 +443,7 @@ function ComputingPaper({
                 >
                   <span>{String.fromCharCode(65 + i)}</span>
                   <RichContent content={option.Content} />
-                  {selected && <Check size={17} />}
+                  {feedback === "math-choice-incorrect" ? <X size={19} aria-label="回答错误" /> : feedback === "math-choice-correct" && <Check size={19} aria-label="正确答案" />}
                 </button>
               );
             })}
@@ -487,7 +500,7 @@ function ComputingPaper({
                 <div className="computing-analysis">
                   <h4>完整解析</h4>
                   {(question.analyses || []).map((a: R, i: number) => (
-                    <RichContent key={i} content={a.Context || a.Content} />
+                    <MathAnalysisContent key={i} content={a.Context || a.Content} />
                   ))}
                   <p>
                     参考选项：
@@ -728,14 +741,6 @@ export default function MathComputing({ stuid }: { stuid: string }) {
     );
   return (
     <div className="math-computing">
-      <div className="panel computing-heading">
-        <div>
-          <span className="computing-tag">COMPUTE & UNDERSTAND</span>
-          <h2>把计算过程，一步步弄清楚</h2>
-          <p>专题计算卷、分步提示与错题反复练。</p>
-        </div>
-        <span className="computing-count">{errorCount} 道待复习</span>
-      </div>
       <div className="panel">
         <div className="computing-toolbar">
           <div className="tabs">
@@ -752,6 +757,7 @@ export default function MathComputing({ stuid }: { stuid: string }) {
               错题反复练
             </button>
           </div>
+          <span className="math-muted">{errorCount} 道待复习</span>
           <input
             className="input"
             aria-label="搜索计算专题"

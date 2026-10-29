@@ -49,6 +49,14 @@ export function validateStudyData(input) {
     if (new Set(rows.map((row) => row.id)).size !== rows.length) fail(`${label}编号不能重复`);
   if (!Number.isInteger(input.goalMinutes) || input.goalMinutes < 5 || input.goalMinutes > 480)
     fail("每日学习目标应为 5–480 分钟");
-  return { tasks, activities, goalMinutes: input.goalMinutes };
+  const result = { tasks, activities, goalMinutes: input.goalMinutes };
+  if (input.mathPlan !== undefined) {
+    if (!input.mathPlan || typeof input.mathPlan !== "object" ||
+        !["数一", "数二", "数三"].includes(input.mathPlan.subject) ||
+        !["基础", "强化", "真题", "冲刺"].includes(input.mathPlan.stage))
+      fail("数学备考目标或阶段不正确");
+    result.mathPlan = { subject: input.mathPlan.subject, stage: input.mathPlan.stage };
+  }
+  return result;
 }
 

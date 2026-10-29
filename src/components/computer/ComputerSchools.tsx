@@ -832,13 +832,6 @@ export default function ComputerSchools() {
   return (
     <div className="computer-schools">
       <div className="cs-heading cs-top">
-        <div>
-          <span className="eyebrow">UNIVERSITY EXPLORER</span>
-          <h2>找到适合自己的下一站</h2>
-          <p className="cs-muted">
-            院校招录信息与原平台同步，选择方向，再比较数据。
-          </p>
-        </div>
         <button
           className="btn btn-secondary"
           onClick={() => setTargetOpen((v) => !v)}

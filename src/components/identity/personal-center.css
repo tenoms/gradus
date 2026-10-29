@@ -1,0 +1,26 @@
+.personal-center { display: grid; gap: 18px; }
+.personal-identity { display: flex; align-items: center; gap: 16px; padding: 20px 24px; }
+.personal-avatar { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 16px; background: var(--accent-soft, #eee9fb); color: var(--accent); }
+.personal-identity > div { flex: 1; min-width: 0; }
+.personal-identity strong { font-size: 17px; }
+.personal-identity p { margin: 5px 0 0; font-size: 12px; color: var(--muted); }
+.personal-tabs { padding: 10px 14px; gap: 8px; overflow-x: auto; flex-wrap: nowrap; }
+.personal-tabs > button { white-space: nowrap; flex-shrink: 0; }
+.personal-connection { display: grid; gap: 18px; }
+.personal-connection form { display: grid; gap: 18px; margin-top: 20px; }
+.personal-form-grid { display: grid; gap: 18px; grid-template-columns: repeat(2,minmax(0,1fr)); }
+.personal-form-grid > label, .personal-account-select { display: grid; gap: 8px; font-size: 13px; }
+.personal-form-grid > label:first-child { grid-column: 1/-1; max-width: 300px; }
+.personal-connection .btn-primary { justify-self: start; }
+.personal-key-clear { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.personal-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.personal-section-heading h2 { margin: 0; }
+.personal-account-select { max-width: 520px; }
+.personal-platform-status { display: flex; flex-wrap: wrap; gap: 14px; margin: 20px 0; }
+.personal-platform-status > div { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; border: 1px solid var(--border); padding: 12px 16px; border-radius: 10px; font-size: 13px; }
+.personal-platform-status small { flex-basis: 100%; color: var(--muted); max-width: 360px; }
+.personal-math-content { padding: 24px; }
+.personal-math-tabs { padding: 4px; flex-wrap: wrap; }
+.personal-center .math-plan-settings { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); margin-top: 18px; }
+.personal-center .math-plan-settings > p { grid-column: 1/-1; }
+@media(max-width:640px) { .personal-identity { padding: 16px; flex-wrap: wrap; }.personal-identity > button { margin-left: auto; }.personal-form-grid { grid-template-columns: 1fr; }.personal-form-grid > label:first-child { max-width: none; }.personal-math-content { padding: 16px; }.personal-section-heading { align-items: flex-start; }.personal-center .math-plan-settings { grid-template-columns: 1fr; } }

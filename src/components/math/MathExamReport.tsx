@@ -16,6 +16,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import RichContent from "../RichContent";
+import MathAnalysisContent from "./MathAnalysisContent";
 import MathQuestionVideo from "./MathQuestionVideo";
 import MathQuestionStem from "./MathQuestionStem";
 import { mathApi, mathData, mathRows } from "../../platforms/math";
@@ -252,7 +253,7 @@ function QuestionPreview({ row, onBack }: { row: Row; onBack: () => void }) {
       {data?.analysis?.map((a: Row, i: number) => (
         <section key={a.ID || i}>
           <h4>{a.Title || a.BusType || "解析"}</h4>
-          <RichContent content={a.Context || a.Content} />
+          <MathAnalysisContent content={a.Context || a.Content} />
           {String(a.BusType).includes("视频") && <MathQuestionVideo row={a} />}
           <MathReportDownloads sources={[a]} />
         </section>

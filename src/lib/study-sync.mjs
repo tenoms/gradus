@@ -7,6 +7,7 @@ export function applyStudyChange(data, change) {
     case "task.delete": return { ...data, tasks: data.tasks.filter(t => t.id !== change.taskId) };
     case "activity.add": return { ...data, activities: [change.activity, ...data.activities.filter(a => a.id !== change.activity.id)].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 2000) };
     case "goal.set": return { ...data, goalMinutes: change.goalMinutes };
+    case "math-plan.set": return { ...data, mathPlan: { ...change.mathPlan } };
     case "replace": return change.data;
     default: throw new Error("无法识别的学习记录变更");
   }

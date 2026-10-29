@@ -10,11 +10,16 @@ import {
   Heart,
   LoaderCircle,
   Play,
+  X,
 } from "lucide-react";
 import RichContent from "../RichContent";
+import MathAnalysisContent from "./MathAnalysisContent";
+import { answerProgress } from "../learning/answer-progress.mjs";
+import "../learning/answer-progress.css";
 import MathQuestionVideo from "./MathQuestionVideo";
 import MathQuestionStem from "./MathQuestionStem";
-import { mathQuestionChoice, mathQuestionPrompt } from "./math-question-presentation.mjs";
+import { mathOptionFeedback, mathQuestionChoice, mathQuestionPrompt } from "./math-question-presentation.mjs";
+import "./math-choice-feedback.css";
 import MathQuestionTools, { MathFeedbackButton } from "./MathQuestionTools";
 import {
   mathApi,
@@ -59,6 +64,7 @@ export interface ModelReaderProps {
 }
 interface Props {
   stuid: string;
+  title?: string;
   fileId?: string | number;
   albumId?: string | number;
   catalogId?: string | number;
@@ -152,6 +158,7 @@ export function modelContentTree(rows: MathRow[]): MathRow[] {
 
 export default function MathModelTraining({
   stuid,
+  title,
   fileId,
   albumId,
   catalogId,
@@ -244,7 +251,7 @@ export default function MathModelTraining({
         <div>
           <span className="eyebrow">KNOWLEDGE INTO SKILL</span>
           <h2>
-            {info.data?.file?.Title ||
+            {title || info.data?.file?.Title ||
               info.data?.file?._book_highscorealbum?.Title ||
               "专项能力训练"}
           </h2>
@@ -541,15 +548,20 @@ function ModulePractice({
         retry={remote.reload}
       />
       <div className="math-answer-sheet">
-        {rows.map((q, i) => (
+        {rows.map((q, i) => {
+          const progress = answerProgress({ saved: !!q.AnswerID, correct: Number(q.Answer) === 1 ? true : Number(q.Answer) === 2 ? false : undefined });
+          return (
           <button
             key={q.ID || i}
-            className={`${i === index ? "active" : ""} ${q.AnswerID ? "answered" : ""}`}
+            className={`${i === index ? "active" : ""} answer-progress-${progress.state}`}
+            aria-label={`第 ${i + 1} 题，${progress.label}`}
+            aria-current={i === index ? "step" : undefined}
+            title={progress.label}
             onClick={() => move(i)}
           >
             {i + 1}
           </button>
-        ))}
+        ); })}
       </div>
       {row &&
         (renderQuestion ? (
@@ -676,13 +688,14 @@ function ModuleQuestion({
             <MathQuestionStem {...mathQuestionPrompt(q, stems)} />
             {options.length ? (
               <div className="math-options">
-                {options.map((o, i) => (
+                {options.map((o, i) => {
+                  const selected = selection.includes(String(o.ID));
+                  const feedback = mathOptionFeedback(o, options, selected, showAnalysis || !!row.AnswerID);
+                  return (
                   <button
                     key={o.ID || i}
                     disabled={busy || !!row.AnswerID}
-                    className={
-                      selection.includes(String(o.ID)) ? "selected" : ""
-                    }
+                    className={`${selected ? "selected" : ""} ${feedback}`}
                     onClick={() => {
                       const value = String(o.ID);
                       const nextSelection = multi ? selection.includes(value) ? selection.filter(id => id !== value) : [...selection, value] : [value];
@@ -692,8 +705,9 @@ function ModuleQuestion({
                   >
                     <span>{String.fromCharCode(65 + i)}</span>
                     <RichContent content={o.Content} />
+                    {feedback === "math-choice-incorrect" ? <X size={18} aria-label="回答错误" /> : feedback === "math-choice-correct" && <Check size={18} aria-label="正确答案" />}
                   </button>
-                ))}
+                );})}
               </div>
             ) : (
               <label className="math-field">
@@ -754,7 +768,7 @@ function ModuleQuestion({
                 {analysis.map((a, i) => (
                   <section key={a.ID || i}>
                     <h4>{a.BusType || a.Title || "题目详解"}</h4>
-                    <RichContent
+                    <MathAnalysisContent
                       content={
                         a.Context || a.Content || a._question_code?.Content
                       }
@@ -763,7 +777,7 @@ function ModuleQuestion({
                   </section>
                 ))}
                 {q.AnswerTxt && !analysis.length && (
-                  <RichContent content={q.AnswerTxt} />
+                  <MathAnalysisContent content={q.AnswerTxt} />
                 )}
               </div>
             )}

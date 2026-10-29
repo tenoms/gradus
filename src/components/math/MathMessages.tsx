@@ -86,21 +86,6 @@ export default function MathMessages({
   const target = current ? mathMessageTarget(current) : undefined;
   return (
     <div className="math-workspace">
-      <div className="math-section-heading">
-        <div>
-          <span className="eyebrow">LEARNING INBOX</span>
-          <h2>学习消息</h2>
-          <p>查看原平台通知、答疑与批阅提醒，沿着消息回到学习内容。</p>
-        </div>
-        <button
-          className="btn btn-secondary"
-          onClick={reload}
-          disabled={loading}
-        >
-          <RefreshCw size={15} />
-          刷新
-        </button>
-      </div>
       <div className="panel">
         <div className="math-toolbar">
           <select
@@ -125,6 +110,14 @@ export default function MathMessages({
               <option key={t}>{t}</option>
             ))}
           </select>
+          <button
+            className="btn btn-secondary"
+            onClick={reload}
+            disabled={loading}
+          >
+            <RefreshCw size={15} />
+            刷新
+          </button>
           <span className="math-count">第 {page} 页</span>
         </div>
         {loading ? (

@@ -12,7 +12,8 @@ export function createAdminRouter({ service, identities, connections, configurat
   router.patch("/users/:id", (req, res) => {
     const user = identities.updateUser(req.params.id, req.body, req.studySession.user);
     const connection = connections.get(user.id);
-    if (user.status !== "active" || (connection && connection.account.ref !== user.yybRef)) connections.delete(user.id);
+    const currentRef = user.yyb.mode === "custom" ? user.yyb.ref : user.yybRef;
+    if (user.status !== "active" || (connection && connection.account.ref !== currentRef)) connections.delete(user.id);
     res.json({ user });
   });
   router.post("/users/:id/password", (req, res) => {
@@ -30,9 +31,12 @@ export function createAdminRouter({ service, identities, connections, configurat
   router.delete("/announcements/:id", (req, res) => { identities.deleteAnnouncement(req.params.id, req.studySession.user); res.json({ ok: true }); });
   router.get("/configuration", (req, res) => res.json(configuration.publicConfig()));
   router.put("/configuration", (req, res) => {
+    const previous = service.getConfig();
     const result = configuration.update(req.body);
+    const current = service.getConfig();
     for (const connection of connections.values()) for (const name of result.affectedPlatforms)
-      connection.platforms[name] = { connected: false, error: "平台配置已更新，请重新连接" };
+      if (JSON.stringify(previous[name]) !== JSON.stringify(current[name]) || (connection.yybMode || "system") === "system")
+        connection.platforms[name] = { connected: false, error: "平台配置已更新，请重新连接" };
     identities.audit(req.studySession.user, "configuration.updated", "平台集成", `版本 ${result.revision}；重新连接：${result.affectedPlatforms.join("、") || "无"}`);
     res.json(result);
   });

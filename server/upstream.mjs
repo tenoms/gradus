@@ -313,8 +313,15 @@ async function loginPlatformWith(config, request, name, account) {
     { query: { Id: config.math.loginId, code, Source: "微信小程序", SourceStuID: "" } },
   );
   const user = check.data?.SysUserInfo;
-  if (!user?.StuID)
-    throw new ApiError(check.msg || check.Message || "数学小程序登录失败", 502);
+  if (!user?.StuID) {
+    const reason = check.errmsg || check.msg || check.Message;
+    if (reason === "需绑定手机号码")
+      throw new ApiError("数学平台需绑定手机号码，请先在数学小程序完成手机号绑定，再重新连接", 502);
+    const code = check.errcode ?? check.ErrorCodeValue;
+    const message = reason && !["登陆成功", "登录成功", "success"].includes(reason)
+      ? reason : "数学小程序未返回学习身份，请先在原小程序完成登录后重新连接";
+    throw new ApiError(`${message}${code ? `（错误码 ${code}）` : ""}`, 502);
+  }
   const tokenBody = await mathRequestWith(config, request,"/api/OAuth2/Login", {
     method: "POST",
     data: {
@@ -351,13 +358,18 @@ function successful(body) {
 /** Each call reads current settings; a login keeps one snapshot for its complete handshake. */
 export function createUpstreamClient(configuration, { requestJson: transport = requestJson } = {}) {
   const getConfig = () => structuredClone(typeof configuration === "function" ? configuration() : configuration);
+  const forYyb = override => {
+    const config = getConfig();
+    if (override) config.yyb = { baseUrl: override.baseUrl, apiKey: override.apiKey || "" };
+    return config;
+  };
   return {
     getConfig,
     requestJson: transport,
-    yybRequest: (path, data, options) => yybRequestWith(getConfig(), transport, path, data, options),
+    yybRequest: (path, data, options, yyb) => yybRequestWith(forYyb(yyb), transport, path, data, options),
     mathRequest: (path, input, platform) => mathRequestWith(getConfig(), transport, path, input, platform),
     computerRequest: (path, input, platform) => computerRequestWith(getConfig(), transport, path, input, platform),
-    loginPlatform: (name, account) => loginPlatformWith(getConfig(), transport, name, account),
+    loginPlatform: (name, account, yyb) => loginPlatformWith(forYyb(yyb), transport, name, account),
     async probe({ target = "all", ref } = {}) {
       if (!["all", "yyb", "math", "computer"].includes(target)) throw new ApiError("未知检测目标", 400);
       if (ref !== undefined && (typeof ref !== "string" || !ref || ref.length > 160)) throw new ApiError("检测账号格式不正确", 400);

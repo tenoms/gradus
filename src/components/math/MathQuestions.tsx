@@ -318,12 +318,7 @@ export default function MathQuestions({
   return (
     <div className="math-workspace">
       <div className="math-qa-heading">
-        <div>
-          <span className="eyebrow">ASK & UNDERSTAND</span>
-          <h2>把不懂的地方，真正弄明白</h2>
-          <p>围绕数学题目发起学习答疑，查看老师的解答与追问。</p>
-        </div>
-        <div>
+        <div className="button-row">
           <button
             className="btn btn-secondary"
             onClick={() => setReportShown(true)}

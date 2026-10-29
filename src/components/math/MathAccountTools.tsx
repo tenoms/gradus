@@ -1,12 +1,8 @@
 import { useEffect, useState } from "react";
 import {
-  Award,
   BookOpen,
   ChevronRight,
-  History,
   LoaderCircle,
-  UserRound,
-  X,
 } from "lucide-react";
 import RichContent from "../RichContent";
 import { mathCommand, mathRows, mathTitle } from "../../platforms/math";
@@ -17,80 +13,16 @@ import MathStudyHistory from "./MathStudyHistory";
 export default function MathAccountTools({
   user,
   onQuestion,
+  tab = "个人资料",
 }: {
   user: MathRow;
   onQuestion: (row: MathRow) => void;
+  tab?: string;
 }) {
-  const [tab, setTab] = useState("");
   const stuid = String(user.StuID || "");
-  return (
-    <>
-      <div className="math-account-toolbar">
-        <span>数学学习空间</span>
-        {[
-          { name: "个人资料", icon: UserRound },
-          { name: "学习记录", icon: History },
-          { name: "学习榜单", icon: Award },
-        ].map((t) => (
-          <button key={t.name} onClick={() => setTab(t.name)}>
-            <t.icon size={14} />
-            {t.name}
-          </button>
-        ))}
-      </div>
-      {tab && (
-        <div className="math-modal-backdrop" onClick={() => setTab("")}>
-          <section
-            className="math-modal math-account-modal panel"
-            role="dialog"
-            aria-modal="true"
-            aria-label={tab}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="math-modal-heading">
-              <h3>{tab}</h3>
-              <button
-                className="math-icon-button"
-                onClick={() => setTab("")}
-                aria-label="关闭账户功能"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="tabs math-account-tabs">
-              {["个人资料", "学习记录", "学习榜单"].map((t) => (
-                <button
-                  key={t}
-                  className={t === tab ? "active" : ""}
-                  onClick={() => setTab(t)}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-            {tab === "个人资料" ? (
-              <MathStudyProfile user={user} />
-            ) : tab === "学习记录" ? (
-              <MathStudyHistory
-                stuid={stuid}
-                onQuestion={(r) => {
-                  setTab("");
-                  onQuestion(r);
-                }}
-              />
-            ) : (
-              <Rankings
-                onQuestion={(r) => {
-                  setTab("");
-                  onQuestion(r);
-                }}
-              />
-            )}
-          </section>
-        </div>
-      )}
-    </>
-  );
+  if (tab === "学习记录") return <MathStudyHistory stuid={stuid} onQuestion={onQuestion} />;
+  if (tab === "学习榜单") return <Rankings onQuestion={onQuestion} />;
+  return <MathStudyProfile user={user} />;
 }
 function RemoteList({
   id,

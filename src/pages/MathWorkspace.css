@@ -3,6 +3,65 @@
   gap: 24px;
   min-width: 0;
 }
+.math-learning-plan {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding: 18px 22px;
+  margin-bottom: 24px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: linear-gradient(110deg, #f0edf9, #fff 75%);
+}
+.math-plan-summary { display: flex; align-items: center; gap: 14px; margin-right: auto; }
+.math-plan-symbol { display: grid; place-items: center; width: 42px; height: 42px; background: #e6def6; color: var(--accent); border-radius: 12px; font-size: 27px; }
+.math-plan-summary strong { font-size: 14px; color: var(--ink); }
+.math-plan-summary p { margin: 6px 0 0; color: var(--accent); font-size: 12px; }
+.math-plan-summary p span { margin-left: 16px; color: var(--muted); }
+.math-plan-settings { width: 100%; display: flex; flex-wrap: wrap; gap: 16px; align-items: end; padding-top: 18px; border-top: 1px solid var(--border); }
+.math-plan-settings label { display: grid; gap: 8px; min-width: 130px; font-size: 12px; color: var(--muted); }
+.math-plan-settings p { max-width: 360px; margin: 0 0 10px; font-size: 12px; line-height: 1.8; color: var(--muted); }
+.math-album-stages { display: flex; gap: 8px; flex-wrap: wrap; padding: 20px 24px; border-bottom: 1px solid var(--border); }
+.math-album-stages button { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; font: inherit; font-size: 12px; cursor: pointer; color: var(--muted); }
+.math-album-stages button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.math-album-stages small { font-size: 9px; opacity: .8; }
+.math-album-stage-section + .math-album-stage-section { border-top: 1px solid var(--border); }
+.math-album-stage-heading { padding: 24px 24px 0; }
+.math-album-stage-heading h3 { display: flex; align-items: center; gap: 12px; margin: 0 0 9px; font-size: 18px; color: var(--ink); }
+.math-album-stage-heading p { margin: 0; font-size: 12px; line-height: 1.8; color: var(--muted); }
+.math-album-card { transition: border-color .15s, box-shadow .15s; }
+.math-album-card:hover { border-color: var(--accent); box-shadow: 0 5px 18px #4023760c; }
+.math-guide-resume { display: flex; align-items: center; flex-wrap: wrap; gap: 18px; padding: 22px 24px; border-color: #d9ccef; background: #fbf9ff; }
+.math-guide-resume > svg { color: var(--accent); }
+.math-guide-resume > div { display: grid; gap: 7px; flex: 1; }
+.math-guide-resume small { color: var(--muted); font-size: 11px; }
+.math-guide-resume strong { color: var(--ink); font-size: 14px; }
+.math-guide-topics { padding: 0 24px; }
+.math-guide-topic + .math-guide-topic { border-top: 1px solid var(--border); }
+.math-guide-topic > summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px 0; cursor: pointer; list-style: none; font-size: 15px; font-weight: 600; }
+.math-guide-topic > summary > span { display: flex; gap: 14px; align-items: center; }
+.math-guide-topic > summary small { color: var(--muted); font-size: 11px; font-weight: 400; }
+.math-guide-topic > summary > span small { color: var(--accent); font-variant-numeric: tabular-nums; }
+.math-guide-topic > .math-content-list { padding: 0 0 12px 26px; }
+.math-guide-topic > summary::after { content: "+"; color: var(--accent); font-size: 18px; }
+.math-guide-topic[open] > summary::after { content: "−"; }
+.math-guide-lesson-head { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.math-guide-lesson-head h2 { font-size: 24px; margin: 9px 0; line-height: 1.5; }
+.math-guide-lesson-head p { margin: 0; color: var(--muted); font-size: 13px; }
+.math-guide-lesson-head > a { flex-shrink: 0; }
+.math-point-group { padding: 14px 0; }
+.math-point-group > summary { padding: 8px; cursor: pointer; font-weight: 600; font-size: 14px; }
+.math-point-group > summary > span { color: var(--muted); font-size: 11px; font-weight: 400; margin-left: 12px; }
+@media (max-width: 600px) {
+  .math-learning-plan { padding: 16px; gap: 14px; }
+  .math-plan-summary p span { display: block; margin: 5px 0 0; }
+  .math-guide-topics { padding: 0 16px; }
+  .math-guide-lesson-head { flex-wrap: wrap; }
+  .math-guide-resume { padding: 18px 16px; }
+  .math-guide-topic > .math-content-list { padding-left: 0; }
+  .math-album-stages { padding: 16px; }
+}
 .math-section-heading h2 {
   font-size: 25px;
   line-height: 1.5;

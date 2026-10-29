@@ -1,6 +1,41 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { computerAnswerMode, computerImmediateChoice, computerChoiceAnswer, computerQuestionVideoSource } from "../src/components/computer/question-workflow.mjs";
+import { computerAnalysisVisible, computerAnswerMode, computerDraftScope, computerImmediateChoice, computerChoiceAnswer, computerOptionFeedback, computerQuestionVideoSource } from "../src/components/computer/question-workflow.mjs";
+
+test("switching YYB learners cannot reuse another learner's local draft", () => {
+  const learner = (web, upstream, endpoint = "http://yyb-one.test", ref = "same-ref") => ({ user: { id: web, yyb: { mode: "custom", baseUrl: endpoint } }, account: { ref }, platforms: { computer: { user: { userId: upstream } } } });
+  const first = learner("web-user", "upstream-one");
+  assert.notEqual(computerDraftScope(first), computerDraftScope(learner("web-user", "upstream-two")));
+  assert.notEqual(computerDraftScope(first), computerDraftScope(learner("other-web-user", "upstream-one")));
+  assert.equal(computerDraftScope(first), computerDraftScope(learner("web-user", "upstream-one", "http://other-broker.test")), "the same actual learner may resume across brokers");
+  assert.notEqual(computerDraftScope(learner("web-user", undefined)), computerDraftScope(learner("web-user", undefined, "http://yyb-two.test")), "without a profile, identical refs from different YYBs are not the same learner");
+});
+
+test("answers remain hidden until practice is saved or a full paper is handed in", () => {
+  for (const launch of [{ examType: 3 }, { examType: 10 }, { random: true }, { redo: {} }]) {
+    assert.equal(computerAnalysisVisible(launch), false, "unanswered question or unsaved draft");
+    assert.equal(computerAnalysisVisible(launch, true), true, "successful answer submission");
+    assert.equal(computerAnalysisVisible(launch, false, false, true), true, "explicitly skipped question");
+    assert.equal(computerAnalysisVisible(launch), false, "moving to the next unanswered question hides analysis again");
+  }
+  for (const examType of [1, 2, 4, 7, 20, 21, 22]) {
+    assert.equal(computerAnalysisVisible({ examType }), false);
+    assert.equal(computerAnalysisVisible({ examType }, true), false, "returned answer records do not reveal a paper in progress");
+    assert.equal(computerAnalysisVisible({ examType }, false, true), true);
+  }
+  assert.equal(computerAnalysisVisible({ examType: 3, readOnly: true }), true, "explicit review remains readable");
+});
+
+test("choice feedback marks a wrong selection as incorrect and never grades drafts", () => {
+  assert.equal(computerOptionFeedback("A", "B", true, false), "");
+  assert.equal(computerOptionFeedback("B", "B", false, false), "");
+  assert.equal(computerOptionFeedback("A", "B", true, true), "incorrect");
+  assert.equal(computerOptionFeedback("B", "B", false, true), "correct");
+  assert.equal(computerOptionFeedback("C", "B", false, true), "");
+  assert.equal(computerOptionFeedback("A", "A,C", true, true), "correct");
+  assert.equal(computerOptionFeedback("B", "A,C", true, true), "incorrect");
+  assert.equal(computerOptionFeedback("0", 0, true, true), "correct");
+});
 
 test("single and judgment practice choices save immediately while complete papers stay drafts", () => {
   for (const launch of [{ examType: 3 }, { examType: 10 }, { examType: 6, redo: {} }, { examType: 6, random: true }]) {

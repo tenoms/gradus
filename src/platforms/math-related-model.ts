@@ -42,6 +42,18 @@ export function relatedPropertyGroups(rows: RelatedRow[]) {
   }
   return [...groups.values()];
 }
+export function isRelatedSubjectScope(row: RelatedRow) {
+  return /科目范围|适用科目/.test(String(row.PropertyName || ""));
+}
+export function matchesRelatedSubject(row: RelatedRow, subject: string, definitions: RelatedRow[]) {
+  const scopeDefinitions = definitions.filter(isRelatedSubjectScope);
+  const actual = relatedProperties(row).flatMap(property => {
+    const definition = scopeDefinitions.find(item => String(item.ID) === property.PropertyContentID && String(item.PropertyID) === property.PropertyID);
+    return definition ? [String(definition.Name || "")] : [];
+  });
+  // Unlabelled questions remain available; only explicit exclusions are hidden.
+  return !actual.length || actual.some(name => /公共|通用|全部/.test(name) || name.includes(subject));
+}
 export function matchesRelatedProperties(
   row: RelatedRow,
   selected: Record<string, string[]>,

@@ -7,7 +7,6 @@ import {
   Check,
   ChevronRight,
   GitCompareArrows,
-  GraduationCap,
   LoaderCircle,
   Search,
   X,
@@ -133,17 +132,6 @@ export default function MathSchools({ stuid }: { stuid: string }) {
   );
   return (
     <div className="math-schools">
-      <div className="panel math-school-intro">
-        <span className="path-icon violet">
-          <GraduationCap size={23} />
-        </span>
-        <div>
-          <p className="eyebrow">EXPLORE YOUR NEXT CHAPTER</p>
-          <h2>把理想，变成清晰的方向</h2>
-          <p>浏览院校、院系和专业目录，比较研究方向与初试科目。</p>
-        </div>
-        <span className="pill">{all.rows.length} 所收录院校</span>
-      </div>
       {comparisons.length > 0 && (
         <section className="panel math-school-compare">
           <div className="section-heading">
