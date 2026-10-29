@@ -16,7 +16,25 @@ export async function readManagedPlatformConfig({ database = readRuntimeConfig()
   try {
     const { rows } = await pool.query(`SELECT config FROM "${schemaPrefix}_web"."platform_configuration" WHERE id=1`);
     if (!rows[0]?.config) throw missingConfiguration();
-    return rows[0].config;
+    const config = rows[0].config;
+    let services;
+    try {
+      const result = await pool.query(`SELECT id,base_url,api_key,enabled FROM "${schemaPrefix}_web"."yyb_services" ORDER BY created_at,id`);
+      services = result.rows.map(row => ({
+        id: row.id,
+        enabled: row.enabled,
+        baseUrl: row.base_url === null ? config.yyb.baseUrl : row.base_url,
+        apiKey: row.api_key === null ? config.yyb.apiKey : row.api_key,
+      }));
+    } catch (error) {
+      if (error.code === '42P01') return config;
+      throw error;
+    }
+    if (!services.some(service => service.id === 'default')) services.unshift({ id: 'default', enabled: true, ...config.yyb });
+    const available = service => service.enabled && typeof service.baseUrl === 'string' && service.baseUrl.trim();
+    const selected = services.find(service => service.id === 'default' && available(service)) || services.find(available);
+    if (!selected) throw new Error('真实联调没有已启用且已配置地址的 YYB 服务，请先在管理端启用并配置系统 YYB 服务。');
+    return { ...config, yyb: { ...config.yyb, baseUrl: selected.baseUrl, apiKey: selected.apiKey } };
   } catch (error) {
     if (['42P01', '3F000'].includes(error.code)) throw missingConfiguration();
     throw error;
