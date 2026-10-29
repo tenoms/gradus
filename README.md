@@ -46,7 +46,7 @@ PostgreSQL 分为两个数据域：默认 `study_web` 保存 Web 用户、会话
 
 个人中心可关联本人微信账号，明确选择同步范围后导入已有记录。个人同步与公共资源同步使用独立开关，均从小程序接口向 Web 读取；Web 答案、笔记和进度不回写小程序。
 
-平台初值从 `config/defaults.json`、本机 `config/local.json`（或 `STUDY_CONFIG_FILE` 指定的文件）及环境变量读取，随后以数据库中的管理配置为准。公开地址与默认学科等集中在 `config/public.json`，秘密只在服务端保存。原小程序目录与 `yyb.txt` 属于开发资产，启动、构建和真实验收均不读取它们。
+平台初值从 `config/defaults.json`、本机 `config/local.json`（或 `STUDY_CONFIG_FILE` 指定的文件）及环境变量读取，随后以数据库中的管理配置为准。公开地址与默认学科等集中在 `config/public.json`，秘密只在服务端保存。原小程序目录与 `yyb.txt` 属于开发资产，启动、构建和真实验收均无需这些文件。
 
 ## 源码组织
 

@@ -30,12 +30,12 @@ function merge(defaults, override, field = '') {
   return result;
 }
 
-/** Versioned defaults plus one optional deployment file; secrets stay on the server. */
 export function deploymentConfigPath({ env = process.env, configFile } = {}) {
   if (configFile === false) return null;
   return path.resolve(root, (configFile ?? env.STUDY_CONFIG_FILE) || 'config/local.json');
 }
 
+/** Versioned defaults plus one optional deployment file; secrets stay on the server. */
 export function readFileConfiguration({ env = process.env, configFile } = {}) {
   const defaults = readJson(path.join(root, 'config/defaults.json'));
   const filename = deploymentConfigPath({ env, configFile });
