@@ -7,7 +7,6 @@ import {
   CheckCheck,
   Clock3,
   Code2,
-  Layers3,
   ListChecks,
   Plus,
   Sigma,
@@ -17,7 +16,6 @@ import {
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import type { Platform } from "../../../shared/api/client";
-import { useSession } from "../../../shared/auth/session";
 import { WorkspaceTabs } from "../../../shared/ui/workspace-bar/WorkspaceBar";
 import Announcements from "../../identity/Announcements";
 import TaskRow from "../plans/TaskRow";
@@ -36,7 +34,6 @@ export default function Dashboard({
   onAdd: () => void;
   onPlatformChange: (platform: Platform) => void;
 }) {
-  const { session } = useSession();
   const { tasks, activities, goalMinutes } = useStudyData();
   const [scope, setScope] = useState<Platform | "all">(platform);
   const [metric, setMetric] = useState<"duration" | "questions">("duration");
@@ -220,69 +217,6 @@ export default function Dashboard({
               </Link>
             </div>
           </section>
-          <section className="panel">
-            <div className="section-heading">
-              <h2>
-                最近学习
-                <span className="heading-dot" />
-              </h2>
-              <Link to={`/insights?subject=${scope}&period=all`} className="text-link">
-                全部记录
-                <ArrowRight size={14} />
-              </Link>
-            </div>
-            {events.length ? (
-              <div className="recent-list">
-                {events.slice(0, 3).map((a) => (
-                  <Link
-                    to={a.path || "/study/practice"}
-                    className="recent-item"
-                    key={a.id}
-                    onClick={() => onPlatformChange(a.platform)}
-                  >
-                    <span
-                      className={`recent-icon ${a.platform === "math" ? "violet" : "mint"}`}
-                    >
-                      {a.platform === "math" ? (
-                        <Sigma size={21} />
-                      ) : (
-                        <Code2 size={21} />
-                      )}
-                    </span>
-                    <div>
-                      <h3>{a.title}</h3>
-                      <p>
-                        {label(a.platform)}
-                        <span>·</span>
-                        {new Date(a.at).toLocaleString("zh-CN", {
-                          month: "2-digit",
-                          day: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          timeZone: "Asia/Shanghai",
-                        })}
-                      </p>
-                    </div>
-                    <ArrowRight size={17} />
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <div className="inline-empty">
-                <div className="empty-line-art">
-                  <BookOpen size={25} />
-                </div>
-                <div>
-                  <h3>{scopeLabel}，从这一步开始</h3>
-                  <p>完成作答或查看解析后，这里会记录你的学习轨迹。</p>
-                </div>
-                <Link className="btn btn-secondary" to="/study/practice">
-                  去练习
-                  <ArrowRight size={15} />
-                </Link>
-              </div>
-            )}
-          </section>
         </div>
         <aside className="right-column">
           <section className="panel plan-panel">
@@ -347,38 +281,68 @@ export default function Dashboard({
               每一次投入，都值得被记录
             </div>
           </section>
-          <section className="connection-card">
-            <div className="connection-icon">
-              <Layers3 size={22} />
+          <section className="panel recent-panel">
+            <div className="section-heading">
+              <h2>
+                最近学习
+                <span className="heading-dot" />
+              </h2>
+              <Link to={`/insights?subject=${scope}&period=all`} className="text-link">
+                全部记录
+                <ArrowRight size={14} />
+              </Link>
             </div>
-            <h3>两个学科，一个学习空间</h3>
-            <p>
-              从本地题库继续学习，
-              <br />
-              让每一次进步保存在你的账号里。
-            </p>
-            <div className="connection-status">
-              <span
-                className={
-                  session.authenticated ? "is-ready" : ""
-                }
-              >
-                <i />
-                数学 · 可学习
-              </span>
-              <span
-                className={
-                  session.authenticated ? "is-ready" : ""
-                }
-              >
-                <i />
-                计算机 · 可学习
-              </span>
-            </div>
-            <Link className="text-link" to="/study/question-bank">
-              进入题库
-              <ArrowRight size={14} />
-            </Link>
+            {events.length ? (
+              <div className="recent-list">
+                {events.slice(0, 3).map((a) => (
+                  <Link
+                    to={a.path || "/study/practice"}
+                    className="recent-item"
+                    key={a.id}
+                    onClick={() => onPlatformChange(a.platform)}
+                  >
+                    <span
+                      className={`recent-icon ${a.platform === "math" ? "violet" : "mint"}`}
+                    >
+                      {a.platform === "math" ? (
+                        <Sigma size={21} />
+                      ) : (
+                        <Code2 size={21} />
+                      )}
+                    </span>
+                    <div>
+                      <h3>{a.title}</h3>
+                      <p>
+                        {label(a.platform)}
+                        <span>·</span>
+                        {new Date(a.at).toLocaleString("zh-CN", {
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          timeZone: "Asia/Shanghai",
+                        })}
+                      </p>
+                    </div>
+                    <ArrowRight size={17} />
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="inline-empty">
+                <div className="empty-line-art">
+                  <BookOpen size={25} />
+                </div>
+                <div>
+                  <h3>{scopeLabel}，从这一步开始</h3>
+                  <p>完成作答或查看解析后，这里会记录你的学习轨迹。</p>
+                </div>
+                <Link className="btn btn-secondary" to="/study/practice">
+                  去练习
+                  <ArrowRight size={15} />
+                </Link>
+              </div>
+            )}
           </section>
         </aside>
       </div>
