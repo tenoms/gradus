@@ -890,15 +890,22 @@ svg {
 }
 .recent-panel {
   padding: 22px 20px 15px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
 }
 .recent-panel .section-heading {
+  flex-shrink: 0;
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 8px;
 }
 .recent-panel .inline-empty {
+  flex: 1;
   flex-direction: column;
   align-items: flex-start;
+  justify-content: center;
   gap: 12px;
   padding-top: 12px;
 }
@@ -1895,6 +1902,12 @@ svg {
   }
   .recent-panel {
     grid-column: 1 / -1;
+    flex: initial;
+    min-height: auto;
+  }
+  .recent-panel .inline-empty {
+    flex: initial;
+    justify-content: flex-start;
   }
   .hero-card {
     min-height: 269px;
