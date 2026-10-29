@@ -137,3 +137,22 @@ test("bookshelf loader selects fresh shelf fields and fetches matching progress 
     true,
   );
 });
+
+
+test("shelf progress starts when the profile arrives while the catalogue is still loading", async () => {
+  let releaseCatalogue;
+  const catalogue = new Promise(resolve => { releaseCatalogue = resolve; });
+  let progressStarted = false;
+  globalThis.__shelfBooks = () => catalogue;
+  globalThis.__shelfCommand = async name => {
+    if (name === "GetUserInfoByStuID") return { data: [[{ ID: 8, EBookIDs: "1" }]] };
+    if (name === "GetBookListSysUserRecordPlan") { progressStarted = true; return { data: [[{ ID: 1, StudentCount: 2 }]] }; }
+    return { data: [[]] };
+  };
+  const pending = adapter.bookshelfApi.load("student");
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(progressStarted, true);
+  releaseCatalogue({ data: [[{ ID: 1, Name: "book" }]] });
+  const result = await pending;
+  assert.equal(result.shelf[0].StudentCount, 2);
+});

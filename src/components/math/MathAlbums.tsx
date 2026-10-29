@@ -1,3 +1,4 @@
+import { invalidateCatalogResources } from "../../lib/api";
 import { useMathLearningPlan } from "./MathLearningPlan";
 import { groupMathAlbums, mathStages } from "./learning-plan-model.mjs";
 import { useEffect, useState } from "react";
@@ -54,7 +55,7 @@ function useAlbumData(key: string, load: () => Promise<any>) {
       active = false;
     };
   }, [key, version]);
-  return { data, loading, error, reload: () => setVersion((v) => v + 1) };
+  return { data, loading, error, reload: () => { invalidateCatalogResources(); setVersion((v) => v + 1); } };
 }
 function Status({
   loading,

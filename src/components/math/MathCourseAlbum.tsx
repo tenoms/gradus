@@ -1,3 +1,4 @@
+import { invalidateCatalogResources } from "../../lib/api";
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -42,7 +43,7 @@ function useData(key: string, load: () => Promise<any>) {
       active = false;
     };
   }, [key, version]);
-  return { data, loading, error, reload: () => setVersion((v) => v + 1) };
+  return { data, loading, error, reload: () => { invalidateCatalogResources(); setVersion((v) => v + 1); } };
 }
 function safeUrl(value: any) {
   try {

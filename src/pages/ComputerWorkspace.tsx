@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { invalidateCatalogResources } from "../lib/api";
 import type { ReactNode } from "react";
 import {
   ArrowLeft,
@@ -17,21 +18,12 @@ import {
   X,
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
-import RichContent from "../components/RichContent";
-import ComputerCourses from "../components/computer/ComputerCourses";
-import ComputerSchools from "../components/computer/ComputerSchools";
-import ExerciseSession from "../components/computer/ComputerExerciseSession";
 import { computerPracticeType } from "../components/computer/computer-learning";
 import type { ComputerExerciseLaunch as ExerciseLaunch } from "../components/computer/computer-learning";
-import ComputerReview from "../components/computer/ComputerReview";
 import ComputerSubjects, {
   ComputerSubjectPicker,
   useComputerSubjects,
 } from "../components/computer/ComputerSubjects";
-import ComputerSpecialPractice from "../components/computer/ComputerSpecialPractice";
-import ComputerStages from "../components/computer/ComputerReports";
-import ComputerChapterGroups from "../components/computer/ComputerChapterGroups";
-import ComputerCommunity from "../components/computer/ComputerCommunity";
 import { useSession } from "../lib/session";
 import { recordActivity } from "../lib/store";
 import {
@@ -57,6 +49,16 @@ import {
 } from "../platforms/computer";
 import type { ComputerRecord as R } from "../platforms/computer";
 import "./computer.css";
+
+const RichContent = lazy(() => import("../components/RichContent"));
+const ComputerCourses = lazy(() => import("../components/computer/ComputerCourses"));
+const ComputerSchools = lazy(() => import("../components/computer/ComputerSchools"));
+const ExerciseSession = lazy(() => import("../components/computer/ComputerExerciseSession"));
+const ComputerReview = lazy(() => import("../components/computer/ComputerReview"));
+const ComputerSpecialPractice = lazy(() => import("../components/computer/ComputerSpecialPractice"));
+const ComputerStages = lazy(() => import("../components/computer/ComputerReports"));
+const ComputerChapterGroups = lazy(() => import("../components/computer/ComputerChapterGroups"));
+const ComputerCommunity = lazy(() => import("../components/computer/ComputerCommunity"));
 
 function useLoad(path: string, query: R = {}) {
   const [data, setData] = useState<any>(null),
@@ -88,7 +90,7 @@ function useLoad(path: string, query: R = {}) {
       active = false;
     };
   }, [path, serialized, version]);
-  return { data, error, loading, reload: () => setVersion((v) => v + 1) };
+  return { data, error, loading, reload: () => { invalidateCatalogResources(); setVersion((v) => v + 1); } };
 }
 function Status({
   loading,
@@ -1057,14 +1059,15 @@ export default function ComputerWorkspace({ section }: { section: string }) {
   if (!session.authenticated) return <div className="panel computer-auth-gate"><h2>登录学习空间</h2><p>使用你的账号查看计算机内容与学习记录。</p><button className="btn btn-primary" onClick={openLogin}>登录学习空间<ArrowRight size={16} /></button></div>;
   if (launch)
     return (
-      <ExerciseSession
+      <Suspense fallback={<Status loading />}><ExerciseSession
         key={`${launch.data.examId}-${launch.title}`}
         launch={launch}
         onClose={() => setLaunch(null)}
-      />
+      /></Suspense>
     );
   return (
     <div className="computer-workspace">
+      <Suspense fallback={<Status loading />}>
       {section === "courses" ? (
         <ComputerCourses />
       ) : section === "exams" ? (
@@ -1082,6 +1085,7 @@ export default function ComputerWorkspace({ section }: { section: string }) {
       ) : (
         <QuestionBank key={section} launch={setLaunch} />
       )}
+      </Suspense>
     </div>
   );
 }

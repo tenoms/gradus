@@ -4,6 +4,7 @@ import MathVideoFeedback from "./MathVideoFeedback";
 import Pagination from "../Pagination";
 import { usePagination } from "../../lib/pagination";
 import { useEffect, useRef, useState } from "react";
+import { invalidateCatalogResources } from "../../lib/api";
 import {
   ArrowLeft,
   BookOpen,
@@ -82,7 +83,7 @@ function useContent(key: string, loader: () => Promise<any>) {
       active = false;
     };
   }, [key, version]);
-  return { data, loading, error, reload: () => setVersion((v) => v + 1) };
+  return { data, loading, error, reload: () => { invalidateCatalogResources(); setVersion((v) => v + 1); } };
 }
 function Status({
   loading,

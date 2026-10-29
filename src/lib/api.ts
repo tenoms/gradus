@@ -39,7 +39,34 @@ export const emptySession: Session = {
   platforms: { math: { connected: false }, computer: { connected: false } },
 };
 let identity: string | undefined;
-export function setApiIdentity(userId?: string) { identity = userId; }
+type CatalogEntry = { promise: Promise<any>; expiresAt: number };
+const catalogResources = new Map<string, CatalogEntry>();
+export function invalidateCatalogResources() { catalogResources.clear(); }
+export function setApiIdentity(userId?: string) {
+  if (identity !== userId) invalidateCatalogResources();
+  identity = userId;
+}
+/** Reuse stable catalogues briefly; maxAge=0 only joins concurrent reads. */
+export function catalogResource<T>(key: string, load: () => Promise<T>, maxAge = 60_000): Promise<T> {
+  const scopedKey = JSON.stringify([apiSpace, identity, key]);
+  const existing = catalogResources.get(scopedKey);
+  if (existing && existing.expiresAt > Date.now()) return existing.promise;
+  const entry: CatalogEntry = { promise: load(), expiresAt: Infinity };
+  catalogResources.delete(scopedKey);
+  catalogResources.set(scopedKey, entry);
+  if (catalogResources.size > 80) catalogResources.delete(catalogResources.keys().next().value!);
+  entry.promise = entry.promise.then(value => {
+    if (catalogResources.get(scopedKey) === entry) {
+      if (maxAge > 0) entry.expiresAt = Date.now() + maxAge;
+      else catalogResources.delete(scopedKey);
+    }
+    return value;
+  }, error => {
+    if (catalogResources.get(scopedKey) === entry) catalogResources.delete(scopedKey);
+    throw error;
+  });
+  return entry.promise;
+}
 export function studyIdentityHeaders(): Record<string, string> {
   return identity ? { "X-Study-User": identity } : {};
 }

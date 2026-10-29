@@ -91,8 +91,19 @@ export function enrichShelfBooks(records: ShelfRow[], catalog: ShelfRow[]): Shel
 }
 export const bookshelfApi = {
   async load(stuid: string) {
-    const [profile, catalog, recent] = await Promise.all([
-      mathCommand("GetUserInfoByStuID", { StuID: stuid, t: Date.now() }),
+    const personal = mathCommand("GetUserInfoByStuID", { StuID: stuid, t: Date.now() }).then(async profile => {
+      const rawUser = shelfRows(profile)[0] || {};
+      const user = Object.fromEntries(
+        ["ID", "StuID", "EBookIDs", "PaperIDs", "SubjectType"].map(key => [key, rawUser[key]]),
+      );
+      const ids = [...shelfIds(user.EBookIDs), ...shelfIds(user.PaperIDs)];
+      const progress = ids.length ? shelfRows(await mathCommand("GetBookListSysUserRecordPlan", {
+        StuID: stuid, BookIDs: ids.join(","),
+      })) : [];
+      return { user, progress };
+    });
+    const [{ user, progress }, catalog, recent] = await Promise.all([
+      personal,
       mathApi.books(),
       mathCommand(
         "GetBookListCountAndLookCount_LastTop3",
@@ -100,22 +111,6 @@ export const bookshelfApi = {
         true,
       ),
     ]);
-    const rawUser = shelfRows(profile)[0] || {},
-      user = Object.fromEntries(
-        ["ID", "StuID", "EBookIDs", "PaperIDs", "SubjectType"].map((key) => [
-          key,
-          rawUser[key],
-        ]),
-      ),
-      ids = [...shelfIds(user.EBookIDs), ...shelfIds(user.PaperIDs)];
-    const progress = ids.length
-      ? shelfRows(
-          await mathCommand("GetBookListSysUserRecordPlan", {
-            StuID: stuid,
-            BookIDs: ids.join(","),
-          }),
-        )
-      : [];
     return {
       user,
       books: shelfRows(catalog),

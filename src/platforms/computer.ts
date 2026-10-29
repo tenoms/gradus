@@ -1,4 +1,4 @@
-import { platformRequest, studyFetch } from "../lib/api";
+import { catalogResource, platformRequest, studyFetch } from "../lib/api";
 
 export type ComputerRecord = Record<string, any>;
 export const computerSubjects = [
@@ -43,7 +43,23 @@ export const examSources = [
     path: "/api/exam/wx/practice/majorId/examination/list",
   },
 ];
-export async function computerRequest(
+const concurrentCatalogPaths = new Set([
+  "/api/exam/wx/practice/knowledge", "/api/exam/wx/practice/examination/group/list",
+  "/api/exam/wx/course/courseList", "/api/exam/wx/lesson/lessonList",
+  "/api/exam/pc/course/detail", "/api/exam/wx/personal/majorCustomList",
+]);
+export function computerRequest(
+  path: string,
+  query: ComputerRecord = {},
+  method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
+  data?: any,
+): Promise<any> {
+  const load = () => readComputerResponse(path, query, method, data);
+  return method === "GET" && concurrentCatalogPaths.has(path)
+    ? catalogResource(JSON.stringify(["computer", path, query]), load, 0)
+    : load();
+}
+async function readComputerResponse(
   path: string,
   query: ComputerRecord = {},
   method: "GET" | "POST" | "PUT" | "DELETE" = "GET",

@@ -1,9 +1,9 @@
-import QuestionReader from "../components/math/MathQuestionReader";
 import { answerProgress } from "../components/learning/answer-progress.mjs";
 import "../components/learning/answer-progress.css";
 import Pagination from "../components/Pagination";
 import { usePagination } from "../lib/pagination";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { invalidateCatalogResources } from "../lib/api";
 import { useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -25,34 +25,12 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import RichContent from "../components/RichContent";
 import ImportedReportSummary from "../components/identity/ImportedReportSummary";
-import MathNoteEditor from "../components/math/MathNoteEditor";
-import MathNotebook from "../components/math/MathNotebook";
-import MathDiscussion, {
-  MathDiscussionInbox,
-} from "../components/math/MathDiscussion";
-import MathQuestions, {
-  NewMathQuestion,
-} from "../components/math/MathQuestions";
-import MathSchools from "../components/math/MathSchools";
-import MathMessages from "../components/math/MathMessages";
-import MathSchoolAnalysis from "../components/math/MathSchoolAnalysis";
 import MathLearningPlan, { useMathLearningPlan } from "../components/math/MathLearningPlan";
-import MathHighScoreGuide from "../components/math/MathHighScoreGuide";
 import { matchesMathSubject } from "../components/math/learning-plan-model.mjs";
-import MathQrcodeLookup from "../components/math/MathQrcodeLookup";
-import MathInformationResources from "../components/math/MathInformationResources";
-import MathCourses from "../components/math/MathCourses";
-import MathExams from "../components/math/MathExams";
-import MathAlbums from "../components/math/MathAlbums";
-import MathRelatedQuestions from "../components/math/MathRelatedQuestions";
-import MathPhotoSearch from "../components/math/MathPhotoSearch";
-import MathComputing from "../components/math/MathComputing";
 import MathBookshelf from "../components/math/MathBookshelf";
 import MathLibraryTagFilter from "../components/math/MathLibraryTagFilter";
 import { mathLibraryTag, mathLibraryTagOptions, matchesMathLibraryTag } from "../platforms/math-library";
-import MathScoreRank from "../components/math/MathScoreRank";
 import { useSession } from "../lib/session";
 import { recordStudy } from "../lib/store";
 import {
@@ -68,6 +46,28 @@ import {
 } from "../platforms/math";
 import type { MathRow, NoteKind } from "../platforms/math";
 import "./MathWorkspace.css";
+
+const QuestionReader = lazy(() => import("../components/math/MathQuestionReader"));
+const RichContent = lazy(() => import("../components/RichContent"));
+const MathNoteEditor = lazy(() => import("../components/math/MathNoteEditor"));
+const MathNotebook = lazy(() => import("../components/math/MathNotebook"));
+const MathSchools = lazy(() => import("../components/math/MathSchools"));
+const MathMessages = lazy(() => import("../components/math/MathMessages"));
+const MathSchoolAnalysis = lazy(() => import("../components/math/MathSchoolAnalysis"));
+const MathHighScoreGuide = lazy(() => import("../components/math/MathHighScoreGuide"));
+const MathQrcodeLookup = lazy(() => import("../components/math/MathQrcodeLookup"));
+const MathInformationResources = lazy(() => import("../components/math/MathInformationResources"));
+const MathCourses = lazy(() => import("../components/math/MathCourses"));
+const MathExams = lazy(() => import("../components/math/MathExams"));
+const MathAlbums = lazy(() => import("../components/math/MathAlbums"));
+const MathRelatedQuestions = lazy(() => import("../components/math/MathRelatedQuestions"));
+const MathPhotoSearch = lazy(() => import("../components/math/MathPhotoSearch"));
+const MathComputing = lazy(() => import("../components/math/MathComputing"));
+const MathScoreRank = lazy(() => import("../components/math/MathScoreRank"));
+const MathDiscussion = lazy(() => import("../components/math/MathDiscussion"));
+const MathDiscussionInbox = lazy(() => import("../components/math/MathDiscussion").then(module => ({ default: module.MathDiscussionInbox })));
+const MathQuestions = lazy(() => import("../components/math/MathQuestions"));
+const NewMathQuestion = lazy(() => import("../components/math/MathQuestions").then(module => ({ default: module.NewMathQuestion })));
 
 function useRemote<T>(key: string, load: () => Promise<T>) {
   const [data, setData] = useState<T>();
@@ -93,7 +93,7 @@ function useRemote<T>(key: string, load: () => Promise<T>) {
       active = false;
     };
   }, [key, version]);
-  return { data, error, loading, reload: () => setVersion((v) => v + 1) };
+  return { data, error, loading, reload: () => { invalidateCatalogResources(); setVersion((v) => v + 1); } };
 }
 function State({
   loading,
@@ -174,7 +174,7 @@ export default function MathWorkspace({ section }: { section: string }) {
   else content = <Library stuid={stuid} />;
   return (
     <MathLearningPlan key={`${session.user?.id}-${stuid}`}><div className="math-workspace">
-      {content}
+      <Suspense fallback={<State loading />}>{content}</Suspense>
     </div></MathLearningPlan>
   );
 }
@@ -421,7 +421,18 @@ function BookWorkspace({
   const catalog = useRemote(`book-${book.ID}`, () =>
     mathApi.bookCatalog(book.ID),
   );
-  const [current, setCurrent] = useState<MathRow>(book._resumeQuestion);
+  const [current, setCurrent] = useState<MathRow>();
+  const [resumeError, setResumeError] = useState("");
+  useEffect(() => {
+    if (!book._resumeQuestion) return;
+    let active = true;
+    Promise.resolve(book._resumeQuestion).then((row: MathRow | undefined) => {
+      if (active && row) setCurrent(selected => selected || row);
+    }).catch(() => {
+      if (active) setResumeError("上次阅读位置暂未读取，可直接从目录选题。");
+    });
+    return () => { active = false; };
+  }, [book.ID, book._resumeQuestion]);
   const [searchPage, setSearchPage] = useState("");
   const [searchNumber, setSearchNumber] = useState("");
   const [searchResults, setSearchResults] = useState<MathRow[]>();
@@ -505,6 +516,7 @@ function BookWorkspace({
       </div>
       <div className="math-study-layout">
         <aside className="panel math-catalog">
+          {resumeError && <p className="muted" role="status">{resumeError}</p>}
           <div className="math-catalog-heading">
             <h3>题目目录</h3>
             <button
@@ -599,7 +611,7 @@ function BookWorkspace({
         </aside>
         <main className="math-reader-area">
           {current ? (
-            <QuestionReader
+            <Suspense fallback={<State loading />}><QuestionReader
               row={current}
               book={book}
               stuid={stuid}
@@ -609,7 +621,7 @@ function BookWorkspace({
                   ? () => selectQuestion(rows[index + 1], true)
                   : undefined
               }
-            />
+            /></Suspense>
           ) : (
             <div className="panel math-reader-welcome">
               <div className="math-reader-welcome-icon">

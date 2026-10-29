@@ -5,7 +5,7 @@ import { stripTypeScriptTypes } from "node:module";
 
 // Transform the actual source: ApiError uses parameter properties that strip-only mode cannot erase.
 const source = stripTypeScriptTypes(readFileSync(new URL("../src/lib/api.ts", import.meta.url), "utf8"), { mode: "transform" });
-const { api, studyFetch, setApiIdentity, configureApiSpace, getSession, resolveApiPath, ApiError } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
+const { catalogResource, invalidateCatalogResources, api, studyFetch, setApiIdentity, configureApiSpace, getSession, resolveApiPath, ApiError } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
 const originalFetch = globalThis.fetch;
 const originalWindow = globalThis.window;
 const deferred = () => {
@@ -178,4 +178,66 @@ test("learning data and platform operations stay in the learning namespace while
     assert.equal(resolveApiPath("/api/system/setup"), "/api/system/setup");
     assert.equal(resolveApiPath("/api/learning/auth/session"), "/api/learning/auth/session");
   }
+});
+
+
+test("catalogue reads join concurrent loads and reuse stable data until refresh or expiry", async () => {
+  let calls = 0;
+  const first = deferred();
+  const load = () => { calls++; return first.promise; };
+  const one = catalogResource("book-1", load);
+  const two = catalogResource("book-1", load);
+  assert.equal(calls, 1);
+  first.resolve({ rows: [1, 2] });
+  assert.deepEqual(await Promise.all([one, two]), [{ rows: [1, 2] }, { rows: [1, 2] }]);
+  await catalogResource("book-1", load);
+  assert.equal(calls, 1, "returning to the catalogue reuses the completed read");
+  invalidateCatalogResources();
+  await catalogResource("book-1", load);
+  assert.equal(calls, 2, "explicit refresh requests a new response");
+  const originalNow = Date.now;
+  try {
+    Date.now = () => originalNow() + 61_000;
+    await catalogResource("book-1", load);
+    assert.equal(calls, 3, "catalogues expire after a minute");
+  } finally { Date.now = originalNow; }
+});
+
+test("personal catalogue progress joins only in-flight reads and retries failures", async () => {
+  let calls = 0;
+  let response = deferred();
+  const load = () => { calls++; return response.promise; };
+  const pending = catalogResource("chapter-progress", load, 0);
+  const joined = catalogResource("chapter-progress", load, 0);
+  response.resolve({ completed: 1 });
+  await Promise.all([pending, joined]);
+  assert.equal(calls, 1);
+  response = deferred();
+  const fresh = catalogResource("chapter-progress", load, 0);
+  response.resolve({ completed: 2 });
+  assert.deepEqual(await fresh, { completed: 2 });
+  assert.equal(calls, 2, "returning after an answer must read current progress");
+  await assert.rejects(catalogResource("failed-catalogue", () => Promise.reject(new Error("offline"))), /offline/);
+  assert.deepEqual(await catalogResource("failed-catalogue", async () => ["retry"]), ["retry"]);
+});
+
+test("catalogues are scoped to the displayed user and space and clear pending reads on refresh", async () => {
+  let calls = 0;
+  const load = async () => ++calls;
+  setApiIdentity("first");
+  assert.equal(await catalogResource("shared-key", load), 1);
+  configureApiSpace("admin");
+  assert.equal(await catalogResource("shared-key", load), 2);
+  setApiIdentity("second");
+  assert.equal(await catalogResource("shared-key", load), 3);
+  setApiIdentity("first");
+  assert.equal(await catalogResource("shared-key", load), 4, "relogin discards the previous user's resources");
+  const old = deferred();
+  const pending = catalogResource("pending", () => old.promise);
+  invalidateCatalogResources();
+  const refreshed = await catalogResource("pending", async () => "new");
+  old.resolve("old");
+  await pending;
+  assert.equal(refreshed, "new");
+  assert.equal(await catalogResource("pending", async () => "unexpected"), "new");
 });

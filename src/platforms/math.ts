@@ -1,10 +1,19 @@
-import { platformRequest, studyFetch } from "../lib/api";
+import { catalogResource, platformRequest, studyFetch } from "../lib/api";
 import { mergeMathLibraryCatalog } from "./math-library";
 import { mathResponseData, mathResponseError } from "./math-response";
 
 export type MathRow = Record<string, any>;
 export type NoteKind = "错题" | "收藏" | "笔记";
 const station = 1;
+const stableCatalogCommands = new Set([
+  "GetBookPaperListOfVip", "GetBookListCountAndLookCount_New", "GetQuestionNexts2",
+  "GetBookHighscorealbumList", "GetCoursePacketList",
+]);
+const stableCatalogPaths = new Set([
+  "/api/book_highscorealbum_catalog/GetListByPagev2",
+  "/api/book_highscorealbum_catalog/GetlistByCacheV2",
+  "/api/c_course_list/GetListByPage", "/api/c_course_packet/GetListByPage",
+]);
 
 function checked(response: any) {
   const error = mathResponseError(response);
@@ -16,7 +25,7 @@ export async function mathCommand(
   params: MathRow = {},
   model = false,
 ) {
-  return checked(
+  const load = async () => checked(
     await platformRequest("math", {
       path: model ? "/api/Master/Model" : "/api/Master/AutoModel",
       method: "POST",
@@ -28,6 +37,9 @@ export async function mathCommand(
       },
     }),
   );
+  return /^Get/.test(command)
+    ? catalogResource(JSON.stringify(["math-command", command, model, params]), load, stableCatalogCommands.has(command) ? 60_000 : 0)
+    : load();
 }
 // AutoModel also caches personalized reports by command parameters. Reads that
 // follow a write need a new parameter, just as the original GET client does.
@@ -35,7 +47,9 @@ export function mathFreshCommand(command: string, params: MathRow = {}) {
   return mathCommand(command, { ...params, t: Date.now() });
 }
 export async function mathGet(path: string, query: MathRow = {}) {
-  return checked(await platformRequest("math", { path, method: "GET", query }));
+  return catalogResource(JSON.stringify(["math-get", path, query]),
+    async () => checked(await platformRequest("math", { path, method: "GET", query })),
+    stableCatalogPaths.has(path) ? 60_000 : 0);
 }
 export async function mathPost(path: string, data: MathRow = {}) {
   return checked(await platformRequest("math", { path, method: "POST", data }));

@@ -15,8 +15,8 @@ const compiled = ts
     },
   })
   .outputText.replace(
-    /import \{ platformRequest, studyFetch \} from ['"]\.\.\/lib\/api['"];?/,
-    "const platformRequest=(...args)=>globalThis.__computerTestRequest(...args); const studyFetch=(...args)=>globalThis.__computerTestFetch(...args);",
+    /import \{ catalogResource, platformRequest, studyFetch \} from ['"]\.\.\/lib\/api['"];?/,
+    "const catalogResource=(_key,load)=>load();const platformRequest=(...args)=>globalThis.__computerTestRequest(...args); const studyFetch=(...args)=>globalThis.__computerTestFetch(...args);",
   );
 const adapter = await import(
   `data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`

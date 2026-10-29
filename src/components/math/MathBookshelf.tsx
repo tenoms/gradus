@@ -1,6 +1,7 @@
 import { useMathLearningPlan } from "./MathLearningPlan";
 import { matchesMathSubject } from "./learning-plan-model.mjs";
 import { useEffect, useRef, useState } from "react";
+import { invalidateCatalogResources } from "../../lib/api";
 import Pagination from "../Pagination";
 import { usePagination } from "../../lib/pagination";
 import {
@@ -34,7 +35,7 @@ export default function MathBookshelf({
   onOpenBook,
 }: {
   stuid: string;
-  onOpenBook: (book: R, lastQuestion?: R) => void;
+  onOpenBook: (book: R, lastQuestion?: Promise<R | undefined>) => void;
 }) {
   const catalogRef = useRef<HTMLDivElement>(null);
   const { subject } = useMathLearningPlan();
@@ -176,19 +177,10 @@ export default function MathBookshelf({
       setBusy(false);
     }
   }
-  async function read(book: R) {
-    setBusy(true);
-    setError("");
-    try {
-      const last = shelfRows(
-        await bookshelfApi.lastQuestion(stuid, book.ID),
-      )[0];
-      onOpenBook(book, shelfLastQuestion(last));
-    } catch (e: any) {
-      setError(`上次阅读位置暂未读取：${e.message}`);
-    } finally {
-      setBusy(false);
-    }
+  function read(book: R) {
+    onOpenBook(book, bookshelfApi.lastQuestion(stuid, book.ID).then(response =>
+      shelfLastQuestion(shelfRows(response)[0]),
+    ));
   }
   return (
     <div className="math-bookshelf">
@@ -239,7 +231,7 @@ export default function MathBookshelf({
           <button
             className="bookshelf-icon"
             aria-label="刷新书架"
-            onClick={() => setVersion((v) => v + 1)}
+            onClick={() => { invalidateCatalogResources(); setVersion((v) => v + 1); }}
             disabled={loading || busy}
           >
             <RefreshCw size={17} />

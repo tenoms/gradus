@@ -1,3 +1,4 @@
+import { invalidateCatalogResources } from "../../lib/api";
 import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, BookOpen, FileText, LoaderCircle, Search } from "lucide-react";
 import { mathCommand, mathGet, mathPost, mathRows, mathTitle } from "../../platforms/math";
@@ -14,7 +15,7 @@ function useGuideData(key: string, load: () => Promise<any>) {
     load().then(value => { if (active) setData(value); }).catch(error => { if (active) setError(error.message); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [key, version]);
-  return { data, loading, error, reload: () => setVersion(v => v + 1) };
+  return { data, loading, error, reload: () => { invalidateCatalogResources(); setVersion(v => v + 1); } };
 }
 
 export default function MathHighScoreGuide({ stuid }: { stuid: string }) {

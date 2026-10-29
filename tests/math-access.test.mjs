@@ -10,7 +10,7 @@ const compile = source => ts.transpileModule(source, {
 }).outputText;
 const source = await readFile(new URL("../src/platforms/math.ts", import.meta.url), "utf8");
 const output = compile(source)
-  .replace(/import \{ platformRequest, studyFetch \} from ["']\.\.\/lib\/api["'];?/, "const platformRequest=(...args)=>globalThis.__mathContentRequest(...args); const studyFetch=()=>{throw new Error('unexpected upload')};")
+  .replace(/import \{ catalogResource, platformRequest, studyFetch \} from ["']\.\.\/lib\/api["'];?/, "const catalogResource=(_key,load)=>load();const platformRequest=(...args)=>globalThis.__mathContentRequest(...args); const studyFetch=()=>{throw new Error('unexpected upload')};")
   .replace(/import \{ mergeMathLibraryCatalog \} from ["']\.\/math-library["'];?/, "const {mergeMathLibraryCatalog}=globalThis.__mathContentFixture;")
   .replace(/import \{ mathResponseData, mathResponseError \} from ["']\.\/math-response["'];?/, "const {mathResponseData,mathResponseError}=globalThis.__mathContentFixture;");
 globalThis.__mathContentFixture = { mergeMathLibraryCatalog, mathResponseData, mathResponseError };
