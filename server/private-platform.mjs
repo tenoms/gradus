@@ -10,7 +10,7 @@ const collectionFor = path => path.split('/')[2];
 const records = value => Array.isArray(value) ? value : value?.list || value?.records || value?.exercises || value?.exerciseList || value?.questionList || value?.groupList || [];
 function computerQuestions(response) {
   const data=unwrap(response),map=data?.exerciseMap || {};
-  return records(data?.exercises || data?.exerciseList || data?.questionList || (data?.exerciseId?[data]:data)).map(row=>({...row,...(map[row.exerciseId] || {}),exerciseId:row.exerciseId || row.id,...(map[row.exerciseId]?.questions?{questionList:map[row.exerciseId].questions}:{})}));
+  return records(data?.exercises || data?.exerciseList || data?.questionList || (data?.exerciseId?[data]:data)).map(row=>{const detail=map[row.exerciseId],options=detail?.questions??row.questions??row.questionList;return {...row,...(detail || {}),exerciseId:row.exerciseId || row.id,...(Array.isArray(options)?{questions:options,questionList:options}:{})};});
 }
 const dateBucket = value => {
   const day=86400000,offset=28800000,today=Math.floor((Date.now()+offset)/day),monday=today-((today+3)%7),created=Math.floor((Date.parse(value || '')+offset)/day);

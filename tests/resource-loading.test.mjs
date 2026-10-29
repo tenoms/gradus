@@ -100,3 +100,22 @@ test('full question snapshots use one batch write and still support private coll
     const another=await store.list('another-learner','computer','collection');assert.equal(another.length,0);
   }finally{await database.close();}
 });
+
+test('a null exerciseMap.questions preserves the four choices returned with the actual exercise',async()=>{
+  const options=['A','B','C','D'].map((questionStem,index)=>({questionStem,questionOrder:index+1,questionScore:0,questionAnswer:`选项 ${questionStem}`,questionAnalysis:null}));
+  const fixture={code:200,data:{examId:'paper',exerciseTotalNumber:1,examExerciseIdList:['q1'],exercises:[{exerciseId:'q1',exerciseType:1,exerciseStems:'完整题干',exerciseAnswer:'A',questions:options,questionList:null}],exerciseMap:{q1:{exerciseId:'q1',exerciseType:1,exerciseTotalScore:2,questions:null}}}};
+  const app=await startHttpApp({yybRequest:async()=>[{id:'7',status:'alive'}],loginPlatform:async()=>({connected:true,token:'source-token',user:{userId:'source-student'}}),computerRequest:async()=>fixture});
+  try{
+    const admin=await app.setup();await app.createUser(admin,testLearner('loading.options','7'));const learner=await app.login('learning','loading.options','learner-password-123');
+    await app.request('/api/admin/resource-sync',{auth:admin,method:'PUT',body:{revision:0,enabled:true}});
+    const input={path:'/api/exam/wx/practice/exerciseList',method:'GET',query:{majorId:'major',chapterId:'chapter',number:1},data:{}};
+    const response=await app.request('/api/learning/platform/computer',{auth:learner,body:input});assert.equal(response.status,200);const exercise=(await response.json()).data.exercises[0];
+    assert.deepEqual(exercise.questions,options);assert.deepEqual(exercise.questionList,options);
+    const {resourceIdentity}=await import('../server/resource-catalog.mjs');
+    const identity=resourceIdentity('computer',session,app.app.locals.configuration.snapshot(),input);
+    const entities=await app.app.locals.resourceStore.findEntities({sourceId:identity.source.id,platform:'computer',kind:'question',id:'q1'});
+    assert.deepEqual(entities[0].payload.questions,options,'shared question entities preserve choices when map detail is null');
+    const whole=await app.request('/api/learning/platform/computer',{auth:learner,body:{path:'/api/exam/wx/practice/examExercise',query:{examId:'paper'}}});assert.equal(whole.status,200);
+    assert.deepEqual((await whole.json()).data.exercises[0].questions,options,'whole-paper parsing preserves the same actual response structure');
+  }finally{await app.close();}
+});

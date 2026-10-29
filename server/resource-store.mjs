@@ -43,7 +43,7 @@ export async function createResourceStore(database) {
   }
   function entityItems(platform, task, response) {
     const body = response?.data ?? response?.Data ?? response;
-    const rows = resourceRows(response).map(row => stripSharedPersonalState(row)).map((row,index) => { const detail = stripSharedPersonalState(body?.exerciseMap?.[row.exerciseId]); return {...row,...(detail || {}),_resourceOrder:task.context?._resourceOrder ?? index,...(detail?.questions ? {questionList:detail.questions} : {})}; }), path = task.request.path, command = task.request.data?.command || '';
+    const rows = resourceRows(response).map(row => stripSharedPersonalState(row)).map((row,index) => { const detail = stripSharedPersonalState(body?.exerciseMap?.[row.exerciseId]),options=detail?.questions??row.questions??row.questionList; return {...row,...(detail || {}),_resourceOrder:task.context?._resourceOrder ?? index,...(Array.isArray(options)?{questions:options,questionList:options}:{})}; }), path = task.request.path, command = task.request.data?.command || '';
     const kind = /SoleDes|Resolve|Analyse|Analysis/.test(path + command) ? 'analysis' : /question_files/.test(path) ? 'file' : /Question|question|searchExercise\/info|examExercise|exerciseList/.test(path + command) ? 'question' : /course|Course/.test(path + command) ? 'course' : /school|School/.test(path + command) ? 'school' : 'catalog';
     const context = task.context || {};
     const result = [];

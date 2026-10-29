@@ -108,7 +108,7 @@ export function createResourceSync({store,service,configuration,accountPool}) {
       const clean=publicResourceResponse(publicContent(response)),data=clean?.data??clean?.Data??clean;
       const returned=resourceRows(clean);
       if(!returned.length&&data?.exerciseId)returned.push(data);
-      const questions=returned.map((row,index)=>{const detail=data?.exerciseMap?.[row.exerciseId];return {...query,...row,...(detail||{}),_resourceOrder:(number>0?number-1:0)+index,...(detail?.questions?{questionList:detail.questions}:{})};});
+      const questions=returned.map((row,index)=>{const detail=data?.exerciseMap?.[row.exerciseId],options=detail?.questions??row.questions??row.questionList;return {...query,...row,...(detail||{}),_resourceOrder:(number>0?number-1:0)+index,...(Array.isArray(options)?{questions:options,questionList:options}:{})};});
       const questionIds=(Array.isArray(data?.examExerciseIdList)?data.examExerciseIdList:questions.map(row=>row.exerciseId||row.id)).map(String);
       const total=Number(data?.exerciseTotalNumber??data?.total??questionIds.length);
       return {imported:true,persisted,cacheState,questions,total,questionIds,examId:data?.examId??data?.examinationId,response:clean};
