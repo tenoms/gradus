@@ -21,6 +21,7 @@ import Announcements from "../../identity/Announcements";
 import TaskRow from "../plans/TaskRow";
 import { useStudyData } from "../state/store";
 import { platformLabel as label, today } from "../study-format";
+import { formatStudyDuration, studyDurationValue, studySummary } from "../study-summary.mjs";
 import WeeklyChart from "./WeeklyChart";
 
 export default function Dashboard({
@@ -34,17 +35,10 @@ export default function Dashboard({
   const { tasks, activities, goalMinutes } = useStudyData();
   const todaysTasks = tasks.filter((t) => t.date === today());
   const completed = todaysTasks.filter((t) => t.done).length;
-  const todaysActivities = activities.filter(
-    (a) =>
-      new Date(a.at).toLocaleDateString("sv-SE", {
-        timeZone: "Asia/Shanghai",
-      }) === today(),
-  );
-  const questions = todaysActivities.reduce((n, a) => n + (a.total || 0), 0);
-  const minutes = Math.floor(
-    todaysActivities.reduce((n, a) => n + (a.durationSeconds || 0), 0) / 60,
-  );
-  const recent = activities[0];
+  const summary = studySummary(activities, { date: today() });
+  const { events } = studySummary(activities);
+  const duration = studyDurationValue(summary.durationSeconds);
+  const recent = events[0];
   return (
     <>
       <h1 className="sr-only">学习概览</h1>
@@ -119,21 +113,21 @@ export default function Dashboard({
                 </span>
               </div>
               <div className="stat-number">
-                {questions}
+                {summary.questions}
                 <small>题</small>
               </div>
               <span className="stat-note">每一题，都算数</span>
             </div>
             <div className="stat-card">
               <div className="stat-top">
-                <span>本日记录时长</span>
+                <span>今日学习时长</span>
                 <span className="mini-icon mint">
                   <Clock3 size={17} />
                 </span>
               </div>
-              <div className="stat-number">
-                {minutes}
-                <small>分钟</small>
+              <div className="stat-number" title={formatStudyDuration(summary.durationSeconds)}>
+                {duration.value}
+                <small>{duration.unit}</small>
               </div>
               <span className="stat-note">
                 目标 {goalMinutes} 分钟 <Link to="/profile?tab=settings">调整</Link>
@@ -202,9 +196,9 @@ export default function Dashboard({
                 <ArrowRight size={14} />
               </Link>
             </div>
-            {activities.length ? (
+            {events.length ? (
               <div className="recent-list">
-                {activities.slice(0, 3).map((a) => (
+                {events.slice(0, 3).map((a) => (
                   <Link
                     to={a.path || "/study/practice"}
                     className="recent-item"

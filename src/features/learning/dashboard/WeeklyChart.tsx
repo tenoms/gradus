@@ -1,22 +1,11 @@
 import { useStudyData } from "../state/store";
+import { studyWeek } from "../study-summary.mjs";
 
 export default function WeeklyChart() {
   const { activities } = useStudyData();
-  const dates = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - 6 + i);
-    return d.toLocaleDateString("sv-SE", { timeZone: "Asia/Shanghai" });
-  });
-  const counts = dates.map((d) =>
-    activities
-      .filter(
-        (a) =>
-          new Date(a.at).toLocaleDateString("sv-SE", {
-            timeZone: "Asia/Shanghai",
-          }) === d,
-      )
-      .reduce((n, a) => n + (a.total || 1), 0),
-  );
+  const week = studyWeek(activities);
+  const dates = week.map(day => day.date);
+  const counts = week.map(day => day.count);
   const max = Math.max(5, ...counts);
   return (
     <div

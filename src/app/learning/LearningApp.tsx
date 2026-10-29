@@ -41,6 +41,7 @@ import TaskEditor from "../../features/learning/plans/TaskEditor";
 import StudyInsights from "../../features/learning/reports/StudyInsights";
 import StudySettings from "../../features/learning/settings/StudySettings";
 import { setUserScope } from "../../features/learning/state/store";
+import StudyTimeProvider from "../../features/learning/time/StudyTimeProvider";
 import type { Platform, Session } from "../../shared/api/client";
 import { emptySession, getSession, setApiIdentity } from "../../shared/api/client";
 import { SessionContext, useSession } from "../../shared/auth/session";
@@ -203,6 +204,7 @@ export default function LearningApp() {
     <SessionContext.Provider
       value={{ session, refresh, openLogin: () => navigate("/profile") }}
     >
+    <StudyTimeProvider key={session.user?.id}>
       <div key={session.user?.id || "guest"} className={`app-shell ${sidebarCollapsed ? "nav-collapsed" : ""}`} inert={taskOpen}>
         <a className="skip-link" href="#main-content">
           跳到学习内容
@@ -454,6 +456,7 @@ export default function LearningApp() {
       {taskOpen && (
         <TaskEditor platform={platform} onClose={() => setTaskOpen(false)} />
       )}
+    </StudyTimeProvider>
     </SessionContext.Provider>
   );
 }

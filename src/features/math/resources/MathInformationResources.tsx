@@ -10,6 +10,7 @@ import {
 import RichContent from "../../../shared/content/RichContent";
 import { mathGet, mathRows } from "../api/math";
 import type { MathRow } from "../api/math";
+import { useStudyTimer } from "../../learning/time/use-study-timer";
 import "./math-information-resources.css";
 const url = (value: any) =>
   typeof value === "string" && /^https?:\/\//i.test(value) ? value : "";
@@ -157,6 +158,13 @@ function KnowledgeArticle({
   const image = String(current.HeadImg || "")
     .replaceAll(".png_yjs", ".png")
     .split(";")[0];
+  useStudyTimer({
+    key: `math-knowledge:${stuid}:${row.ID}`,
+    platform: "math",
+    title: current.Name || current.Title || "考研知识",
+    path: "/study/resources",
+    enabled: !remote.loading && !remote.error && !!(current.Contexts || current.Content || current.Notes || image || files.some(file => /\.(png|jpe?g|gif|webp)(\?|$)/i.test(file))),
+  });
   return (
     <div className="math-workspace">
       <button className="math-back" onClick={back}>

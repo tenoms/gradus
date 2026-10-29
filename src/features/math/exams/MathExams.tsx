@@ -27,6 +27,7 @@ import { mathOptionFeedback, mathQuestionPrompt } from "../questions/math-questi
 import "../questions/math-choice-feedback.css";
 import { mathCommand, mathData, mathGet, mathPost } from "../api/math";
 import { recordActivity } from "../../learning/state/store";
+import { useStudyTimer } from "../../learning/time/use-study-timer";
 import {
   buildMathExamRecord,
   correctOptionIds,
@@ -231,6 +232,13 @@ function PaperRunner({
     });
   };
   const currentProgress = progressFor(question);
+  useStudyTimer({
+    key: draftKey,
+    platform: "math",
+    title: examName(meta),
+    path: "/study/exams",
+    enabled: (started || finished) && draftReady && !!loaded.data && !loaded.loading && !loaded.error && questions.length > 0 && !followup && !teacherRecommendations,
+  });
   useEffect(() => {
     if (!loaded.data) return;
     const d = loaded.data,
@@ -501,7 +509,6 @@ function PaperRunner({
                   Number(recordScore(context, existingRecord(context, q))) ===
                   questionMax(q),
               ).length,
-          durationSeconds: elapsed,
           path: "/study/exams",
         });
         recorded.current = true;

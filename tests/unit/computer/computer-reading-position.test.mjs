@@ -27,14 +27,19 @@ const deferred = () => {
   return { promise, resolve, reject };
 };
 
-function session({ data = {}, launch = {}, cache = new Map(), load, save = async () => true } = {}) {
-  const hooks = [], loads = [], saves = [];
+function session({ data = {}, launch = {}, cache = new Map(), load, save = async () => true, report = { examRecord: { id: "own-record" }, answerList: [] } } = {}) {
+  const hooks = [], loads = [], saves = [], studyTimers = [];
   let cursor = 0, dirty = true, pending = [], tree;
   const scope = {
     ...workflow,
     React: { Fragment: "Fragment" },
     element: (type, props, ...children) => ({ type, props: { ...props, children } }),
     useSession: () => ({ session: { user: { id: "web-student" } } }),
+    useStudyTimer: options => studyTimers.push(options),
+    buildComputerAnswer: ({ question, answer }) => ({ exerciseId: question.exerciseId, answer, answerType: 1 }),
+    buildComputerSubmission: ({ answers }) => ({ answers }),
+    recordActivity: () => {},
+    window: { confirm: () => true },
     useState(initial) {
       const index = cursor++;
       if (!hooks[index]) hooks[index] = { value: typeof initial === "function" ? initial() : initial };
@@ -57,9 +62,13 @@ function session({ data = {}, launch = {}, cache = new Map(), load, save = async
     localStorage: { getItem: key => cache.get(key), setItem: (key, value) => cache.set(key, value), removeItem: key => cache.delete(key) },
     request: async (...args) => {
       loads.push(args);
+      if (args[0].endsWith("/submitExam")) return { examRecordId: "own-record" };
       return load ? load(...args) : { exercises: [question(args[1].number)], examRecordId: "own-record" };
     },
-    computerLearningApi: { saveSheetIndex: async (...args) => { saves.push(args); return save(...args); } },
+    computerLearningApi: {
+      saveSheetIndex: async (...args) => { saves.push(args); return save(...args); },
+      submittedReport: async () => report,
+    },
     exerciseSource: () => "",
     typeNames: { 4: "综合题" },
     safeLink: value => value,
@@ -95,11 +104,15 @@ function session({ data = {}, launch = {}, cache = new Map(), load, save = async
   render();
   return {
     loads, saves, render, settle, cache,
+    studyTimer: () => studyTimers.at(-1),
+    related: data => elements(node => node.type === "ComputerQuestionTools")[0].props.onRelated(data),
+    closeRelated: () => elements(node => node.props?.launch && node.props?.onClose)[0].props.onClose(),
     workbench: () => elements(node => node.type === "LearningWorkbench")[0].props,
     button: name => elements(node => node.type === "button").find(node => textOf(node) === name)?.props,
     sheet: () => elements(node => node.type === "button" && node.props?.["aria-current"] === "step")[0]?.props,
     sheetButtons: () => elements(node => node.type === "button" && /^第 \d+ 题，/.test(node.props?.["aria-label"] || "")).map(node => node.props),
     stem: () => elements(node => node.type === "RichContent" && node.props?.className === "computer-question-stem")[0]?.props.content,
+    report: () => elements(node => node.type === "ComputerExamReport")[0]?.props.data,
     error: () => elements(node => node.type === "Status")[0]?.props.error,
     notice: () => elements(node => node.props?.className === "computer-notice").map(textOf).join(""),
     unmount: () => { for (const hook of hooks) hook.cleanup?.(); },
@@ -110,10 +123,13 @@ test("cloud continuation overrides an older browser position while keeping the l
   const cache = new Map([[cacheKey(), JSON.stringify({ answers: { q3: "draft" }, current: 0 })]]);
   const view = session({ data: { sheetIndex: 3 }, cache });
   assert.equal(view.workbench().disabled, true, "restore disables keyboard navigation");
+  assert.equal(view.studyTimer().enabled, false, "restoring a question is not learning time");
   assert.ok(view.sheetButtons().every(button => button.disabled));
   await view.settle();
   assert.equal(view.loads[0][1].number, 3);
   assert.equal(view.stem(), "Question 3");
+  assert.equal(view.studyTimer().enabled, true);
+  assert.match(view.studyTimer().title, /第 3 题/);
   assert.deepEqual(view.saves, [["own-record", 3]]);
   assert.equal(view.button("上一题").disabled, false);
   assert.equal(view.button("下一题").disabled, true);
@@ -157,11 +173,13 @@ test("question navigation remains disabled until its cloud position is saved", a
   await view.settle(); view.button("下一题").onClick(); await view.settle();
   assert.equal(view.stem(), "Question 2");
   assert.equal(view.workbench().disabled, true);
+  assert.equal(view.studyTimer().enabled, false, "pending source work is excluded from reading time");
   assert.equal(view.button("上一题").disabled, true);
   assert.equal(view.button("下一题").disabled, true);
   assert.ok(view.sheetButtons().every(button => button.disabled));
   saved.resolve(true); await view.settle();
   assert.equal(view.workbench().disabled, false);
+  assert.equal(view.studyTimer().enabled, true);
   assert.equal(view.button("上一题").disabled, false);
   view.unmount();
 });
@@ -189,10 +207,40 @@ test("report review respects its explicit question and does not overwrite practi
   const view = session({ data: { exercises: [question(1), question(2), question(3)], initialIndex: 2, sheetIndex: 1 }, launch: { readOnly: true } });
   await view.settle();
   assert.equal(view.stem(), "Question 3");
+  assert.equal(view.studyTimer().enabled, true, "reading saved explanations is real study even without another submission");
   view.button("上一题").onClick(); await view.settle();
   assert.equal(view.stem(), "Question 2");
   assert.equal(view.saves.length, 0);
   assert.equal(view.cache.size, 0);
+  view.unmount();
+});
+
+test("empty question sessions do not start study time, and related practice suspends its parent", async () => {
+  const empty = session({ data: { exercises: [], exerciseTotalNumber: 0 } });
+  await empty.settle();
+  assert.equal(empty.studyTimer().enabled, false);
+  empty.unmount();
+  const view = session(); await view.settle();
+  assert.equal(view.studyTimer().enabled, true);
+  view.related({ exercises: [question(9)], examId: "related-paper" }); view.render();
+  assert.equal(view.studyTimer().enabled, false, "a hidden parent cannot count alongside its related practice");
+  view.closeRelated(); view.render();
+  assert.equal(view.studyTimer().enabled, true);
+  view.unmount();
+});
+
+test("handing in a paper keeps visible questions and explanations timed alongside its inline report", async () => {
+  const view = session({
+    launch: { examType: 2 },
+    data: { exercises: [question(1)], exerciseTotalNumber: 1, answerList: [{ exerciseId: "q1", answer: "A" }] },
+  });
+  await view.settle();
+  assert.equal(view.studyTimer().enabled, true);
+  view.button("交卷").onClick(); await view.settle();
+  assert.equal(view.button("交卷"), undefined, "the actual paper submission completed");
+  assert.equal(view.report().examRecord.id, "own-record");
+  assert.equal(view.stem(), "Question 1", "the question remains visible below the report");
+  assert.equal(view.studyTimer().enabled, true, "post-submit review is still real learning");
   view.unmount();
 });
 

@@ -19,6 +19,7 @@ import MathModelTraining from "../practice/MathModelTraining";
 import { courseAlbumApi as api } from "./math-course-album";
 import type { CourseAlbumContext } from "./math-course-album";
 import { courseAlbumTree } from "./course-album-model.mjs";
+import { useStudyTimer } from "../../learning/time/use-study-timer";
 import "./math-course-album.css";
 function useData(key: string, load: () => Promise<any>) {
   const [data, setData] = useState<any>(),
@@ -127,6 +128,13 @@ export default function MathCourseAlbum({
         ? api.operations(reading.data.rows, context)
         : Promise.resolve({}),
   );
+  useStudyTimer({
+    key: `math-course-album:${stuid}:${CourseID}:${CalendarID}:${AlbumID}:${catalog?.ID || ""}`,
+    platform: "math",
+    title: `${mathTitle(info)} · ${catalog ? mathTitle(catalog) : "课程专辑"}`,
+    path: "/study/courses",
+    enabled: !!catalog && !question && !group && !remote.loading && !remote.error && !reading.loading && !reading.error && !!reading.data?.rows?.length,
+  });
   useEffect(() => {
     if (catalogs.length === 1 && !catalog) setCatalog(catalogs[0]);
   }, [remote.data]);

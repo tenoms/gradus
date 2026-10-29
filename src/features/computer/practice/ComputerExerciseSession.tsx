@@ -14,6 +14,7 @@ import RichContent from "../../../shared/content/RichContent";
 import LearningWorkbench from "../../learning/workbench/LearningWorkbench";
 import { useSession } from "../../../shared/auth/session";
 import { recordActivity } from "../../learning/state/store";
+import { useStudyTimer } from "../../learning/time/use-study-timer";
 import {
   computerRequest as request,
   buildComputerAnswer,
@@ -118,7 +119,6 @@ export default function ExerciseSession({
     [ai, setAi] = useState<Record<string, R>>({});
   const started = useRef(Date.now()),
     questionStarted = useRef(Date.now()),
-    lastActivity = useRef(Date.now()),
     progressRecord = useRef(String(launch.data.examRecordId || launch.recordId || "")),
     recordedIds = useRef(new Set<string>()),
     submissionPending = useRef(false);
@@ -138,6 +138,13 @@ export default function ExerciseSession({
   const category = launch.examCategory || 1;
   const immediateChoice = computerImmediateChoice(launch, type);
   const storageKey = `study:computer:draft:${computerDraftScope(session)}:${launch.majorId}:${category}:${launch.data.examRecordId || launch.recordId || examId || launch.chapterId || "random"}:${launch.examType}:${launch.examGroupId || ""}:${launch.redo ? `${launch.redo.kind}:${launch.redo.dateFlag}:${launch.redo.sort}` : ""}`;
+  useStudyTimer({
+    key: `${storageKey}:${id}`,
+    platform: "computer",
+    title: `${launch.title} · 第 ${current + 1} 题`,
+    path: "/study/question-bank",
+    enabled: !!id && !related && draftLoaded && !loading,
+  });
   useEffect(() => {
     let active = true;
     async function restore() {
@@ -265,13 +272,9 @@ export default function ExerciseSession({
           title: launch.title,
           total: newlyRecorded.length,
           correct: newlyRecorded.filter((a) => a.answerType === 1).length,
-          durationSeconds: Math.round(
-            (Date.now() - lastActivity.current) / 1000,
-          ),
           path: "/study/review",
         });
         newlyRecorded.forEach((a) => recordedIds.current.add(a.exerciseId));
-        lastActivity.current = Date.now();
       }
       if (all) {
         setFinished(true);

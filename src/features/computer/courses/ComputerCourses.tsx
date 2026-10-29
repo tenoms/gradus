@@ -142,6 +142,8 @@ export default function ComputerCourses() {
     lastSave = useRef(0),
     playStart = useRef(0),
     studySeconds = useRef(0);
+  const recordedPlayback = useRef(false);
+  const saveOnLeave = useRef<() => void>(() => {});
   const subcourses = course ? orderedSubcourses(course) : [];
   const files = courseAttachments(lesson, detail.data);
   const lessonRows = records(lessons.data);
@@ -156,6 +158,31 @@ export default function ComputerCourses() {
       Math.ceil(Number(comments.data?.total || 0) / 50) ||
       1,
   );
+  function trackPlayback(playing: boolean) {
+    const now = Date.now();
+    if (playStart.current) studySeconds.current += (now - playStart.current) / 1000;
+    playStart.current = playing && !document.hidden ? now : 0;
+  }
+  saveOnLeave.current = () => {
+    const element = videoRef.current;
+    trackPlayback(false);
+    if (element) void saveProgress(element, true);
+  };
+  useEffect(() => {
+    if (!video) return;
+    const element = videoRef.current;
+    const visibility = () => {
+      if (document.hidden) saveOnLeave.current();
+      else if (element && !element.paused && !element.seeking && element.readyState >= 3) trackPlayback(true);
+    };
+    document.addEventListener("visibilitychange", visibility);
+    window.addEventListener("pagehide", saveOnLeave.current);
+    const onLeave = saveOnLeave.current;
+    return () => {
+      document.removeEventListener("visibilitychange", visibility);
+      window.removeEventListener("pagehide", onLeave);
+    };
+  }, [video]);
   async function play(item: R) {
     const directUrl = safeLink(item.videoUrl || item.playUrl);
     if (!String(item.mediaId || "").trim() && !directUrl) {
@@ -165,6 +192,7 @@ export default function ComputerCourses() {
     setLoading(true);
     setError("");
     if (videoRef.current && lesson) await saveProgress(videoRef.current, true);
+    trackPlayback(false);
     setVideo("");
     setNotice("");
     setLesson({ ...item, _studyCourseId: groupCourseId });
@@ -185,6 +213,7 @@ export default function ComputerCourses() {
       lastSave.current = Number(item.watchHistoryTime || 0);
       studySeconds.current = 0;
       playStart.current = 0;
+      recordedPlayback.current = false;
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -193,15 +222,12 @@ export default function ComputerCourses() {
   }
   async function saveProgress(element: HTMLVideoElement, force = false) {
     if (!lesson || !course) return;
-    const now = Date.now();
-    const elapsed =
-      studySeconds.current +
-      (playStart.current ? (now - playStart.current) / 1000 : 0);
+    trackPlayback(playStart.current > 0);
+    const elapsed = studySeconds.current;
     if (!elapsed && element.currentTime === lastSave.current) return;
     if (!force && element.currentTime - lastSave.current < 30) return;
     lastSave.current = element.currentTime;
     studySeconds.current = 0;
-    playStart.current = element.paused ? 0 : now;
     const payload = lessonProgress({
       lesson,
       courseId: groupCourseId,
@@ -209,14 +235,6 @@ export default function ComputerCourses() {
       duration: element.duration,
       elapsed,
     });
-    if (elapsed >= 1)
-      recordActivity({
-        platform: "computer",
-        type: "course",
-        title: label(lesson),
-        durationSeconds: Math.round(elapsed),
-        path: "/study/courses",
-      });
     try {
       await request("/api/exam/wx/lessonHistory/add/", {}, "POST", payload);
       setNotice("学习进度已同步");
@@ -241,6 +259,7 @@ export default function ComputerCourses() {
   });
   async function back() {
     if (videoRef.current) await saveProgress(videoRef.current, true);
+    trackPlayback(false);
     setCourse(null);
     setVideo("");
     setLesson(null);
@@ -391,24 +410,37 @@ export default function ComputerCourses() {
                     src={video}
                     controls
                     playsInline
+                    study={{ platform: "computer", title: label(lesson || course), path: "/study/courses", key: String(lesson?.id || video) }}
                     onLoadedMetadata={(e) => {
                       e.currentTarget.currentTime = Number(
                         lesson?.watchHistoryTime || 0,
                       );
                       e.currentTarget.playbackRate = Number(rate);
                     }}
-                    onPlay={() => {
-                      playStart.current = Date.now();
+                    onPlaying={() => {
+                      trackPlayback(true);
+                      if (!recordedPlayback.current && lesson) {
+                        recordedPlayback.current = true;
+                        recordActivity({
+                          platform: "computer",
+                          type: "course",
+                          title: label(lesson),
+                          path: "/study/courses",
+                        });
+                      }
+                    }}
+                    onWaiting={() => trackPlayback(false)}
+                    onSeeking={() => trackPlayback(false)}
+                    onSeeked={(e) => {
+                      if (!e.currentTarget.paused && e.currentTarget.readyState >= 3) trackPlayback(true);
                     }}
                     onTimeUpdate={(e) => void saveProgress(e.currentTarget)}
                     onPause={(e) => {
+                      trackPlayback(false);
                       void saveProgress(e.currentTarget, true);
-                      playStart.current = 0;
                     }}
-                    onEnded={(e) => void saveProgress(e.currentTarget, true)}
-                    onError={() =>
-                      setError("视频暂时无法加载，请重新选择课时后重试。")
-                    }
+                    onEnded={(e) => { trackPlayback(false); void saveProgress(e.currentTarget, true); }}
+                    onError={() => { trackPlayback(false); setError("视频暂时无法加载，请重新选择课时后重试。"); }}
                   />
                   {lesson && (
                     <ComputerCourseDanmaku

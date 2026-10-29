@@ -13,24 +13,18 @@ import { usePagination } from "../../../shared/ui/pagination/use-pagination";
 import WeeklyChart from "../dashboard/WeeklyChart";
 import { exportStudyData, useStudyData } from "../state/store";
 import { platformLabel as label } from "../study-format";
+import { formatStudyDuration, studyDurationValue, studySummary } from "../study-summary.mjs";
 
 export default function StudyInsights() {
-  const { activities, tasks } = useStudyData();
+  const { activities } = useStudyData();
   const listRef = useRef<HTMLElement>(null);
   const [activitySearch, setActivitySearch] = useState("");
   const [activityPlatform, setActivityPlatform] = useState("all");
-  const visibleActivities = activities.filter(activity => (activityPlatform === "all" || activity.platform === activityPlatform) && activity.title.toLowerCase().includes(activitySearch.trim().toLowerCase()));
+  const summary = studySummary(activities);
+  const { events } = summary;
+  const duration = studyDurationValue(summary.durationSeconds);
+  const visibleActivities = events.filter(activity => (activityPlatform === "all" || activity.platform === activityPlatform) && activity.title.toLowerCase().includes(activitySearch.trim().toLowerCase()));
   const pagination = usePagination({ total: visibleActivities.length, resetKey: `${activityPlatform}:${activitySearch}` });
-  const total = activities.reduce((n, a) => n + (a.total || 0), 0);
-  const correct = activities.reduce((n, a) => n + (a.correct || 0), 0);
-  const graded = activities
-    .filter((a) => a.correct !== undefined)
-    .reduce((n, a) => n + (a.total || 0), 0);
-  const days = new Set(
-    activities.map((a) =>
-      new Date(a.at).toLocaleDateString("sv-SE", { timeZone: "Asia/Shanghai" }),
-    ),
-  ).size;
   return (
     <>
       <div className="page-heading">
@@ -44,14 +38,14 @@ export default function StudyInsights() {
       </div>
       <div className="stat-grid insights-stats">
         {[
-          ["累计练习", total, "题"],
+          ["累计练习", summary.questions, "题"],
           [
             "已批改正确率",
-            graded ? Math.round((correct / graded) * 100) : 0,
+            summary.graded ? Math.round((summary.correct / summary.graded) * 100) : 0,
             "%",
           ],
-          ["学习天数", days, "天"],
-          ["完成计划", tasks.filter((t) => t.done).length, "项"],
+          ["累计学习时长", duration.value, duration.unit],
+          ["学习天数", summary.days, "天"],
         ].map(([name, num, unit]) => (
           <div className="stat-card" key={name}>
             <span className="muted">{name}</span>
@@ -72,26 +66,29 @@ export default function StudyInsights() {
         </section>
         <section className="panel subject-summary">
           <h2>学科分布</h2>
-          {(["math", "computer"] as Platform[]).map((p) => (
-            <div className="subject-row" key={p}>
-              <span className={`path-icon ${p === "math" ? "violet" : "mint"}`}>
-                {p === "math" ? <Sigma /> : <Code2 />}
-              </span>
-              <div>
-                <strong>{label(p)}</strong>
-                <span>
-                  {activities.filter((a) => a.platform === p).length} 次学习活动
+          {(["math", "computer"] as Platform[]).map((p) => {
+            const subject = studySummary(activities, { platform: p });
+            return (
+              <div className="subject-row" key={p}>
+                <span className={`path-icon ${p === "math" ? "violet" : "mint"}`}>
+                  {p === "math" ? <Sigma /> : <Code2 />}
                 </span>
+                <div>
+                  <strong>{label(p)}</strong>
+                  <span>
+                    {formatStudyDuration(subject.durationSeconds)} · {subject.events.length} 次学习活动
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </section>
       </div>
       <section className="panel pagination-content" ref={listRef}>
         <div className="section-heading">
           <h2>学习足迹</h2>
           <span className="subtle">
-            全部 {activities.length} 条活动
+            全部 {events.length} 条活动
           </span>
         </div>
         <div className="records-filters"><input className="input" aria-label="搜索学习足迹" placeholder="搜索学习内容" value={activitySearch} onChange={event => setActivitySearch(event.target.value)} /><select className="input" aria-label="按学科筛选学习足迹" value={activityPlatform} onChange={event => setActivityPlatform(event.target.value)}><option value="all">全部学科</option><option value="math">考研数学</option><option value="computer">计算机 408</option></select></div>
@@ -127,8 +124,8 @@ export default function StudyInsights() {
         ) : (
           <div className="empty-state">
             <ChartNoAxesCombined size={35} />
-            <h3>{activities.length ? "没有符合条件的学习活动" : "积累，正在发生"}</h3>
-            <p>{activities.length ? "调整关键词或学科筛选后再试。" : "完成你的第一组练习，开始记录学习进步。"}</p>
+            <h3>{events.length ? "没有符合条件的学习活动" : "积累，正在发生"}</h3>
+            <p>{events.length ? "调整关键词或学科筛选后再试。" : "完成你的第一组练习，开始记录学习进步。"}</p>
             <Link className="btn btn-primary" to="/study/practice">
               开始练习
               <ArrowRight size={16} />
@@ -138,8 +135,7 @@ export default function StudyInsights() {
         <Pagination page={pagination.page} pageSize={pagination.pageSize} total={visibleActivities.length} onPageChange={pagination.setPage} onPageSizeChange={pagination.setPageSize} label="学习足迹" contentRef={listRef} />
       </section>
       <p className="footnote">
-        此报告汇总在 Web
-        中产生的学习活动；答案、笔记和复习记录归当前学习账号所有。
+        学习时长按前台阅读和视频实际播放统计；后台不计时，阅读连续 5 分钟无操作后暂停计时。活动次数按作答、解析等学习行为统计。
       </p>
     </>
   );

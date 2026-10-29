@@ -30,6 +30,7 @@ import {
 import type { MathRow } from "../api/math";
 import { useSession } from "../../../shared/auth/session";
 import { recordStudy } from "../../learning/state/store";
+import { useStudyTimer } from "../../learning/time/use-study-timer";
 
 function useAlbumData(key: string, load: () => Promise<any>) {
   const [data, setData] = useState<any>(),
@@ -178,6 +179,13 @@ export default function MathAlbums({
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [practice, setPractice] = useState<MathRow>();
+  useStudyTimer({
+    key: `math-album-reading:${stuid}:${album?.ID || ""}:${catalog?.ID || ""}`,
+    platform: "math",
+    title: `${mathTitle(fullAlbum)} · ${catalog ? mathTitle(catalog) : "专辑章节"}`,
+    path: "/study/resources",
+    enabled: !!album && !!catalog && !practice && !items.loading && !items.error && mathRows(items.data).length > 0,
+  });
   if (practice)
     return (
       <MathModelTraining

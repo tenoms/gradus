@@ -24,6 +24,7 @@ import { mathOptionFeedback } from "../questions/math-question-presentation.mjs"
 import "../questions/math-choice-feedback.css";
 import { mathData } from "../api/math";
 import { recordActivity } from "../../learning/state/store";
+import { useStudyTimer } from "../../learning/time/use-study-timer";
 import {
   computingApi,
   computingCorrect,
@@ -146,6 +147,13 @@ function ComputingPaper({
     correct = computingCorrect(question, answer),
     record = question.record,
     steps = question.steps || [];
+  useStudyTimer({
+    key: draftKey,
+    platform: "math",
+    title: loaded.data?.meta?.Name || "计算大题练习",
+    path: "/study/practice",
+    enabled: ready && !!loaded.data && !loaded.loading && !loaded.error && questions.length > 0,
+  });
   useEffect(() => {
     if (!loaded.data) return;
     const rows = loaded.data.questions as R[];
@@ -289,7 +297,6 @@ function ComputingPaper({
         total: questions.length,
         correct: questions.filter((q) => Number(q.record?.AnswerState) === 1)
           .length,
-        durationSeconds: Math.round((Date.now() - started.current) / 1000),
         path: "/study/practice",
       });
       setNotice("计算卷已提交，学习记录已同步");

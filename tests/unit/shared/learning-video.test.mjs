@@ -12,6 +12,8 @@ const output = ts.transpileModule(source, {
 const prelude = `
 const React = { createElement: () => null };
 const forwardRef = fn => fn;
+const MediaStudyContext = {};
+const useContext = () => null;
 const useRef = () => ({ current: globalThis.__learningVideoFixture.video });
 const useState = value => [value, next => globalThis.__learningVideoFixture.updates.push(next)];
 const useEffect = fn => { globalThis.__learningVideoFixture.effect = fn; };

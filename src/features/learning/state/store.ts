@@ -4,6 +4,8 @@ import { applyStudyChange, createStudySync, emptyStudyData } from "./study-sync.
 import type { StudyChange, SyncStatus } from "./study-sync.mjs";
 import { validateStudyData } from "../../../../shared/study-data.mjs";
 import type { StudyTask, Activity, StudyData } from "../../../../shared/study-data.mjs";
+import { createStudyClock } from "../time/study-clock.mjs";
+import type { StudyTimerDetails } from "../time/study-clock.mjs";
 export type { StudyTask, Activity, StudyData } from "../../../../shared/study-data.mjs";
 const defaultData = emptyStudyData();
 let scope = "guest";
@@ -24,9 +26,14 @@ function change(value: WithoutChangeId<StudyChange>) {
     emit();
   }
 }
+export const studyClock = createStudyClock({ report: activity => change({ kind: "activity.add", activity }) });
+export function registerStudyTime(details: StudyTimerDetails) {
+  return scope === "guest" ? undefined : studyClock.register(details);
+}
 export function setUserScope(userId?: string) {
   const nextScope = userId ? `user:${userId}` : "guest";
   if (scope === nextScope && (synchronizer || !userId)) return;
+  studyClock.reset();
   synchronizer?.stop();
   synchronizer = undefined;
   scope = nextScope;

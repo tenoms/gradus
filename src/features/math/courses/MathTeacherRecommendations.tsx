@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Check, LoaderCircle, RefreshCw } from "lucide-react";
 import MathQuestionReader from "../questions/MathQuestionReader";
 import { mathRows } from "../api/math";
@@ -45,8 +45,7 @@ export default function MathTeacherRecommendations({
     [notice, setNotice] = useState(""),
     [version, setVersion] = useState(0),
     question = rows[index],
-    qid = question?.QuestionID,
-    started = useRef(Date.now());
+    qid = question?.QuestionID;
   useEffect(() => {
     let active = true;
     setRows([]);
@@ -75,7 +74,6 @@ export default function MathTeacherRecommendations({
     setRecord({});
     setError("");
     setNotice("");
-    started.current = Date.now();
     teacherRecommendationApi
       .record(context, qid)
       .then((response) => {
@@ -116,10 +114,6 @@ export default function MathTeacherRecommendations({
         title: question._question_list?.FocalLinkName || "老师推题训练",
         total: 1,
         correct: correct === 1 ? 1 : 0,
-        durationSeconds: Math.max(
-          0,
-          Math.round((Date.now() - started.current) / 1000),
-        ),
         path: "/study/courses",
       });
       setNotice("练习反馈已保存到本次课程测评。");

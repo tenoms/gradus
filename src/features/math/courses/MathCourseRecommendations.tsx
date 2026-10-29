@@ -149,6 +149,12 @@ function SpecialVideos({
               key={active}
               src={safeUrl(url)!}
               controls
+              study={{
+                key: `math-recommended-video:${LinkSort}:${video.ID || active}`,
+                platform: "math",
+                title: video.Name || video.PlovyName || "推荐专题视频",
+                path: "/study/courses",
+              }}
               onTimeUpdate={(e) => {
                 if (
                   e.currentTarget.currentTime > 0 &&

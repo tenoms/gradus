@@ -37,6 +37,7 @@ import {
 import { useSession } from "../../../shared/auth/session";
 import { mathContentLikeDelete } from "../questions/math-content-marks";
 import { recordStudy } from "../../learning/state/store";
+import { useStudyTimer } from "../../learning/time/use-study-timer";
 import {
   modelExerciseCount,
   modelStudyPayload,
@@ -202,6 +203,14 @@ export default function MathModelTraining({
   const content = useData(`module-content-${chapter}`, () =>
     chapter ? mathApi.albumItems(chapter) : Promise.resolve({ data: [] }),
   );
+  const nodes = mathRows(content.data);
+  useStudyTimer({
+    key: `math-module-reading:${stuid}:${fileId || albumId || info.data?.albumId || ""}:${chapter || ""}`,
+    platform: "math",
+    title: title || info.data?.file?.Title || info.data?.file?._book_highscorealbum?.Title || "专项能力训练",
+    path: isLeadFill ? "/study/courses" : "/study/practice",
+    enabled: !group && !!info.data && !info.loading && !content.loading && !content.error && nodes.length > 0,
+  });
   useEffect(() => {
     setCompletionError("");
     const nodes = mathRows(content.data);
@@ -238,7 +247,6 @@ export default function MathModelTraining({
         renderQuestion={renderQuestion}
       />
     );
-  const nodes = mathRows(content.data);
   return (
     <div className="math-workspace">
       {onClose && (
@@ -637,6 +645,13 @@ function ModuleQuestion({
     row._question_list,
     remote.data?.question || {},
   );
+  useStudyTimer({
+    key: `math-module-question:${stuid}:${row.ID || ""}:${row.QuestionID}`,
+    platform: "math",
+    title: `专项训练 · 第 ${q.QuestionSort || q.QuestionID || row.QuestionID} 题`,
+    path: isCourse ? "/study/courses" : "/study/practice",
+    enabled: !!remote.data && !remote.loading,
+  });
   const resolve: MathRow[] = remote.data?.resolve || [];
   const options = resolve.filter((r) => r.Type === "选项");
   const stems = resolve.filter((r) => r.Type === "题干");

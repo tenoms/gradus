@@ -40,6 +40,7 @@ import {
 } from "../api/math";
 import type { MathRow, NoteKind } from "../api/math";
 import { recordStudy } from "../../learning/state/store";
+import { useStudyTimer } from "../../learning/time/use-study-timer";
 function useRemote<T>(key: string, load: () => Promise<T>) {
   const [data, setData] = useState<T>();
   const [error, setError] = useState("");
@@ -195,6 +196,13 @@ function QuestionReader({
   const recordedPractice = useRef(false);
   const [notice, setNotice] = useState("");
   const q = mergeMathQuestion(row, remote.data?.question);
+  useStudyTimer({
+    key: `math-question:${stuid}:${qid}`,
+    platform: "math",
+    title: `${book ? mathTitle(book) + " · " : ""}第 ${row.QuestionSort || q.QuestionID || qid} 题`,
+    path: isCourse ? "/study/courses" : practice ? "/study/practice" : "/study/question-bank",
+    enabled: !!remote.data && !remote.loading && (tab === "题目" || tab === "解析"),
+  });
   const resolve = remote.data?.resolve || [];
   const options = resolve.filter((r) => r.Type === "选项");
   const stem = resolve.filter((r) => r.Type === "题干");

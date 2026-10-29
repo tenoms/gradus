@@ -52,6 +52,12 @@ function NativeQuestionVideo({ row }: { row: MathRow }) {
         playsInline
         preload="metadata"
         aria-label={row.Title || "数学题目视频解析"}
+        study={{
+          key: `math-question-video:${row.QuestionID || ""}:${row.ID || ""}:${vid || url}`,
+          platform: "math",
+          title: row.Title || "数学题目视频解析",
+          path: "/study/question-bank",
+        }}
         onTimeUpdate={event => {
           if (!watched.current && event.currentTarget.currentTime > 0) {
             watched.current = true;

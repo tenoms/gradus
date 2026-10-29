@@ -3,6 +3,7 @@ import { matchesMathSubject } from "../preparation/learning-plan-model.mjs";
 import MathVideoFeedback from "./MathVideoFeedback";
 import Pagination from "../../../shared/ui/pagination/Pagination";
 import { usePagination } from "../../../shared/ui/pagination/use-pagination";
+import { useStudyTimer } from "../../learning/time/use-study-timer";
 import { useEffect, useRef, useState } from "react";
 import { invalidateCatalogResources } from "../../../shared/api/client";
 import {
@@ -183,26 +184,18 @@ function NativeVodPlayer({
   const data = task.Data || task._w_courseware || task;
   const { vid } = mathVideoSource(data);
   const videoRef = useRef<HTMLVideoElement>(null),
+    recordedActivity = useRef(false),
     record = useRef<Row>({}),
     latest = useRef(0),
     lastSaved = useRef(0),
     saving = useRef(false),
     duration = useRef(durationSeconds(data.Duration)),
-    playingSince = useRef(0),
-    played = useRef(0),
-    reported = useRef(0),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [video, setVideo] = useState<MathVideo>();
   const callback = useRef(onSaved);
   callback.current = onSaved;
-  function trackPlayback(isPlaying: boolean) {
-    if (playingSince.current)
-      played.current += (Date.now() - playingSince.current) / 1000;
-    playingSince.current = isPlaying ? Date.now() : 0;
-  }
   async function save(force = false) {
-    if (playingSince.current) trackPlayback(true);
     const element = videoRef.current;
     const observed = Number(element?.currentTime || 0);
     if (observed > 0) latest.current = Math.max(latest.current, observed);
@@ -237,17 +230,6 @@ function NativeVodPlayer({
           : "播放进度已保存",
       );
       callback.current();
-      const elapsed = Math.floor(played.current - reported.current);
-      if (elapsed > 0) {
-        reported.current = played.current;
-        recordActivity({
-          platform: "math",
-          type: "course",
-          title: courseLabel(data),
-          durationSeconds: elapsed,
-          path: "/study/courses",
-        });
-      }
     } catch (e: any) {
       setError(`播放进度保存失败：${e.message}`);
     } finally {
@@ -271,7 +253,6 @@ function NativeVodPlayer({
     });
     return () => {
       active = false;
-      trackPlayback(false);
       void save(true);
     };
   }, []);
@@ -287,24 +268,34 @@ function NativeVodPlayer({
         preload="metadata"
         className="mc-native-video"
         aria-label={`${courseLabel(data)}视频播放器`}
+        study={{
+          key: `math-course-video:${context.CourseID}:${context.CalendarID}:${task.BusID}`,
+          platform: "math",
+          title: courseLabel(data),
+          path: "/study/courses",
+        }}
         onLoadedMetadata={(e) => {
           if (Number.isFinite(e.currentTarget.duration)) duration.current = e.currentTarget.duration;
           e.currentTarget.currentTime = latest.current;
         }}
-        onPlaying={() => trackPlayback(true)}
-        onWaiting={() => trackPlayback(false)}
-        onSeeking={() => trackPlayback(false)}
-        onError={() => trackPlayback(false)}
+        onPlaying={() => {
+          if (recordedActivity.current) return;
+          recordedActivity.current = true;
+          recordActivity({
+            platform: "math",
+            type: "course",
+            title: courseLabel(data),
+            path: "/study/courses",
+          });
+        }}
         onTimeUpdate={(e) => {
           latest.current = Math.max(latest.current, e.currentTarget.currentTime);
           void save();
         }}
         onPause={() => {
-          trackPlayback(false);
           void save(true);
         }}
         onEnded={() => {
-          trackPlayback(false);
           void save(true);
         }}
       />}
@@ -487,6 +478,21 @@ function TaskList({
       openTask(task);
     }
   }, [tasks, initialTaskID]);
+  const selectedContext = selected
+    ? {
+        ...context,
+        CourseID: selected.CourseID ?? context.CourseID,
+        CalendarID: selected.CalendarID ?? context.CalendarID,
+        ProductID: selected.ProductID ?? context.ProductID,
+      }
+    : context;
+  useStudyTimer({
+    key: `math-course-reading:${context.StuID}:${selectedContext.CourseID}:${selectedContext.CalendarID}:${selected?.ID || selected?.BusID || ""}`,
+    platform: "math",
+    title: selected ? courseLabel(selected) : "课程资料",
+    path: "/study/courses",
+    enabled: !!selected && !paper && ![1, 2, 8].includes(Number(selected.BusType)) && !!(selected.Content || selected.Context || selected.Data?.Context || selected.Notes),
+  });
   if (paper && Number(paper._Paper?.BusType) === 2)
     return (
       <MathCourseRecommendations
@@ -533,14 +539,6 @@ function TaskList({
         }}
       />
     );
-  const selectedContext = selected
-    ? {
-        ...context,
-        CourseID: selected.CourseID ?? context.CourseID,
-        CalendarID: selected.CalendarID ?? context.CalendarID,
-        ProductID: selected.ProductID ?? context.ProductID,
-      }
-    : context;
   const visible = tasks;
   return (
     <>
