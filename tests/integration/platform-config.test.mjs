@@ -1,12 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createCipheriv, createDecipheriv, createHash } from "node:crypto";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { createPlatformConfigStore, readPlatformDefaults } from "../../server/integrations/platform-config.mjs";
 import { ApiError } from "../../server/infrastructure/api-error.mjs";
 import { createUpstreamClient } from "../../server/integrations/upstream.mjs";
 import { createTestDatabase } from "../support/database.mjs";
 
-const defaults = () => readPlatformDefaults({ env: { YYB_BASE_URL: "https://yyb.test", YYB_API_KEY: "yyb-test-secret" }, readLocal: false });
+const defaults = () => readPlatformDefaults({ env: { YYB_BASE_URL: "https://yyb.test", YYB_API_KEY: "yyb-test-secret" }, configFile: false });
 const memory = async () => {
   const database = await createTestDatabase();
   const store = await createPlatformConfigStore({ database, defaults: defaults() });
@@ -51,6 +54,24 @@ test("configuration updates persist and reject stale admin revisions across Post
     const copy = store.snapshot(); copy.math.enabled = false;
     assert.equal(store.snapshot().math.enabled, true);
   } finally { await database.close(); }
+});
+
+test("deployment files seed new stores once and cannot restore credentials cleared in management", async () => {
+  const directory = mkdtempSync(path.join(tmpdir(), "study-platform-store-"));
+  const configFile = path.join(directory, "deployment.json");
+  const database = await createTestDatabase();
+  try {
+    writeFileSync(configFile, JSON.stringify({ platforms: { yyb: { baseUrl: "https://file-source.test", apiKey: "file-key" }, math: { ocrPassword: "file-password" } } }));
+    const first = await createPlatformConfigStore({ database, env: {}, configFile });
+    assert.equal(first.snapshot().yyb.apiKey, "file-key");
+    await first.update({ revision: 0, config: {}, clearSecrets: ["yyb.apiKey", "math.ocrPassword"] });
+    writeFileSync(configFile, JSON.stringify({ platforms: { yyb: { baseUrl: "https://replacement-source.test", apiKey: "replacement-key" }, math: { ocrPassword: "replacement-password" } } }));
+    const restarted = await createPlatformConfigStore({ database, env: { YYB_API_KEY: "environment-key" }, configFile });
+    assert.equal(restarted.snapshot().yyb.baseUrl, "https://file-source.test");
+    assert.equal(restarted.snapshot().yyb.apiKey, "");
+    assert.equal(restarted.snapshot().math.ocrPassword, "");
+    assert.equal(restarted.publicConfig().revision, 1);
+  } finally { await database.close(); rmSync(directory, { recursive: true, force: true }); }
 });
 
 test("invalid platform fields cannot partially save a configuration", async () => {

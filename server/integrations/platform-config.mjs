@@ -1,8 +1,5 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { readFileConfiguration } from "../infrastructure/configuration.mjs";
 
-const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const secretPaths = ["yyb.apiKey", "math.ocrUsername", "math.ocrPassword", "computer.oauthClientSecret", "computer.videoKey", "computer.videoIv"];
 const fields = {
   yyb: ["baseUrl", "apiKey"],
@@ -12,36 +9,48 @@ const fields = {
 const failure = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
 const clone = (value) => structuredClone(value);
 const isObject = (value) => !!value && typeof value === "object" && !Array.isArray(value);
-const optionalRead = (filename) => { try { return readFileSync(filename, "utf8"); } catch { return ""; } };
+const environmentFields = {
+  yyb: { baseUrl: "YYB_BASE_URL", apiKey: "YYB_API_KEY" },
+  math: {
+    enabled: "MATH_ENABLED", baseUrl: "MATH_BASE_URL", appId: "MATH_APP_ID",
+    stationId: "MATH_STATION_ID", loginId: "MATH_LOGIN_ID", ocrUrl: "MATH_OCR_URL",
+    ocrUsername: "MATH_OCR_USERNAME", ocrPassword: "MATH_OCR_PASSWORD",
+  },
+  computer: {
+    enabled: "COMPUTER_ENABLED", baseUrl: "COMPUTER_BASE_URL", appId: "COMPUTER_APP_ID",
+    tenantCode: "COMPUTER_TENANT_CODE", oauthClientId: "COMPUTER_OAUTH_CLIENT_ID",
+    oauthClientSecret: "COMPUTER_OAUTH_CLIENT_SECRET", videoKey: "COMPUTER_VIDEO_KEY", videoIv: "COMPUTER_VIDEO_IV",
+  },
+};
 
-/** Bootstrap inputs are read once by the store. Saved settings are the runtime authority. */
-export function readPlatformDefaults({ env = process.env, readLocal = true, root = projectRoot } = {}) {
-  const yybText = readLocal ? optionalRead(path.join(root, "yyb.txt")) : "";
-  const ocrSource = readLocal ? optionalRead(path.join(root, "wx*-math/topic/pages/camerasearch/camerasearch.js")) : "";
-  let videoValues = [];
-  if (readLocal && (!env.COMPUTER_VIDEO_KEY || !env.COMPUTER_VIDEO_IV)) {
-    const source = optionalRead(path.join(root, "wx*-computer/common/vendor.js"));
-    const module = source.slice(source.indexOf("  y6zN: function"));
-    const decrypt = module.slice(module.indexOf("t.e = function(e)"), module.indexOf('var a = n("Av7u")'));
-    videoValues = [...decrypt.matchAll(/enc\.Utf8\.parse\(["']([^"']+)["']\)/g)].map((match) => match[1]);
+/** Files and environment seed new stores; saved management settings remain authoritative. */
+export function readPlatformDefaults({ env = process.env, configFile } = {}) {
+  const configured = readFileConfiguration({ env, configFile }).platforms;
+  if (!isObject(configured) || Object.keys(configured).some(section => !fields[section])) failure("平台初始配置分组不正确");
+  const result = {};
+  for (const [section, names] of Object.entries(fields)) {
+    const values = configured[section];
+    if (!isObject(values) || Object.keys(values).some(name => !names.includes(name))) failure("平台初始配置字段不正确");
+    result[section] = {};
+    for (const name of names) {
+      const field = `${section}.${name}`, environmentName = environmentFields[section][name];
+      let value = values[name];
+      if (env[environmentName] !== undefined && env[environmentName] !== null) {
+        const override = env[environmentName];
+        // Empty required public overrides keep the file value, as in standard .env templates.
+        const optional = secretPaths.includes(field) || field === "yyb.baseUrl" || field === "math.ocrUrl";
+        if (optional || typeof override !== "string" || override.trim() !== "") {
+          if (name === "enabled") {
+            const boolean = String(override).trim().toLowerCase();
+            if (!["0", "1", "true", "false"].includes(boolean)) failure("平台启用状态配置不正确");
+            value = ["1", "true"].includes(boolean);
+          } else value = ["stationId", "loginId"].includes(name) ? Number(override) : override;
+        }
+      }
+      result[section][name] = validField(section, name, value);
+    }
   }
-  const baseUrl = (value) => String(value || "").replace(/\/+$/, "");
-  return {
-    yyb: { baseUrl: baseUrl(env.YYB_BASE_URL || yybText.match(/https?:\/\/[^\s]+/)?.[0]), apiKey: env.YYB_API_KEY || "" },
-    math: {
-      enabled: env.MATH_ENABLED !== "0", baseUrl: baseUrl(env.MATH_BASE_URL || "https://api.math-upstream.invalid"),
-      appId: env.MATH_APP_ID || "<math-app-id>", stationId: Number(env.MATH_STATION_ID || 1), loginId: Number(env.MATH_LOGIN_ID || 2),
-      ocrUrl: baseUrl(env.MATH_OCR_URL || "https://photo.math-upstream.invalid/predict"),
-      ocrUsername: env.MATH_OCR_USERNAME || ocrSource.match(/username:\s*["']([^"']+)["']/)?.[1] || "",
-      ocrPassword: env.MATH_OCR_PASSWORD || ocrSource.match(/password:\s*["']([^"']+)["']/)?.[1] || "",
-    },
-    computer: {
-      enabled: env.COMPUTER_ENABLED !== "0", baseUrl: baseUrl(env.COMPUTER_BASE_URL || "https://teach.computer-upstream.invalid"),
-      appId: env.COMPUTER_APP_ID || "<computer-app-id>", tenantCode: env.COMPUTER_TENANT_CODE || "1",
-      oauthClientId: env.COMPUTER_OAUTH_CLIENT_ID || "web_app", oauthClientSecret: env.COMPUTER_OAUTH_CLIENT_SECRET || "<computer-oauth-secret>",
-      videoKey: env.COMPUTER_VIDEO_KEY || videoValues[0] || "", videoIv: env.COMPUTER_VIDEO_IV || videoValues[1] || "",
-    },
-  };
+  return result;
 }
 
 function validField(section, name, value) {
@@ -75,12 +84,15 @@ function validField(section, name, value) {
 }
 
 /** Stores one versioned server configuration; the public interface never returns credentials. */
-export async function createPlatformConfigStore({ database: db, defaults, env, readLocal } = {}) {
+export async function createPlatformConfigStore({ database: db, defaults, env, configFile } = {}) {
   if (!db) throw new Error("平台配置需要 PostgreSQL 数据库连接");
   const table = db.web('platform_configuration');
   await db.query(`CREATE TABLE IF NOT EXISTS ${table} (id INTEGER PRIMARY KEY CHECK(id=1),revision INTEGER NOT NULL,config JSONB NOT NULL,updated_at TIMESTAMPTZ NOT NULL)`);
-  const initial = defaults || readPlatformDefaults({ ...(env ? { env } : {}), ...(readLocal === undefined ? {} : { readLocal }) });
-  await db.query(`INSERT INTO ${table}(id,revision,config,updated_at) VALUES(1,0,$1,$2) ON CONFLICT(id) DO NOTHING`, [JSON.stringify(initial), new Date().toISOString()]);
+  const existing = (await db.query(`SELECT id FROM ${table} WHERE id=1`)).rows[0];
+  if (!existing) {
+    const initial = defaults || readPlatformDefaults({ ...(env ? { env } : {}), configFile });
+    await db.query(`INSERT INTO ${table}(id,revision,config,updated_at) VALUES(1,0,$1,$2) ON CONFLICT(id) DO NOTHING`, [JSON.stringify(initial), new Date().toISOString()]);
+  }
   let revision, config, updatedAt;
   async function refresh() {
     const existing = (await db.query(`SELECT revision,config,updated_at FROM ${table} WHERE id=1`)).rows[0];

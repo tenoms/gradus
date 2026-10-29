@@ -6,7 +6,7 @@ import {readPlatformDefaults} from '../../../server/integrations/platform-config
 import {createResourceSync} from '../../../server/modules/resources/sync.mjs';
 
 const jwt=payload=>`header.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.signature`;
-const config=()=>readPlatformDefaults({env:{YYB_BASE_URL:'https://yyb.example'},readLocal:false});
+const config=()=>readPlatformDefaults({env:{YYB_BASE_URL:'https://yyb.example'},configFile: false});
 const account={ref:'source',openid:'same-wechat'};
 const state=(token='opaque',expiresAt=null)=>({connected:true,token,stuId:'math-student',user:{StuID:'math-student',userId:'computer-student'},auth:{issuedAt:0,expiresAt}});
 

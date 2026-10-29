@@ -6,7 +6,7 @@ import { createResourceSync } from '../../server/modules/resources/sync.mjs';
 import { sourceForSession, resourceIdentity, isReadableResource, resourceKey } from '../../server/modules/resources/catalog.mjs';
 import { readPlatformDefaults } from '../../server/integrations/platform-config.mjs';
 
-const config = readPlatformDefaults({ env: { YYB_BASE_URL:'https://yyb.example' }, readLocal:false });
+const config = readPlatformDefaults({ env: { YYB_BASE_URL:'https://yyb.example' }, configFile: false });
 const session = {account:{ref:'shared-account'},yybMode:'system',platforms:{math:{connected:true,token:'secret-token',stuId:'source-student'},computer:{connected:true,token:'secret-token'}},expires:Date.now()+86400000};
 const task = (path,query={},kind=path) => ({kind,request:{path,method:'GET',data:{},query},context:{}});
 const createSync = (store,service={getConfig:()=>config}) => createResourceSync({store,service,connections:new Map([['user',session]]),configuration:{snapshot:()=>config}});

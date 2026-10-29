@@ -5,7 +5,7 @@ import {createResourceStore} from '../../server/modules/resources/store.mjs';
 import {resourceIdentity,inferResourceRequest,publicResourceResponse} from '../../server/modules/resources/catalog.mjs';
 import {readPlatformDefaults} from '../../server/integrations/platform-config.mjs';
 
-const config=readPlatformDefaults({env:{YYB_BASE_URL:'https://yyb.example'},readLocal:false});
+const config=readPlatformDefaults({env:{YYB_BASE_URL:'https://yyb.example'},configFile: false});
 const a={user:{id:'web-a'},account:{ref:'yyb-a'},yybBaseUrl:'https://yyb-a.example'};
 const b={user:{id:'web-b'},account:{ref:'yyb-b'},yybBaseUrl:'https://yyb-b.example'};
 const question={path:'/api/question_list/GetQuestionByQuestionNew',method:'GET',query:{ID:42,StuID:'student-a',t:1},data:{}};

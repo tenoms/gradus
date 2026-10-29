@@ -45,7 +45,7 @@ test('concurrent study updates reject one stale revision including the first wri
 test('independent configuration clients enforce PostgreSQL compare-and-swap and preserve secrets', async () => {
   const db = await createTestDatabase();
   try {
-    const defaults = readPlatformDefaults({ env: { YYB_API_KEY: 'private-key' }, readLocal: false });
+    const defaults = readPlatformDefaults({ env: { YYB_API_KEY: 'private-key' }, configFile: false });
     const first = await createPlatformConfigStore({ database: db, defaults });
     const second = await createPlatformConfigStore({ database: db, defaults });
     const outcomes = await Promise.allSettled([

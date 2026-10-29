@@ -5,7 +5,7 @@ import {readPlatformDefaults} from '../../server/integrations/platform-config.mj
 
 function fixture(){
   const calls=[],state={offlineDefault:false,denyDefaultLogin:false};
-  return {calls,state,configurationDefaults:readPlatformDefaults({env:{YYB_BASE_URL:'https://first-yyb.example',YYB_API_KEY:'default-private-key'},readLocal:false}),
+  return {calls,state,configurationDefaults:readPlatformDefaults({env:{YYB_BASE_URL:'https://first-yyb.example',YYB_API_KEY:'default-private-key'},configFile: false}),
     yybRequest:async(path,data,options,override)=>{
       const endpoint=override?.baseUrl||'https://first-yyb.example';calls.push({type:'directory',endpoint,override});
       if(endpoint==='https://offline-yyb.example'||endpoint==='https://first-yyb.example'&&state.offlineDefault)throw Object.assign(new Error('offline'),{status:502});

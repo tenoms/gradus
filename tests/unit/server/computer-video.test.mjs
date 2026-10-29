@@ -49,7 +49,7 @@ test("video permission failures stay unchanged and malformed ciphertext returns 
   );
 });
 test("computer adapter decrypts only V2 media URLs and preserves the Tencent response", async () => {
-  const config = readPlatformDefaults({ env: {}, readLocal: false });
+  const config = readPlatformDefaults({ env: {}, configFile: false });
   config.computer.videoKey = key.toString();
   config.computer.videoIv = iv.toString();
   const client = createUpstreamClient(config, {

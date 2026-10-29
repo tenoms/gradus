@@ -6,7 +6,7 @@ import { ApiError } from '../../server/infrastructure/api-error.mjs';
 
 const fixture=()=>{
   const calls=[];
-  return {calls,configurationDefaults:readPlatformDefaults({env:{YYB_BASE_URL:'https://unused-default.example',MATH_BASE_URL:'https://math.example',COMPUTER_BASE_URL:'https://computer.example'},readLocal:false}),requestJson:async(input,options={})=>{
+  return {calls,configurationDefaults:readPlatformDefaults({env:{YYB_BASE_URL:'https://unused-default.example',MATH_BASE_URL:'https://math.example',COMPUTER_BASE_URL:'https://computer.example'},configFile: false}),requestJson:async(input,options={})=>{
     const url=new URL(input);calls.push({url,options});
     if(url.hostname==='unused-default.example')throw new ApiError('default source is unavailable',503);
     if(url.hostname==='failed-source.example')throw new ApiError('source unavailable',502);

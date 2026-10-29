@@ -5,7 +5,7 @@ import { readPlatformDefaults } from "../../server/integrations/platform-config.
 import { startHttpApp } from "../support/http-app.mjs";
 
 function configuredStore() {
-  const defaults = readPlatformDefaults({ env: { YYB_BASE_URL: "https://yyb.original.test" }, readLocal: false });
+  const defaults = readPlatformDefaults({ env: { YYB_BASE_URL: "https://yyb.original.test" }, configFile: false });
   return defaults;
 }
 function transport(calls) {

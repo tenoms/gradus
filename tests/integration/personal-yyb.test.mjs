@@ -6,7 +6,7 @@ import {readPlatformDefaults} from '../../server/integrations/platform-config.mj
 
 function fixture(){
   const calls=[];
-  return {calls,configurationDefaults:readPlatformDefaults({env:{YYB_BASE_URL:'https://system-yyb.test',YYB_API_KEY:'system-private-key'},readLocal:false}),requestJson:async(input,options={})=>{
+  return {calls,configurationDefaults:readPlatformDefaults({env:{YYB_BASE_URL:'https://system-yyb.test',YYB_API_KEY:'system-private-key'},configFile: false}),requestJson:async(input,options={})=>{
     const url=new URL(input);calls.push({url,options});
     if(url.pathname==='/accounts')return {code:0,data:[{id:'same-ref',nickname:'资源来源',status:'alive'}]};
     if(url.pathname==='/wxapp/getCode')return {code:0,data:{code:'source-code'}};
