@@ -257,14 +257,10 @@
   color: #62799d;
   font-weight: 600;
 }
-.mc-polyv {
+.mc-native-video {
+  display: block;
   width: 100%;
   aspect-ratio: 16/9;
-  background: #17212f;
-  min-height: 220px;
-}
-.mc-native-video {
-  width: 100%;
   max-height: 550px;
   background: #17212f;
 }
@@ -312,9 +308,6 @@
   }
   .mc-learning {
     padding: 17px;
-  }
-  .mc-polyv {
-    min-height: 190px;
   }
 }
 

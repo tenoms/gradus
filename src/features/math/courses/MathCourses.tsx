@@ -43,7 +43,10 @@ import {
   courseQuestionRecord,
 } from "./course-model.mjs";
 import { MathCoursePaper } from "../exams/MathExams";
-import { loadMathPolyvSDK } from "./MathPolyv";
+import LearningVideo from "../../../shared/media/LearningVideo";
+import { loadMathVideo } from "../media/math-video";
+import type { MathVideo } from "../media/math-video";
+import { mathVideoSource } from "../media/math-video-source.mjs";
 import MathQuestionVideo from "../questions/MathQuestionVideo";
 import MathModelTraining from "../practice/MathModelTraining";
 import MathCourseHistory from "./MathCourseHistory";
@@ -157,34 +160,40 @@ function Files({ item }: { item: Row }) {
   );
 }
 
-function VodPlayer({
-  task,
-  context,
-  onSaved,
-}: {
+function VodPlayer(props: {
   task: Row;
   context: Context;
   onSaved: () => void;
 }) {
-  const data = task.Data || task._w_courseware || task,
-    vid = String(data.PolyvVID || data.Vid || ""),
-    source = courseLinks(data).find((f) =>
-      /\.(mp4|m3u8)(\?|$)/i.test(f.url),
-    )?.url;
-  const host = useRef<HTMLDivElement>(null),
+  const [version, setVersion] = useState(0);
+  return <NativeVodPlayer key={version} {...props} onRetry={() => setVersion(v => v + 1)} />;
+}
+
+function NativeVodPlayer({
+  task,
+  context,
+  onSaved,
+  onRetry,
+}: {
+  task: Row;
+  context: Context;
+  onSaved: () => void;
+  onRetry: () => void;
+}) {
+  const data = task.Data || task._w_courseware || task;
+  const { vid } = mathVideoSource(data);
+  const videoRef = useRef<HTMLVideoElement>(null),
     record = useRef<Row>({}),
     latest = useRef(0),
     lastSaved = useRef(0),
     saving = useRef(false),
-    playerRef = useRef<any>(null),
     duration = useRef(durationSeconds(data.Duration)),
     playingSince = useRef(0),
     played = useRef(0),
     reported = useRef(0),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
-    [ready, setReady] = useState(false),
-    [version, setVersion] = useState(0);
+    [video, setVideo] = useState<MathVideo>();
   const callback = useRef(onSaved);
   callback.current = onSaved;
   function trackPlayback(isPlaying: boolean) {
@@ -194,11 +203,11 @@ function VodPlayer({
   }
   async function save(force = false) {
     if (playingSince.current) trackPlayback(true);
-    const observed = Number(playerRef.current?.j2s_getCurrentTime?.() || 0);
+    const element = videoRef.current;
+    const observed = Number(element?.currentTime || 0);
     if (observed > 0) latest.current = Math.max(latest.current, observed);
-    duration.current = Number(
-      playerRef.current?.j2s_getDuration?.() || duration.current,
-    );
+    if (element && Number.isFinite(element.duration) && element.duration > 0)
+      duration.current = element.duration;
     if (
       saving.current ||
       latest.current <= Number(record.current.BusValue || 0) ||
@@ -220,7 +229,8 @@ function VodPlayer({
         ...payload,
         ID: Number(value) > 0 ? Number(value) : record.current.ID,
       };
-      lastSaved.current = latest.current;
+      lastSaved.current = Number(payload.BusValue);
+      setError("");
       setNotice(
         Number(payload.IsFinished) === 1
           ? "本课时已完成，进度已同步。"
@@ -246,160 +256,77 @@ function VodPlayer({
   }
   useEffect(() => {
     let active = true;
-    let interval: ReturnType<typeof setInterval> | undefined;
-    setReady(false);
-    setError("");
-    setNotice("");
-    record.current = {};
-    latest.current = 0;
-    lastSaved.current = 0;
-    played.current = 0;
-    reported.current = 0;
-    playingSince.current = 0;
-    courseApi
-      .records({ ...context, BusType: 2, BusID: task.BusID })
-      .then(async (result) => {
-        if (!active) return;
-        record.current = mathRows(result)[0] || {};
-        latest.current = Number(record.current.BusValue || 0);
-        lastSaved.current = latest.current;
-        if (!vid) {
-          setReady(true);
-          return;
-        }
-        await loadMathPolyvSDK();
-        if (!active || !host.current) return;
-        const options: Row = {
-          wrap: host.current,
-          vid,
-          width: "100%",
-          height: "100%",
-          autoplay: false,
-          forceH5: true,
-        };
-        // Playback parameters are taken from the returned course data.
-        const playsafe =
-          data.playsafe || data.PlaySafe || data.playSafe || data.PlayToken;
-        if (playsafe) options.playsafe = playsafe;
-        if (data.sign && data.ts) {
-          options.sign = data.sign;
-          options.ts = data.ts;
-        }
-        const player = (window as any).polyvPlayer(options);
-        playerRef.current = player;
-        player.on("s2j_onPlayerInitOver", () => {
-          if (active) {
-            setReady(true);
-            duration.current = Number(
-              player.j2s_getDuration?.() || duration.current,
-            );
-            if (latest.current > 0) player.j2s_seekVideo?.(latest.current);
-          }
-        });
-        player.on("onTimeupdate", (time: any) => {
-          const seconds = Number(
-            typeof time === "object" ? time.currentTime : time,
-          );
-          if (Number.isFinite(seconds))
-            latest.current = Math.max(latest.current, seconds);
-          void save();
-        });
-        player.on("s2j_onVideoPlay", () => trackPlayback(true));
-        player.on("s2j_onVideoPause", () => {
-          trackPlayback(false);
-          void save(true);
-        });
-        player.on("s2j_onPlayOver", () => {
-          trackPlayback(false);
-          void save(true);
-        });
-        const fail = () => {
-          if (active)
-            setError("视频暂时无法播放，请重试或检查来源服务。");
-        };
-        player.on("serverError", fail);
-        player.on("s2j_onPlayerError", fail);
-        interval = setInterval(() => {
-          const time = Number(player.j2s_getCurrentTime?.() || 0);
-          if (time > 0) {
-            latest.current = Math.max(latest.current, time);
-            void save();
-          }
-        }, 5000);
-      })
-      .catch((e: any) => {
-        if (active) setError(e.message);
-      });
+    Promise.all([
+      courseApi.records({ ...context, BusType: 2, BusID: task.BusID }),
+      loadMathVideo(data),
+    ]).then(([result, source]) => {
+      if (!active) return;
+      record.current = mathRows(result)[0] || {};
+      latest.current = Number(record.current.BusValue || 0);
+      lastSaved.current = latest.current;
+      duration.current = Number(source.duration) || duration.current;
+      setVideo(source);
+    }).catch((e: any) => {
+      if (active) setError(e.message);
+    });
     return () => {
       active = false;
       trackPlayback(false);
-      if (interval) clearInterval(interval);
       void save(true);
-      playerRef.current?.destroy?.();
-      playerRef.current = null;
     };
-  }, [vid, task.ID, context.CalendarID, version]);
+  }, []);
   return (
     <div className="mc-vod">
       <h3>{courseLabel(data)}</h3>
-      {vid ? (
-        <div ref={host} className="mc-polyv" />
-      ) : source ? (
-        <video
-          controls
-          playsInline
-          src={source}
-          className="mc-native-video"
-          onPlay={() => trackPlayback(true)}
-          onLoadedMetadata={(e) => {
-            duration.current = e.currentTarget.duration;
-            e.currentTarget.currentTime = latest.current;
-          }}
-          onTimeUpdate={(e) => {
-            latest.current = Math.max(
-              latest.current,
-              e.currentTarget.currentTime,
-            );
-            void save();
-          }}
-          onPause={() => {
-            trackPlayback(false);
-            void save(true);
-          }}
-          onEnded={() => {
-            trackPlayback(false);
-            void save(true);
-          }}
-          onError={() => setError("当前视频无法播放，请稍后重试。")}
-        />
-      ) : (
-        <div className="empty-state">
-          <Play size={30} />
-          <p>此课时尚未返回可播放的录播地址。</p>
-        </div>
-      )}
-      {!ready && vid && !error && (
-        <div className="mc-status">
+      {video && <LearningVideo
+        ref={videoRef}
+        src={video.url}
+        poster={video.poster}
+        controls
+        playsInline
+        preload="metadata"
+        className="mc-native-video"
+        aria-label={`${courseLabel(data)}视频播放器`}
+        onLoadedMetadata={(e) => {
+          if (Number.isFinite(e.currentTarget.duration)) duration.current = e.currentTarget.duration;
+          e.currentTarget.currentTime = latest.current;
+        }}
+        onPlaying={() => trackPlayback(true)}
+        onWaiting={() => trackPlayback(false)}
+        onSeeking={() => trackPlayback(false)}
+        onError={() => trackPlayback(false)}
+        onTimeUpdate={(e) => {
+          latest.current = Math.max(latest.current, e.currentTarget.currentTime);
+          void save();
+        }}
+        onPause={() => {
+          trackPlayback(false);
+          void save(true);
+        }}
+        onEnded={() => {
+          trackPlayback(false);
+          void save(true);
+        }}
+      />}
+      {!video && !error && (
+        <div className="mc-status" role="status">
           <LoaderCircle className="spin" size={16} />
-          正在加载录播播放器…
+          正在加载视频…
         </div>
       )}
       {error && (
-        <div className="mc-status mc-error">
+        <div className="mc-status mc-error" role="alert">
           {error}
-          <button
-            className="btn btn-secondary"
-            onClick={() => setVersion((v) => v + 1)}
-          >
+          <button className="btn btn-secondary" onClick={video ? () => void save(true) : onRetry}>
             重试
           </button>
         </div>
       )}
-      {notice && <p className="mc-notice">{notice}</p>}
+      {notice && <p className="mc-notice" role="status">{notice}</p>}
       <button
         className="btn btn-secondary"
         onClick={() => void save(true)}
-        disabled={saving.current}
+        disabled={!video || saving.current}
       >
         保存播放进度
       </button>

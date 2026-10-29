@@ -24,6 +24,7 @@ import MathDiscussion from "../community/MathDiscussion";
 import { NewMathQuestion } from "../community/MathQuestions";
 import MathContentMarks from "./MathContentMarks";
 import MathQuestionVideo from "./MathQuestionVideo";
+import { mathVideoDescription } from "../media/math-video-source.mjs";
 import MathExtrapolation from "./MathExtrapolation";
 import MathModelTraining from "../practice/MathModelTraining";
 import {
@@ -687,10 +688,13 @@ function AnalysisBlock({
   );
   const media = mathQuestionMedia(row);
   if (!content && media.kind === "none") return null;
-  if (media.kind === "video" || media.kind === "polyv") return <section className="math-analysis-block math-video-analysis">
-    {content && content !== media.url && <RichContent content={content} />}
-    <MediaFile row={row} />
-  </section>;
+  if (media.kind === "video" || media.kind === "polyv") {
+    const description = mathVideoDescription(content);
+    return <section className="math-analysis-block math-video-analysis">
+      {description && description !== media.url && <RichContent content={description} />}
+      <MediaFile row={row} />
+    </section>;
+  }
   return (
     <section className="math-analysis-block">
       <h4>{row.BusType || row.Type || row.Name || row.Title || "解题解析"}</h4>

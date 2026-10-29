@@ -9,7 +9,7 @@ import type { VideoHTMLAttributes } from "react";
 import type Hls from "hls.js";
 import { RefreshCw } from "lucide-react";
 
-/** Uses native HLS where available, and MediaSource HLS for desktop browsers. */
+/** Uses MediaSource HLS when supported, with native HLS as a fallback. */
 const LearningVideo = forwardRef<
   HTMLVideoElement,
   VideoHTMLAttributes<HTMLVideoElement> & { src: string }
@@ -29,15 +29,17 @@ const LearningVideo = forwardRef<
     const isHls = /\.m3u8(?:[?#]|$)/i.test(src);
     async function attachSource() {
       if (!video || disposed) return;
-      if (!isHls || video.canPlayType("application/vnd.apple.mpegurl")) {
+      if (!isHls) {
         video.src = src;
         return;
       }
       try {
         const { default: HlsPlayer } = await import("hls.js");
         if (disposed) return;
+        // Some browsers advertise native HLS but cannot play all HLS assets.
         if (!HlsPlayer.isSupported()) {
-          setError("当前浏览器不支持此视频格式，请使用支持 HLS 的浏览器。");
+          if (video.canPlayType("application/vnd.apple.mpegurl")) video.src = src;
+          else setError("当前浏览器不支持此视频格式，请使用支持 HLS 的浏览器。");
           return;
         }
         hls = new HlsPlayer();

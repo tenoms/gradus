@@ -19,7 +19,6 @@ test('Web sign-in and session read report the same local learning identity after
 test('anonymous and authenticated session responses expose only browser deployment configuration', async t => {
   const environment = {
     MATH_EXTERNAL_URL: 'https://print.example.test/External/', MATH_PRINT_STATION_ID: '9',
-    POLYV_SDK_URL: 'https://player.example.test/sdk.js',
     SERVER_ONLY_CREDENTIAL: 'must-remain-on-server',
   };
   const previous = Object.fromEntries(Object.keys(environment).map(name => [name, process.env[name]]));
@@ -33,7 +32,6 @@ test('anonymous and authenticated session responses expose only browser deployme
   t.after(() => app.close());
   const expected = {
     math: { externalUrl: 'https://print.example.test/External/', printStationId: 9 },
-    media: { polyvSdkUrl: 'https://player.example.test/sdk.js' },
   };
   for (const space of ['admin', 'learning']) {
     const response = await app.request(`/api/${space}/auth/session`);

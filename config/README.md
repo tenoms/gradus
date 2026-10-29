@@ -41,11 +41,11 @@ npm run dev
 | 数学 OCR | `MATH_OCR_URL`、`MATH_OCR_USERNAME`、`MATH_OCR_PASSWORD` |
 | 计算机 | `COMPUTER_ENABLED`、`COMPUTER_BASE_URL`、`COMPUTER_APP_ID`、`COMPUTER_TENANT_CODE`、`COMPUTER_OAUTH_CLIENT_ID`、`COMPUTER_OAUTH_CLIENT_SECRET` |
 | 计算机录播 | `COMPUTER_VIDEO_KEY`、`COMPUTER_VIDEO_IV` |
-| 浏览器公开功能 | `MATH_EXTERNAL_URL`、`MATH_PRINT_STATION_ID`、`POLYV_SDK_URL` |
+| 浏览器公开功能 | `MATH_EXTERNAL_URL`、`MATH_PRINT_STATION_ID` |
 
 `MATH_ENABLED`、`COMPUTER_ENABLED`、`COOKIE_SECURE` 接受 `0`、`1`、`false`、`true`。部署监听和安全 cookie 的默认值来自 `system.json.runtime`；数据库连接与 schema 前缀均由部署环境提供，schema 没有隐式默认值。应用连接数据库时必须设置 `STUDY_SCHEMA_PREFIX`，例如 `study` 对应 `study_web` 和 `study_upstream`；前端构建不需要连接数据库。
 
-浏览器公开功能的三个变量只由环境维护。服务端通过现有会话响应白名单发送，不传输平台 API、OCR/OAuth 凭据或录播密钥。无需把秘密放进 `VITE_*`，修改地址后重启服务即可。未配置外部页面或播放器 SDK 时，相关导出/播放功能显示不可用。
+浏览器公开功能的两个变量只由环境维护。服务端通过现有会话响应白名单发送，不传输平台 API、OCR/OAuth 凭据或录播密钥。无需把秘密放进 `VITE_*`，修改地址后重启服务即可。未配置外部页面时，相关导出功能显示不可用。数学与计算机录播均使用浏览器视频播放器，无需配置播放器 SDK 地址。
 
 ## 系统文件与验证
 

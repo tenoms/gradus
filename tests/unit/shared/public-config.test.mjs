@@ -10,7 +10,7 @@ test("frontend configuration keeps static settings and starts provider endpoints
   assert.equal(publicConfig.computer, configuration.public.computer);
   assert.equal(publicConfig.catalogCache, configuration.public.catalogCache);
   assert.deepEqual(publicConfig.math, { externalUrl: "", printStationId: 1 });
-  assert.deepEqual(publicConfig.media, { polyvSdkUrl: "" });
+  assert.equal(Object.hasOwn(publicConfig, "media"), false);
   assert.equal(Object.hasOwn(publicConfig, "runtime"), false);
   assert.equal(Object.hasOwn(publicConfig, "initialPlatforms"), false);
   assert.equal(Object.hasOwn(publicConfig.computer, "defaultAvatarUrl"), false);
@@ -18,11 +18,9 @@ test("frontend configuration keeps static settings and starts provider endpoints
 
 test("all fallback print links and notebook station use the public configuration", () => {
   const original = { ...publicConfig.math };
-  const originalMedia = { ...publicConfig.media };
   try {
     configureBrowserConfig({
       math: { externalUrl: "https://print.example.test/custom", printStationId: 9, privateField: "ignored" },
-      media: { polyvSdkUrl: "https://player.example.test/vod.js" },
       secret: "ignored",
     });
     assert.equal(Object.hasOwn(publicConfig.math, "privateField"), false);
@@ -35,7 +33,7 @@ test("all fallback print links and notebook station use the public configuration
     assert.equal(reports.length, 3);
     assert.ok(reports.every(link => link.url.startsWith("https://print.example.test/custom/")));
     assert.equal(new URL(recommendationPrintUrl(context, { LinkSort: 4 })).pathname, "/custom/RecommendPaperPrintSpecial.html");
-  } finally { Object.assign(publicConfig.math, original); Object.assign(publicConfig.media, originalMedia); }
+  } finally { Object.assign(publicConfig.math, original); }
 });
 
 test("unconfigured print endpoints omit fallbacks while preserving source file links", () => {
@@ -48,25 +46,4 @@ test("unconfigured print endpoints omit fallbacks while preserving source file l
   ]);
   assert.equal(recommendationPrintUrl(context, { LinkSort: 4 }), "");
   assert.equal(recommendationPrintUrl(context, { Files: "https://files.example.test/recommend.pdf" }), "https://files.example.test/recommend.pdf");
-});
-
-test("the playback SDK loader reads its URL from public configuration", async () => {
-  const originalUrl = publicConfig.media.polyvSdkUrl;
-  const originalWindow = globalThis.window, originalDocument = globalThis.document;
-  let inserted;
-  try {
-    publicConfig.media.polyvSdkUrl = "";
-    globalThis.window = {};
-    globalThis.document = { createElement: () => ({}), head: { append(script) { inserted = script; script.onload(); } } };
-    const { loadMathPolyvSDK } = await import("../../../src/features/math/courses/MathPolyv.ts");
-    await assert.rejects(loadMathPolyvSDK(), /未配置录播播放器/);
-    assert.equal(inserted, undefined);
-    publicConfig.media.polyvSdkUrl = "https://player.example.test/vod.js";
-    await loadMathPolyvSDK();
-    assert.equal(inserted.src, publicConfig.media.polyvSdkUrl);
-  } finally {
-    publicConfig.media.polyvSdkUrl = originalUrl;
-    if (originalWindow === undefined) delete globalThis.window; else globalThis.window = originalWindow;
-    if (originalDocument === undefined) delete globalThis.document; else globalThis.document = originalDocument;
-  }
 });

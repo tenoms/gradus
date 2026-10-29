@@ -1378,7 +1378,7 @@
 .math-question-video {
   margin: 18px 0;
 }
-.math-question-polyv {
+.math-question-video .learning-video video {
   width: 100%;
   aspect-ratio: 16/9;
   background: #242238;

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { configureBrowserConfig } from "../../../src/shared/config/public.mjs";
-configureBrowserConfig({ math: { externalUrl: "https://print.example.test/External/", printStationId: 1 }, media: { polyvSdkUrl: "" } });
+configureBrowserConfig({ math: { externalUrl: "https://print.example.test/External/", printStationId: 1 } });
 import {
   reportTables,
   reportFileLinks,

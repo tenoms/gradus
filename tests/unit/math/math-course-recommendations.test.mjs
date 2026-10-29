@@ -5,7 +5,7 @@ import ts from "typescript";
 import * as model from "../../../src/features/math/courses/course-recommendations-model.mjs";
 import { configureBrowserConfig } from "../../../src/shared/config/public.mjs";
 
-configureBrowserConfig({ math: { externalUrl: "https://print.example.test/External/", printStationId: 1 }, media: { polyvSdkUrl: "" } });
+configureBrowserConfig({ math: { externalUrl: "https://print.example.test/External/", printStationId: 1 } });
 
 const context = {
   stuid: "student",

@@ -14,6 +14,5 @@ export function readBrowserConfig({ env = process.env } = {}) {
     throw new Error('公开配置 MATH_PRINT_STATION_ID 必须为正整数');
   return {
     math: { externalUrl: endpoint(env.MATH_EXTERNAL_URL, 'MATH_EXTERNAL_URL'), printStationId },
-    media: { polyvSdkUrl: endpoint(env.POLYV_SDK_URL, 'POLYV_SDK_URL') },
   };
 }
