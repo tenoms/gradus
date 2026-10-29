@@ -11,11 +11,14 @@ import {
   BookOpen,
   Camera,
   Check,
+  ChevronDown,
   ChevronRight,
   FileText,
   HelpCircle,
   LoaderCircle,
   MessageSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
   Play,
   Printer,
   RefreshCw,
@@ -30,6 +33,8 @@ import MathLearningPlan, { useMathLearningPlan } from "./preparation/MathLearnin
 import { matchesMathSubject } from "./preparation/learning-plan-model.mjs";
 import MathBookshelf from "./library/MathBookshelf";
 import { loadBookPosition, saveBookPosition } from "./library/math-book-position";
+import { groupBookCatalog, findBookCatalogChapter } from "./library/math-book-catalog";
+import MathCatalogPagination from "./library/MathCatalogPagination";
 import MathLibraryTagFilter from "./library/MathLibraryTagFilter";
 import { mathLibraryTag, mathLibraryTagOptions, matchesMathLibraryTag } from "./library/math-library";
 import { useSession } from "../../shared/auth/session";
@@ -442,28 +447,47 @@ function BookWorkspace({
   const [searchError, setSearchError] = useState("");
   const [searching, setSearching] = useState(false);
   const [filter, setFilter] = useState("");
+  const [chapterKey, setChapterKey] = useState("");
+  const [chaptersExpanded, setChaptersExpanded] = useState(true);
+  const [expandedParts, setExpandedParts] = useState<Record<string, boolean>>({});
+  const [catalogCollapsed, setCatalogCollapsed] = useState(false);
+  const catalogListRef = useRef<HTMLDivElement>(null);
+  const chapterTreeRef = useRef<HTMLDivElement>(null);
   const rows = mathRows(catalog.data);
+  const parts = groupBookCatalog(rows);
+  const chapters = parts.flatMap(part => part.chapters);
+  const chapter = chapters.find(item => item.key === chapterKey) || chapters[0];
+  const currentQuestionId = current ? mathQuestionId(current) : undefined;
+  const currentChapter = findBookCatalogChapter(parts, currentQuestionId);
   useEffect(() => {
     if (!resume || !catalog.data) return;
     const restored = rows.find((row) => String(mathQuestionId(row)) === String(mathQuestionId(resume)));
     if (restored) setCurrent(selected => selected || restored);
     else setResumeError("上次阅读的题目已不在当前目录，请从目录重新选题。");
   }, [resume, catalog.data]);
-  const shown = (searchResults || rows).filter(
+  useEffect(() => {
+    if (!currentChapter) return;
+    setChapterKey(currentChapter.chapter.key);
+    setExpandedParts(previous => ({ ...previous, [currentChapter.part.key]: true }));
+  }, [catalog.data, currentQuestionId]);
+  const searchingCatalog = !!searchResults || !!filter.trim();
+  const shown = (searchResults || (searchingCatalog ? rows : chapter?.questions || [])).filter(
     (r) =>
-      !filter ||
-      [r.ChapterName, r.QuestionPage, r.QuestionSort, r.Name]
+      !filter.trim() ||
+      [r.BookChapter, findBookCatalogChapter(parts, mathQuestionId(r))?.chapter.title, r.ChapterName, r.QuestionPage, r.QuestionSort, r.Name]
         .join(" ")
-        .includes(filter),
+        .includes(filter.trim()),
   );
   const catalogPagination = usePagination({
     total: shown.length,
     pageSize: 30,
-    resetKey: JSON.stringify([book.ID, filter, searchResults?.map(mathQuestionId)]),
+    resetKey: JSON.stringify([book.ID, chapter?.key, filter, searchResults?.map(mathQuestionId)]),
   });
   const selectQuestion = (row: MathRow, reveal = false) => {
     setCurrent(row);
     if (reveal) {
+      setFilter("");
+      setSearchResults(undefined);
       const visibleIndex = shown.findIndex(
         (item) => String(mathQuestionId(item)) === String(mathQuestionId(row)),
       );
@@ -471,7 +495,6 @@ function BookWorkspace({
         catalogPagination.setPage(Math.floor(visibleIndex / catalogPagination.pageSize) + 1);
     }
   };
-  const currentQuestionId = current ? mathQuestionId(current) : undefined;
   useEffect(() => {
     if (!current) return;
     const currentIndex = shown.findIndex(
@@ -479,7 +502,26 @@ function BookWorkspace({
     );
     if (currentIndex >= 0)
       catalogPagination.setPage(Math.floor(currentIndex / catalogPagination.pageSize) + 1);
-  }, [catalog.data, catalogPagination.pageSize, currentQuestionId]);
+  }, [catalog.data, catalogPagination.pageSize, currentQuestionId, chapter?.key, filter, searchResults]);
+  useEffect(() => {
+    for (const [list, selector] of [[catalogListRef.current, 'button[aria-current="true"]'], [chapterTreeRef.current, '.math-chapter-link.is-selected']] as const) {
+      const selected = list?.querySelector<HTMLElement>(selector);
+      if (!list || !selected || !list.clientHeight) continue;
+      if (selected.offsetTop < list.scrollTop) list.scrollTop = selected.offsetTop;
+      else if (selected.offsetTop + selected.offsetHeight > list.scrollTop + list.clientHeight)
+        list.scrollTop = selected.offsetTop + selected.offsetHeight - list.clientHeight;
+    }
+  }, [currentQuestionId, chapter?.key, catalogPagination.page, chaptersExpanded, expandedParts, catalogCollapsed, shown.length]);
+  const revealCurrent = () => {
+    if (!currentChapter || !current) return;
+    setFilter("");
+    setSearchResults(undefined);
+    setChapterKey(currentChapter.chapter.key);
+    setExpandedParts(previous => ({ ...previous, [currentChapter.part.key]: true }));
+    setChaptersExpanded(true);
+    const questionIndex = currentChapter.chapter.questions.findIndex(row => String(mathQuestionId(row)) === String(currentQuestionId));
+    catalogPagination.setPage(Math.floor(questionIndex / catalogPagination.pageSize) + 1);
+  };
   const index = current
     ? rows.findIndex((r) => String(mathQuestionId(r)) === String(mathQuestionId(current)))
     : -1;
@@ -534,12 +576,16 @@ function BookWorkspace({
               : "读取完整题目目录与解析"}
           </p>
         </div>
+        <button type="button" className="btn btn-secondary math-catalog-toggle" aria-expanded={!catalogCollapsed} aria-controls={`math-book-catalog-${book.ID}`} onClick={() => setCatalogCollapsed(!catalogCollapsed)}>
+          {catalogCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}{catalogCollapsed ? "展开目录" : "收起目录"}
+        </button>
       </div>
-      <div className="math-study-layout">
-        <aside className="panel math-catalog">
+      <div className={`math-study-layout ${catalogCollapsed ? "is-catalog-collapsed" : ""}`}>
+        <aside className="panel math-catalog" id={`math-book-catalog-${book.ID}`} hidden={catalogCollapsed} aria-label="书籍题目目录">
           {resumeError && <p className="muted" role="status">{resumeError}</p>}
           <div className="math-catalog-heading">
             <h3>题目目录</h3>
+            {current && <button type="button" className="math-text-button" onClick={revealCurrent}>定位当前题</button>}
             <button
               className="math-icon-button"
               aria-label="刷新题目目录"
@@ -548,6 +594,18 @@ function BookWorkspace({
               <RefreshCw size={15} />
             </button>
           </div>
+          {parts.length > 0 && <div className="math-catalog-chapters">
+            <button type="button" className="math-chapters-toggle" aria-expanded={chaptersExpanded} onClick={() => setChaptersExpanded(!chaptersExpanded)}><span>按章节浏览 <small>{chapters.length} 章</small></span><ChevronDown size={15} className={chaptersExpanded ? "is-expanded" : ""} /></button>
+            {chaptersExpanded && <div className="math-chapters-tree" aria-label="书籍章节" ref={chapterTreeRef}>
+              {parts.map(part => {
+                const expanded = expandedParts[part.key] ?? part.chapters.some(item => item.key === chapter?.key);
+                return <div className="math-catalog-part" key={part.key}>
+                  <button type="button" className="math-part-toggle" aria-expanded={expanded} onClick={() => setExpandedParts(previous => ({ ...previous, [part.key]: !expanded }))}><ChevronRight size={13} className={expanded ? "is-expanded" : ""} /><span>{part.title}</span><small>{part.chapters.reduce((count, item) => count + item.questions.length, 0)}</small></button>
+                  {expanded && part.chapters.map(item => <button type="button" className={`math-chapter-link ${item.key === chapter?.key ? "is-selected" : ""}`} key={item.key} aria-current={!searchingCatalog && item.key === chapter?.key ? "true" : undefined} onClick={() => { setChapterKey(item.key); setFilter(""); setSearchResults(undefined); }}><span>{item.title}</span><small>{item.questions.length} 题</small></button>)}
+                </div>;
+              })}
+            </div>}
+          </div>}
           <form onSubmit={doSearch} className="math-page-search">
             <input
               className="input"
@@ -596,7 +654,8 @@ function BookWorkspace({
             empty={!catalog.loading && !shown.length}
             reload={catalog.reload}
           />
-          <div className="math-catalog-list" key={catalogPagination.page}>
+          {!catalog.loading && <div className="math-catalog-current-chapter"><strong>{searchingCatalog ? "全书搜索结果" : chapter?.title || "题目"}</strong><span>{shown.length} 题</span></div>}
+          <div className="math-catalog-list" key={catalogPagination.page} ref={catalogListRef}>
             {shown.slice(catalogPagination.start, catalogPagination.end).map((r, i) => (
               <button
                 key={`${mathQuestionId(r)}-${i}`}
@@ -605,28 +664,24 @@ function BookWorkspace({
                     ? "active"
                     : ""
                 }
+                aria-current={String(currentQuestionId) === String(mathQuestionId(r)) ? "true" : undefined}
                 onClick={() => selectQuestion(r)}
               >
                 <span>
-                  <strong>{r.ChapterName || r.Name || "题目"}</strong>
-                  <small>
-                    第 {r.QuestionPage || "—"} 页 · 第{" "}
-                    {r.QuestionSort || r.QuestionID || catalogPagination.start + i + 1} 题
-                  </small>
+                  <strong>第 {r.QuestionSort || r.QuestionID || catalogPagination.start + i + 1} 题</strong>
+                  <small>原书第 {r.QuestionPage || "—"} 页{searchingCatalog ? ` · ${findBookCatalogChapter(parts, mathQuestionId(r))?.chapter.title || "题目"}` : ""}</small>
                 </span>
                 <ChevronRight size={14} />
               </button>
             ))}
           </div>
           {!catalog.loading && !catalog.error && (
-            <Pagination
-              label="题目目录"
+            <MathCatalogPagination
               page={catalogPagination.page}
               pageSize={catalogPagination.pageSize}
               total={shown.length}
               onPageChange={catalogPagination.setPage}
               onPageSizeChange={catalogPagination.setPageSize}
-              pageSizeOptions={[15, 30, 60]}
             />
           )}
         </aside>

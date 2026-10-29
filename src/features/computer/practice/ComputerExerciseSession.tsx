@@ -135,31 +135,29 @@ export default function ExerciseSession({
     score = Number(
       question.exerciseTotalScore || question.exerciseProperty?.score || 2,
     );
-  const isSequential =
-      !!launch.redo || [3, 10, 18, 19].includes(launch.examType),
-    category = launch.examCategory || 1;
+  const category = launch.examCategory || 1;
   const immediateChoice = computerImmediateChoice(launch, type);
-  const storageKey = `study:computer:draft:${computerDraftScope(session)}:${launch.majorId}:${category}:${examId || launch.chapterId || "random"}:${launch.examType}:${launch.examGroupId || ""}:${launch.redo ? `${launch.redo.kind}:${launch.redo.dateFlag}:${launch.redo.sort}` : ""}`;
+  const storageKey = `study:computer:draft:${computerDraftScope(session)}:${launch.majorId}:${category}:${launch.data.examRecordId || launch.recordId || examId || launch.chapterId || "random"}:${launch.examType}:${launch.examGroupId || ""}:${launch.redo ? `${launch.redo.kind}:${launch.redo.dateFlag}:${launch.redo.sort}` : ""}`;
   useEffect(() => {
+    let active = true;
     async function restore() {
-      let index = Number(launch.data.initialIndex || 0);
+      let index = Math.max(0, Math.min(Number(launch.data.initialIndex) || 0, total - 1));
       try {
         const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
         if (saved?.answers && !isReadOnly) {
           setAnswers((a) => ({ ...a, ...saved.answers }));
           index = Math.max(0, Math.min(Number(saved.current) || 0, total - 1));
-        } else if (
-          isSequential &&
-          !isReadOnly &&
-          Number(launch.data.sheetIndex) > 0
-        )
-          index = Math.min(Number(launch.data.sheetIndex) - 1, total - 1);
+        }
       } catch {}
+      const cloudIndex = Number(launch.data.sheetIndex);
+      if (!isReadOnly && !launch.redo && progressRecord.current && Number.isSafeInteger(cloudIndex) && cloudIndex > 0)
+        index = Math.min(cloudIndex - 1, total - 1);
       if (index > 0 && !questions[index]) await move(index);
       else setCurrent(index);
-      setDraftLoaded(true);
+      if (active) setDraftLoaded(true);
     }
     void restore();
+    return () => { active = false; };
   }, [storageKey]);
   useEffect(() => {
     if (draftLoaded && !isReadOnly)
@@ -310,14 +308,14 @@ export default function ExerciseSession({
     finally { setLoading(false); }
   }
   async function move(index: number) {
-    if (index < 0 || index >= total) return;
+    if (loading || !Number.isSafeInteger(index) || index < 0 || index >= total) return;
     setError("");
     setNotice("");
     setFailedSubmission(false);
     questionStarted.current = Date.now();
-    if (!questions[index] && total > 1) {
-      setLoading(true);
-      try {
+    setLoading(true);
+    try {
+      if (!questions[index] && total > 1) {
         const data = launch.redo
           ? computerReviewData(
               await computerLearningApi.reviewPage(launch.redo.kind, {
@@ -341,6 +339,7 @@ export default function ExerciseSession({
               sectionId: launch.sectionId,
             });
         const next = extractExercises(data);
+        if (!next[0]) throw new Error("平台尚未返回这道题，请稍后重试。");
         setSkipped((ids) => [...new Set([...ids, ...computerSkippedIds(data)])]);
         if(data.examRecordId)progressRecord.current=String(data.examRecordId);
         setQuestions((q) => {
@@ -348,18 +347,18 @@ export default function ExerciseSession({
           updated[index] = next[0];
           return updated;
         });
-        setCurrent(index);
-      } catch (e: any) {
-        setError(e.message);
-      } finally {
-        setLoading(false);
       }
-    } else setCurrent(index);
-    if (sessionElement.current && sessionElement.current.getBoundingClientRect().width < 1000)
-      setShowSheet(false);
-    if(!isReadOnly&&!launch.redo&&isSequential&&progressRecord.current) {
-      try {await computerLearningApi.saveSheetIndex(progressRecord.current,index+1);}
-      catch(error:any){setNotice(`题目已切换，云端续学位置尚未同步：${error.message}`);}
+      setCurrent(index);
+      if (sessionElement.current && sessionElement.current.getBoundingClientRect().width < 1000)
+        setShowSheet(false);
+      if(!isReadOnly&&!launch.redo&&progressRecord.current) {
+        try {await computerLearningApi.saveSheetIndex(progressRecord.current,index+1);}
+        catch(error:any){setNotice(`题目已切换，云端续学位置尚未同步：${error.message}`);}
+      }
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
     }
   }
   async function collect() {
@@ -447,12 +446,13 @@ export default function ExerciseSession({
         <Status empty />
       </div>
     );
+  const navigationDisabled = loading || !draftLoaded || !!related || noteVisible;
   return (
     <LearningWorkbench
       title={launch.title}
       previous={current > 0 ? () => void move(current - 1) : undefined}
       next={current + 1 < total ? () => void move(current + 1) : undefined}
-      disabled={loading || !!related}
+      disabled={navigationDisabled}
     >
     <section ref={sessionElement} className="computer-session panel" onKeyDown={event => {
       if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && !hasSubmitted && !isPaper && !loading) {
@@ -503,7 +503,7 @@ export default function ExerciseSession({
                   aria-label={`第 ${i + 1} 题，${progress.label}`}
                   title={progress.label}
                   aria-current={i === current ? "step" : undefined}
-                  disabled={loading}
+                  disabled={navigationDisabled}
                   key={i}
                   onClick={() => void move(i)}
                 >
@@ -769,7 +769,7 @@ export default function ExerciseSession({
       <div className="computer-session-actions">
         <button
           className="btn btn-secondary"
-          disabled={current === 0 || loading}
+          disabled={current === 0 || navigationDisabled}
           onClick={() => void move(current - 1)}
         >
           <ArrowLeft size={16} />
@@ -777,6 +777,7 @@ export default function ExerciseSession({
         </button>
         <button
           className="btn btn-secondary"
+          disabled={loading || !draftLoaded}
           onClick={() => {
             setNote(question.exerciseNote || "");
             setNoteVisible(!noteVisible);
@@ -806,7 +807,7 @@ export default function ExerciseSession({
         )}
         <button
           className="btn btn-secondary"
-          disabled={current + 1 >= total || loading}
+          disabled={current + 1 >= total || navigationDisabled}
           onClick={() => void move(current + 1)}
         >
           下一题

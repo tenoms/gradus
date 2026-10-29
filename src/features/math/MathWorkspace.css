@@ -332,39 +332,47 @@
 }
 .math-study-layout {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-columns: 300px minmax(0, 1fr);
   gap: 22px;
   align-items: start;
 }
 .math-catalog {
   overflow: hidden;
 }
-.math-catalog > .pagination {
-  margin: 0 16px;
-  padding: 12px 0 16px;
-  gap: 10px;
-}
-.math-catalog .pagination-summary {
-  white-space: normal;
-  line-height: 1.7;
-}
-.math-catalog .pagination-controls {
-  width: 100%;
-  gap: 10px;
-}
-.math-catalog .pagination-pages {
-  flex-wrap: wrap;
-  gap: 4px;
-}
-.math-catalog .pagination button {
-  min-width: 28px;
-  min-height: 28px;
-  padding: 4px 6px;
-}
-.math-catalog .pagination-jump {
-  margin-left: 0;
-  flex-wrap: wrap;
-}
+.math-study-layout.is-catalog-collapsed { grid-template-columns: minmax(0, 1fr); }
+.math-catalog[hidden] { display: none; }
+.math-catalog-toggle { flex-shrink: 0; }
+.math-catalog-chapters { margin: 12px 14px 0; border: 1px solid var(--border); border-radius: 9px; overflow: hidden; }
+.math-chapters-toggle, .math-part-toggle, .math-chapter-link { display: flex; align-items: center; gap: 7px; width: 100%; border: 0; background: transparent; text-align: left; cursor: pointer; font: inherit; }
+.math-chapters-toggle { padding: 11px; justify-content: space-between; color: var(--ink); font-size: 12px; }
+.math-chapters-toggle small { margin-left: 6px; color: var(--muted); font-size: 10px; }
+.math-chapters-toggle svg { transform: rotate(-90deg); }
+.math-chapters-toggle svg.is-expanded { transform: none; }
+.math-chapters-tree { position: relative; max-height: 245px; overflow-y: auto; padding: 0 6px 6px; border-top: 1px solid var(--border); }
+.math-part-toggle { padding: 10px 5px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.math-part-toggle span { flex: 1; }
+.math-part-toggle small { font-variant-numeric: tabular-nums; }
+.math-part-toggle svg { flex-shrink: 0; }
+.math-part-toggle svg.is-expanded { transform: rotate(90deg); }
+.math-chapter-link { padding: 9px 8px 9px 23px; justify-content: space-between; border-radius: 6px; color: var(--ink); font-size: 11px; line-height: 1.5; }
+.math-chapter-link small { flex-shrink: 0; color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+.math-chapter-link:hover, .math-part-toggle:hover { background: #f8f6fb; }
+.math-chapter-link.is-selected { color: var(--accent); background: var(--accent-soft); }
+.math-catalog-current-chapter { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 3px 18px 9px; font-size: 11px; }
+.math-catalog-current-chapter strong { font-weight: 500; line-height: 1.5; }
+.math-catalog-current-chapter span { flex-shrink: 0; color: var(--muted); font-size: 10px; }
+.math-catalog-pagination { border-top: 1px solid var(--border); padding: 12px; color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+.math-catalog-page-row, .math-catalog-page-row > div { display: flex; align-items: center; gap: 4px; }
+.math-catalog-page-row { justify-content: space-between; gap: 6px; }
+.math-catalog-page-row > span { line-height: 1.6; }
+.math-catalog-pagination button { display: inline-grid; place-items: center; min-width: 28px; min-height: 30px; border: 1px solid var(--border); border-radius: 6px; color: var(--accent); background: white; cursor: pointer; }
+.math-catalog-pagination button:hover:not(:disabled) { background: var(--accent-soft); }
+.math-catalog-pagination button:disabled { opacity: .35; cursor: default; }
+.math-catalog-page-number { min-width: 38px; text-align: center; color: var(--ink); }
+.math-catalog-page-settings { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 9px 6px; padding-top: 12px; margin-top: 10px; border-top: 1px solid var(--border); }
+.math-catalog-page-settings label { display: inline-flex; align-items: center; gap: 5px; }
+.math-catalog-page-settings input, .math-catalog-page-settings select { min-width: 0; min-height: 30px; border: 1px solid var(--border); border-radius: 5px; background: white; padding: 4px; font: inherit; color: var(--ink); }
+.math-catalog-page-settings input { width: 40px; text-align: center; }
 .math-catalog-heading {
   display: flex;
   align-items: center;
@@ -394,7 +402,8 @@
   font-size: 11px !important;
 }
 .math-catalog-list {
-  max-height: 630px;
+  position: relative;
+  max-height: 400px;
   overflow-y: auto;
   padding: 0 8px 10px;
 }
@@ -979,7 +988,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .math-study-layout {
-    grid-template-columns: 225px minmax(0, 1fr);
+    grid-template-columns: 275px minmax(0, 1fr);
   }
   .math-album-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

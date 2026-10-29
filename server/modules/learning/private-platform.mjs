@@ -179,7 +179,9 @@ export async function createPrivatePlatformStore({ database, resourceStore, pers
     if (/\/submit\/sheet\/index$/.test(path)) {
       const record=(await list(userId,'computer','exams')).find(row=>row.id===p.examRecordId);
       if (!record) throw new ApiError('未找到本人的练习记录',404);
-      await put(userId,'computer','exams',record.id,{sheetIndex:p.sheetIndex}); return success('computer',true);
+      const sheetIndex=Number(p.sheetIndex),total=Number(record.exerciseTotalNumber || record.questionIds?.length || record.questions?.length || 0);
+      if (!['number','string'].includes(typeof p.sheetIndex) || !/^\d+$/.test(String(p.sheetIndex)) || !Number.isSafeInteger(sheetIndex) || !Number.isSafeInteger(total) || sheetIndex<1 || sheetIndex>total) throw new ApiError('续学题号需在当前练习范围内',400);
+      await put(userId,'computer','exams',record.id,{sheetIndex}); return success('computer',true);
     }
     if (/\/examination\/exercise\/reset$/.test(path)) {
       const ids=p.examRecordIdList || [];
