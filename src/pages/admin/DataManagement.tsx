@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Check, CircleAlert, Database, LoaderCircle, RefreshCw, Save, Users } from "lucide-react";
-import { api } from "../../lib/api";
+import { api, ApiError } from "../../lib/api";
+import SettingSwitch from "../../components/SettingSwitch";
 import "./data-management.css";
 import ResourceManager from "./ResourceManager";
 import YybServices from "./YybServices";
@@ -27,6 +28,8 @@ export default function DataManagement() {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [syncError,setSyncError] = useState("");
+  const [syncNotice,setSyncNotice] = useState("");
   function acceptPool(value: AccountPool) { setPool(value); setAlgorithm(value.algorithm); setRefs(value.enabledRefs); }
   function acceptSync(value: SyncState) { setSync(value); setEnabled(value.settings.enabled); }
   async function action(name: string, work: () => Promise<void>) {
@@ -34,6 +37,7 @@ export default function DataManagement() {
     try { await work(); } catch (cause) { setError(message(cause)); } finally { setBusy(""); }
   }
   async function load() {
+    setSyncError("");setSyncNotice("");
     await action("load", async () => {
       const results = await Promise.allSettled([api<AccountPool>("/api/admin/account-pool"), api<SyncState>("/api/admin/resource-sync")]);
       for (const [i, result] of results.entries()) {
@@ -43,6 +47,22 @@ export default function DataManagement() {
     });
   }
   useEffect(() => { void load(); }, []);
+  async function toggleSync(enabled: boolean) {
+    if(!sync || busy)return;
+    const previous=sync;
+    setEnabled(enabled);setBusy("sync");setSyncError("");setSyncNotice("");
+    try {
+      const value=await api<SyncState>("/api/admin/resource-sync",{method:"PUT",body:JSON.stringify({enabled,revision:previous.settings.revision})});
+      acceptSync(value);
+      setSyncNotice(value.settings.enabled?"已开启资源同步，后续学习访问的资源将逐步保存。":"资源同步已关闭，已有资源保留，个人学习记录继续保存。");
+    }catch(cause){
+      setEnabled(previous.settings.enabled);
+      if(cause instanceof ApiError && cause.status===409) {
+        try{acceptSync(await api<SyncState>("/api/admin/resource-sync"));setSyncError("资源同步设置已在其他页面更新，已读取最新状态。");}
+        catch{setSyncError("未能保存，已恢复原状态。请刷新后重试。");}
+      }else setSyncError(`未能保存，已恢复原状态：${message(cause)}`);
+    }finally{setBusy("");}
+  }
   return <div className="data-management">
     <div className="data-toolbar"><p>共享学习资源，按 Web 用户保存个人学习记录。</p><button className="btn btn-secondary" disabled={!!busy} onClick={() => void load()}><RefreshCw size={15} />刷新</button></div>
     {error && <div className="error-banner" role="alert"><CircleAlert size={17} />{error}</div>}
@@ -66,14 +86,9 @@ export default function DataManagement() {
     <section className="panel data-card">
       <div className="data-heading"><Database size={22} /><div><h2>小程序资源渐进同步</h2><p>学习优先读取 PostgreSQL 中的有效资源；缺失或需要更新时，再向小程序请求并保存。</p></div></div>
       {sync && <>
-        <form onSubmit={event => { event.preventDefault(); void action("sync", async () => {
-          acceptSync(await api<SyncState>("/api/admin/resource-sync", { method: "PUT", body: JSON.stringify({ revision: sync.settings.revision, enabled }) }));
-          setNotice(enabled ? "已开启资源同步，后续学习访问的资源将逐步保存。" : "资源同步已关闭，正常学习与个人记录保存不受影响，已有资源保留。");
-        }); }}>
-          <label className="data-switch"><input type="checkbox" aria-label="启用学习过程资源同步" checked={enabled} onChange={event => setEnabled(event.target.checked)} disabled={!!busy} /><strong>{enabled ? "随学习保存访问资源" : "学习过程资源同步已关闭"}</strong></label>
-          <p className="data-sync-help">开关控制学习访问内容的同步保存；关闭后仍可正常学习，个人学习记录继续独立保存。</p>
-          <button className="btn btn-primary" disabled={!!busy || enabled === sync.settings.enabled}>{busy === "sync" ? <LoaderCircle size={16} className="spin" /> : <Save size={16} />}保存同步设置</button>
-        </form>
+        <SettingSwitch label="启用学习过程资源同步" description="切换后立即保存。关闭后已有资源仍可学习，个人记录继续独立保存。" checked={enabled} pending={busy==="sync"} disabled={!!busy} onChange={value=>{void toggleSync(value);}} />
+        {syncError && <p className="error-banner" role="alert"><CircleAlert size={17}/>{syncError}</p>}
+        {syncNotice && <p className="notice" role="status"><Check size={16}/>{syncNotice}</p>}
         <SyncSummary state={sync} />
       </>}
     </section>
@@ -88,7 +103,6 @@ function SyncSummary({ state }: { state: SyncState }) {
     ? lastSyncDate.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false })
     : "暂无同步记录";
   return <div className="data-sync-summary" aria-live="polite">
-    <div className="data-sync-state"><strong>学习过程同步</strong><span className={`data-sync-badge ${state.settings.enabled ? "is-enabled" : ""}`}>{state.settings.enabled ? "已开启" : "已关闭"}</span></div>
     <dl className="data-sync-stats">
       <div><dt>已保存资源</dt><dd>{state.resources.total}</dd></div>
       <div><dt>考研数学</dt><dd>{state.resources.byPlatform.math || 0}</dd></div>

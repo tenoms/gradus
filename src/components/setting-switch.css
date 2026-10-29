@@ -1,0 +1,17 @@
+.setting-switch-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 15px 18px; border: 1px solid var(--border, #eeedf4); border-radius: 12px; background: #faf9fd; }
+.setting-switch-copy { min-width: 0; }
+.setting-switch-copy strong { display: block; color: var(--ink, #272438); font-size: 14px; font-weight: 550; line-height: 1.6; }
+.setting-switch-copy p { margin: 4px 0 0; color: var(--muted, #898698); font-size: 12px; line-height: 1.7; }
+.setting-switch-control { display: flex; align-items: center; flex-shrink: 0; gap: 10px; }
+.setting-switch-status { min-width: 52px; color: var(--muted, #898698); font-size: 12px; text-align: right; white-space: nowrap; }
+.setting-switch-status.is-on { color: var(--accent, #6b54cf); }
+.setting-switch-button { display: inline-flex; align-items: center; justify-content: center; width: 48px; min-width: 48px; min-height: 44px; padding: 0; border: 0; border-radius: 9px; background: transparent; cursor: pointer; }
+.setting-switch-track { position: relative; display: block; width: 46px; height: 26px; border-radius: 15px; background: #cbc8d6; transition: background .15s ease; }
+.setting-switch-thumb { position: absolute; top: 3px; left: 3px; display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: #fff; color: var(--accent, #6b54cf); box-shadow: 0 1px 4px #27243826; transition: transform .15s ease; }
+.setting-switch-button[aria-checked="true"] .setting-switch-track { background: var(--accent, #6b54cf); }
+.setting-switch-button[aria-checked="true"] .setting-switch-thumb { transform: translateX(20px); }
+.setting-switch-button:focus-visible { outline: 3px solid #b4a7ed; outline-offset: 3px; }
+.setting-switch-button:disabled { opacity: .5; cursor: not-allowed; }
+.setting-switch-button.is-pending:disabled { opacity: 1; cursor: wait; }
+@media (max-width: 600px) { .setting-switch-row { gap: 14px; padding: 12px 14px; } .setting-switch-control { gap: 6px; } }
+@media (prefers-reduced-motion: reduce) { .setting-switch-track, .setting-switch-thumb { transition: none; } }

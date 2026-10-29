@@ -17,7 +17,6 @@
 .data-sync-help { margin: 0; color: #64748b; font-size: 12px; line-height: 1.8; }
 .data-sync-summary { margin-top: 24px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 18px; border-radius: 10px; font-size: 13px; }
 .data-sync-summary > p { margin: 12px 0 0; line-height: 1.8; }
-.data-sync-state { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .data-sync-badge { color: #64748b; background: #e2e8f0; border-radius: 999px; padding: 3px 9px; font-size: 11px; }
 .data-sync-badge.is-enabled { color: #166534; background: #dcfce7; }
 .data-sync-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 18px; margin: 22px 0 18px; }
