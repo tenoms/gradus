@@ -1,9 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import configuration from "../../../config/system.json" with { type: "json" };
 import { publicConfig } from "../../../src/shared/config/public.mjs";
 import { noteExportLinks } from "../../../src/features/math/notebook/notebook-model.mjs";
 import { courseReportPrintLinks } from "../../../src/features/math/exams/report-model.mjs";
 import { recommendationPrintUrl } from "../../../src/features/math/courses/course-recommendations-model.mjs";
+
+test("frontend configuration exposes only the public section of system configuration", () => {
+  assert.equal(publicConfig, configuration.public);
+  assert.equal(Object.hasOwn(publicConfig, "runtime"), false);
+  assert.equal(Object.hasOwn(publicConfig, "initialPlatforms"), false);
+  assert.equal(Object.hasOwn(publicConfig.computer, "defaultAvatarUrl"), false);
+});
 
 test("all fallback print links and notebook station use the public configuration", () => {
   const original = { ...publicConfig.math };

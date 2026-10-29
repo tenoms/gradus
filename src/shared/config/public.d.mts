@@ -1,3 +1,3 @@
-import configuration from "../../../config/public.json";
-export const publicConfig: typeof configuration;
+import configuration from "../../../config/system.json";
+export const publicConfig: typeof configuration.public;
 export function mathExternalUrl(filename: string): URL;
