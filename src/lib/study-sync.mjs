@@ -8,11 +8,6 @@ export function applyStudyChange(data, change) {
     case "activity.add": return { ...data, activities: [change.activity, ...data.activities.filter(a => a.id !== change.activity.id)].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 2000) };
     case "goal.set": return { ...data, goalMinutes: change.goalMinutes };
     case "replace": return change.data;
-    case "merge": return {
-      ...data,
-      tasks: [...data.tasks, ...change.data.tasks.filter(task => !data.tasks.some(existing => existing.id === task.id))],
-      activities: [...data.activities, ...change.data.activities.filter(activity => !data.activities.some(existing => existing.id === activity.id))].sort((a, b) => b.at.localeCompare(a.at)).slice(0, 2000),
-    };
     default: throw new Error("无法识别的学习记录变更");
   }
 }

@@ -262,21 +262,12 @@ export default function ExerciseSession({
       }
       if (all) {
         setFinished(true);
-        setFinalReport({
-          examRecord: {
-            ...payload,
-            id: result?.examRecordId || launch.data.examRecordId,
-            aiScoreStatus: result?.aiScoreStatus ?? 1,
-          },
-          answerList: payload.answers.map((a) => ({
-            ...a,
-            exercise: questions.find(
-              (q) => String(q.exerciseId) === String(a.exerciseId),
-            ),
-          })),
-          examination: { examinationName: launch.title },
-        });
         localStorage.removeItem(storageKey);
+        try {
+          await readSubmittedReport(result?.examRecordId);
+        } catch (reportError: any) {
+          setError(`试卷已提交，报告暂未读取成功：${reportError.message}`);
+        }
       }
       questionStarted.current = Date.now();
       if (result?.score != null) setNotice(`已提交，得分 ${result.score}。`);
@@ -285,6 +276,21 @@ export default function ExerciseSession({
     } finally {
       setLoading(false);
     }
+  }
+  async function readSubmittedReport(returnedRecordId?: string) {
+    const report = await computerLearningApi.submittedReport({
+      recordId: returnedRecordId || progressRecord.current || undefined,
+      examinationId: String(examId), majorId: launch.majorId,
+      examType: launch.examType, examCategory: category,
+    });
+    if (report?.examRecord?.id) progressRecord.current = String(report.examRecord.id);
+    setFinalReport(report);
+  }
+  async function refreshSubmittedReport() {
+    setLoading(true); setError("");
+    try { await readSubmittedReport(); }
+    catch (reportError: any) { setError(`试卷已提交，报告暂未读取成功：${reportError.message}`); }
+    finally { setLoading(false); }
   }
   async function move(index: number) {
     if (index < 0 || index >= total) return;
@@ -507,7 +513,11 @@ export default function ExerciseSession({
           data={finalReport}
           majorId={launch.majorId}
           onOpen={setRelated}
+          onRefresh={() => void refreshSubmittedReport()}
         />
+      )}
+      {finished && !finalReport && (
+        <div className="computer-notice"><p>试卷已提交。报告需要从学习平台读取。</p><button className="btn btn-secondary" disabled={loading} onClick={() => void refreshSubmittedReport()}><RefreshCw size={15} />重试读取报告</button></div>
       )}
       <div className={`computer-question-columns ${hasSubmitted || finished ? "with-analysis" : ""}`}>
       <div className="computer-question-answer">

@@ -1,15 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
-import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Activity, ArrowRight, Bell, Check, ChevronLeft, ChevronRight,
-  CircleAlert, Clock3, KeyRound, LayoutDashboard, Link2, ListChecks,
+  CircleAlert, Clock3, KeyRound, Link2, ListChecks,
   LoaderCircle, Plus, RefreshCw, Search, ShieldCheck, Trash2, Users, X,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { useSession } from "../lib/session";
 import { useDialogFocus } from "../lib/focus";
 import "./admin.css";
+const OperationsConsole = lazy(() => import("./admin/OperationsConsole"));
+const IntegrationSettings = lazy(() => import("./admin/IntegrationSettings"));
 
 type Role = "admin" | "learner";
 interface AdminUser {
@@ -41,7 +43,7 @@ const actions: Record<string, string> = {
   "system.setup": "初始化系统", "user.created": "创建用户", "user.updated": "更新用户",
   "user.password_reset": "重置密码", "auth.login": "登录系统", "auth.logout": "退出系统",
   "platform.connected": "连接学习账号", "auth.password_changed": "修改个人密码", "announcement.created": "发布公告",
-  "announcement.deleted": "删除公告",
+  "announcement.deleted": "删除公告", "configuration.updated": "更新平台配置", "configuration.probed": "检查平台连接",
 };
 const dateTime = (value?: string | null) => {
   if (!value) return "尚无记录";
@@ -98,10 +100,10 @@ function Overview({ version }: { version: number }) {
   return <>
     <div className="admin-metrics">{cards.map(({ label, value, icon: Icon, note }) => <section className="panel admin-metric" key={label}><div><span>{label}</span><Icon size={19} /></div><strong>{Number(value || 0).toLocaleString("zh-CN")}</strong><small>{note}</small></section>)}</div>
     <div className="admin-overview-grid">
-      <section className="panel"><div className="admin-section-heading"><div><h2>学习平台</h2><p>两学科独立连接，按用户分配学习账号。</p></div><Link className="text-link" to="/admin/users">管理分配<ArrowRight size={14} /></Link></div><div className="admin-platforms">{platforms.map((platform) => <div className="admin-platform" key={platform.id}><span className={`admin-platform-symbol ${platform.id}`}>{platform.id === "math" ? "∑" : "</>"}</span><div><strong>{platform.label}</strong><small>{platform.connectedUsers} 位用户已连接</small></div><span className={`admin-badge ${platform.connectedUsers ? "admin-badge-green" : ""}`}>{platform.connectedUsers ? "使用中" : "暂无连接"}</span></div>)}</div><div className="admin-note"><ShieldCheck size={17} /><p>学习者使用独立的登录身份。管理员分配学习账号后，学习者可在自己的学习空间连接原平台。</p></div></section>
-      <section className="panel"><div className="admin-section-heading"><div><h2>管理工作</h2><p>为学习者准备好学习空间。</p></div></div><div className="admin-quick-links"><Link to="/admin/users"><span className="admin-quick-icon"><Users size={19} /></span><span><strong>用户与账号</strong><small>创建用户、分配账号、管理权限</small></span><ArrowRight size={17} /></Link><Link to="/admin/announcements"><span className="admin-quick-icon"><Bell size={19} /></span><span><strong>学习公告</strong><small>向所有学习者发布通知</small></span><ArrowRight size={17} /></Link><Link to="/admin/audit"><span className="admin-quick-icon"><Activity size={19} /></span><span><strong>操作审计</strong><small>查看登录与管理操作记录</small></span><ArrowRight size={17} /></Link></div></section>
+      <section className="panel"><div className="admin-section-heading"><div><h2>学习平台</h2><p>两学科独立连接，按用户分配学习账号。</p></div><Link className="text-link" to="/users">管理分配<ArrowRight size={14} /></Link></div><div className="admin-platforms">{platforms.map((platform) => <div className="admin-platform" key={platform.id}><span className={`admin-platform-symbol ${platform.id}`}>{platform.id === "math" ? "∑" : "</>"}</span><div><strong>{platform.label}</strong><small>{platform.connectedUsers} 位用户已连接</small></div><span className={`admin-badge ${platform.connectedUsers ? "admin-badge-green" : ""}`}>{platform.connectedUsers ? "使用中" : "暂无连接"}</span></div>)}</div><div className="admin-note"><ShieldCheck size={17} /><p>学习者使用独立的登录身份。管理员分配学习账号后，学习者可在自己的学习空间连接原平台。</p></div></section>
+      <section className="panel"><div className="admin-section-heading"><div><h2>管理工作</h2><p>为学习者准备好学习空间。</p></div></div><div className="admin-quick-links"><Link to="/users"><span className="admin-quick-icon"><Users size={19} /></span><span><strong>用户与账号</strong><small>创建用户、分配账号、管理权限</small></span><ArrowRight size={17} /></Link><Link to="/announcements"><span className="admin-quick-icon"><Bell size={19} /></span><span><strong>学习公告</strong><small>向所有学习者发布通知</small></span><ArrowRight size={17} /></Link><Link to="/audit"><span className="admin-quick-icon"><Activity size={19} /></span><span><strong>操作审计</strong><small>查看登录与管理操作记录</small></span><ArrowRight size={17} /></Link></div></section>
     </div>
-    <section className="panel"><div className="admin-section-heading"><div><h2>最近操作</h2><p>管理动作有迹可循。</p></div><Link className="text-link" to="/admin/audit">查看全部<ArrowRight size={14} /></Link></div><AuditList entries={recentAudit || []} compact /></section>
+    <section className="panel"><div className="admin-section-heading"><div><h2>最近操作</h2><p>管理动作有迹可循。</p></div><Link className="text-link" to="/audit">查看全部<ArrowRight size={14} /></Link></div><AuditList entries={recentAudit || []} compact /></section>
   </>;
 }
 interface UserDraft { username: string; displayName: string; password: string; role: Role; status: "active" | "disabled"; yybRef: string }
@@ -217,12 +219,6 @@ function AuditPanel({ version }: { version: number }) {
   const currentPage = Math.min(page, totalPages - 1);
   return <section className="panel"><div className="admin-section-heading"><div><h2>操作审计</h2><p>查看系统记录的登录、账号分配和管理操作。</p></div><span className="admin-badge"><Clock3 size={13} />最近 {entries.length} 条</span></div><div className="admin-user-toolbar"><label className="admin-search"><Search size={17} /><input aria-label="搜索审计记录" placeholder="搜索操作人、对象或操作" value={search} onChange={(event) => { setSearch(event.target.value); setPage(0); }} /></label><select className="input admin-audit-filter" aria-label="按操作筛选" value={action} onChange={(event) => { setAction(event.target.value); setPage(0); }}><option value="all">全部操作</option>{[...new Set(entries.map((entry) => entry.action))].map((item) => <option value={item} key={item}>{actionName(item)}</option>)}</select></div>{resource.loading || resource.error ? <ResourceState {...resource} retry={resource.reload} /> : filtered.length ? <AuditList entries={filtered.slice(currentPage * 20, (currentPage + 1) * 20)} /> : <Empty icon={<Activity size={26} />}>{entries.length ? "没有符合筛选条件的记录。" : "还没有操作记录。"}</Empty>}<div className="admin-list-footer"><span>共 {filtered.length} 条记录</span><div className="admin-pagination"><button className="icon-button" disabled={currentPage === 0} aria-label="上一页审计记录" onClick={() => setPage(currentPage - 1)}><ChevronLeft size={17} /></button><span>{currentPage + 1} / {totalPages}</span><button className="icon-button" disabled={currentPage >= totalPages - 1} aria-label="下一页审计记录" onClick={() => setPage(currentPage + 1)}><ChevronRight size={17} /></button></div></div></section>;
 }
-const tabs = [
-  { to: "/admin", label: "总览", icon: LayoutDashboard, end: true },
-  { to: "/admin/users", label: "用户与账号", icon: Users },
-  { to: "/admin/announcements", label: "学习公告", icon: Bell },
-  { to: "/admin/audit", label: "操作审计", icon: Activity },
-];
 export default function AdminWorkspace() {
   const { session, openLogin } = useSession();
   const user = session.user;
@@ -230,13 +226,14 @@ export default function AdminWorkspace() {
   const navigate = useNavigate();
   const [version, setVersion] = useState(0);
   const [notice, setNotice] = useState("");
-  const section = location.pathname.split("/")[2] || "overview";
-  useEffect(() => { if (!["overview", "users", "announcements", "audit"].includes(section)) navigate("/admin", { replace: true }); }, [section, navigate]);
-  if (!session.authenticated || user?.role !== "admin") return <section className="panel admin-access-state"><span className="admin-access-icon"><ShieldCheck size={30} /></span><h1>管理工作台</h1><p>{session.authenticated ? "当前账号没有管理权限。请联系系统管理员。" : "请使用管理员账号登录，管理用户与学习空间。"}</p>{session.authenticated ? <Link className="btn btn-primary" to="/">返回学习空间<ArrowRight size={15} /></Link> : <button className="btn btn-primary" onClick={openLogin}>登录管理账号<ArrowRight size={15} /></button>}</section>;
+  const section = location.pathname.split("/")[1] || "overview";
+  useEffect(() => { if (!["overview", "users", "configuration", "announcements", "audit", "operations"].includes(section)) navigate("/", { replace: true }); }, [section, navigate]);
+  if (!session.authenticated || user?.role !== "admin") return <section className="panel admin-access-state"><span className="admin-access-icon"><ShieldCheck size={30} /></span><h1>管理工作台</h1><p>{session.authenticated ? "当前账号没有管理权限。请联系系统管理员。" : "请使用管理员账号登录，管理用户与学习空间。"}</p>{session.authenticated ? <a className="btn btn-primary" href="/learn/">返回学习空间<ArrowRight size={15} /></a> : <button className="btn btn-primary" onClick={openLogin}>登录管理账号<ArrowRight size={15} /></button>}</section>;
+  const headings: Record<string, [string, string]> = { overview: ["管理总览", "查看系统使用与学习平台的运行情况。"], users: ["用户与学习账号", "为每位学习者分配身份、权限和平台账号。"], configuration: ["平台集成配置", "管理 YYB、数学与计算机学习平台的连接配置。"], announcements: ["学习公告", "向学习者传递学习安排和空间通知。"], audit: ["操作审计", "查看系统登录、配置和管理操作记录。"], operations: ["运行诊断", "查看两个空间的接口状态和请求耗时。"] };
+  const heading = headings[section] || headings.overview;
   return <div className="admin-workspace">
-    <div className="page-heading admin-page-heading"><div><p className="eyebrow">知序 · 系统管理</p><h1>管理工作台</h1><p>连接学习者、学习资源与每一天的进步。</p></div><div className="admin-heading-actions"><span className="admin-badge admin-badge-purple"><ShieldCheck size={14} />{user.displayName}</span><button className="btn btn-secondary" onClick={() => { setVersion((value) => value + 1); setNotice(""); }}><RefreshCw size={15} />刷新数据</button></div></div>
-    <nav className="admin-tabs" aria-label="管理工作台导航">{tabs.map(({ to, label, icon: Icon, end }) => <NavLink key={to} to={to} end={end}><Icon size={17} />{label}</NavLink>)}<Link className="admin-return" to="/">进入学习空间<ArrowRight size={15} /></Link></nav>
+    <div className="page-heading admin-page-heading"><div><p className="eyebrow">知序 · 系统管理</p><h1>{heading[0]}</h1><p>{heading[1]}</p></div><div className="admin-heading-actions"><span className="admin-badge admin-badge-purple"><ShieldCheck size={14} />{user.displayName}</span>{!["configuration", "operations"].includes(section) && <button className="btn btn-secondary" onClick={() => { setVersion((value) => value + 1); setNotice(""); }}><RefreshCw size={15} />刷新数据</button>}</div></div>
     {notice && <div className="admin-feedback" role="status"><Check size={17} /><span>{notice}</span><button className="icon-button" aria-label="关闭操作提示" onClick={() => setNotice("")}><X size={16} /></button></div>}
-    {section === "users" ? <UsersPanel version={version} notify={setNotice} /> : section === "announcements" ? <AnnouncementsPanel version={version} notify={setNotice} /> : section === "audit" ? <AuditPanel version={version} /> : <Overview version={version} />}
+    {section === "operations" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><OperationsConsole /></Suspense> : section === "configuration" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><IntegrationSettings /></Suspense> : section === "users" ? <UsersPanel version={version} notify={setNotice} /> : section === "announcements" ? <AnnouncementsPanel version={version} notify={setNotice} /> : section === "audit" ? <AuditPanel version={version} /> : <Overview version={version} />}
   </div>;
 }

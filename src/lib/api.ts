@@ -1,3 +1,12 @@
+export type ApiSpace = "admin" | "learning";
+let apiSpace: ApiSpace = "learning";
+export function configureApiSpace(space: ApiSpace) { apiSpace = space; }
+export function resolveApiPath(path: string): string {
+  if (path.startsWith("/api/auth/")) return `/api/${apiSpace}${path.slice(4)}`;
+  if (/^\/api\/(platform|study)(?:\/|$)/.test(path) || /^\/api\/announcements(?:\/|$)/.test(path)) return `/api/learning${path.slice(4)}`;
+  return path;
+}
+
 export type Platform = "math" | "computer";
 export interface PlatformState {
   connected: boolean;
@@ -6,6 +15,7 @@ export interface PlatformState {
 }
 export interface Session {
   authenticated: boolean;
+  space?: ApiSpace;
   user?: {
     id: string;
     username: string;
@@ -29,12 +39,12 @@ export async function studyFetch(path: string, options: RequestInit = {}): Promi
   const startedAs = identity;
   const headers = new Headers(options.headers);
   for (const [key, value] of Object.entries(studyIdentityHeaders())) if (!headers.has(key)) headers.set(key, value);
-  const response = await fetch(path, { ...options, credentials: "same-origin", headers });
-  if (startedAs !== identity) throw new Error("账号已切换，请在当前学习空间重新操作。");
+  const response = await fetch(resolveApiPath(path), { ...options, credentials: "same-origin", headers });
+  if (startedAs !== identity) throw new Error("账号已切换，请在当前空间重新操作。");
   if (response.status === 401) window.dispatchEvent(new Event("study-session-expired"));
   if (response.status === 403) {
     const failure = await response.clone().json().catch(() => ({}));
-    if (startedAs !== identity) throw new Error("账号已切换，请在当前学习空间重新操作。");
+    if (startedAs !== identity) throw new Error("账号已切换，请在当前空间重新操作。");
     if (failure.code === "USER_SCOPE_CHANGED") window.dispatchEvent(new Event("study-identity-changed"));
   }
   return response;
@@ -63,7 +73,7 @@ export async function api<T = any>(
   const data = await response
     .json()
     .catch(() => ({ error: "服务器返回了无法读取的响应" }));
-  if (startedAs !== identity) throw new Error("账号已切换，请在当前学习空间重新操作。");
+  if (startedAs !== identity) throw new Error("账号已切换，请在当前空间重新操作。");
   if (!response.ok)
     throw new ApiError(
       data.message ||

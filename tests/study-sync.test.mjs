@@ -73,19 +73,3 @@ test("stopped user synchronizer cannot notify or save after another user takes o
   assert.equal(writes, 0);
   assert.equal(callbacks, previous);
 });
-
-test("legacy merge rebases without replacing existing cloud tasks or the current goal", async () => {
-  const existing = { ...task("shared"), done: true };
-  let writes = 0;
-  const cloud = { ...emptyStudyData(), goalMinutes: 90, tasks: [existing, task("cloud")] };
-  const c = client({ get: async () => ({ data: cloud, revision: writes ? 2 : 1 }), put: async value => {
-    if (!writes++) throw Object.assign(new Error("conflict"), { status: 409 });
-    return { ...value, revision: 3 };
-  } });
-  await c.sync.sync();
-  c.sync.change({ id: "merge", kind: "merge", data: { ...emptyStudyData(), tasks: [task("shared"), task("legacy")] } });
-  await c.sync.sync();
-  assert.deepEqual(c.sync.data.tasks.map(t => t.id), ["shared", "cloud", "legacy"]);
-  assert.equal(c.sync.data.tasks[0].done, true);
-  assert.equal(c.sync.data.goalMinutes, 90);
-});

@@ -103,10 +103,5 @@ export function importStudyData(value: unknown) {
   const data = validateStudyData(value);
   change({ kind: "replace", data });
 }
-export function mergeStudyData(value: unknown) {
-  const data = validateStudyData(value);
-  validateStudyData(applyStudyChange(current, { kind: "merge", id: "validate", data }));
-  change({ kind: "merge", data });
-}
 window.addEventListener("online", () => { void retryStudySync(); });
 window.addEventListener("focus", () => { void retryStudySync(); });

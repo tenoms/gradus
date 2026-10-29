@@ -42,7 +42,7 @@ export default function ComputerQuestionTools({
   async function share() {
     setError("");
     try {
-      const url = new URL("/study/question-bank", window.location.origin);
+      const url = new URL("/learn/study/question-bank", window.location.origin);
       url.searchParams.set(
         "exerciseId",
         String(question.exerciseId || question.id),

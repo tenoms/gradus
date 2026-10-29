@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, BookOpen, Check, CircleAlert, Layers3, LoaderCircle, ShieldCheck, Target } from "lucide-react";
+import { ArrowRight, BookOpen, Check, CircleAlert, Layers3, LoaderCircle, Settings2, ShieldCheck, Target, Users } from "lucide-react";
 import { api } from "../../lib/api";
-import type { Session } from "../../lib/api";
+import type { ApiSpace, Session } from "../../lib/api";
 import "./identity.css";
 
-export default function AuthScreen({ onAuthenticated }: { onAuthenticated: (session: Session) => void }) {
+export default function AuthScreen({ onAuthenticated, space = "learning" }: { onAuthenticated: (session: Session) => void; space?: ApiSpace }) {
+  const management = space === "admin";
   const [setup, setSetup] = useState<boolean>();
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -17,50 +18,52 @@ export default function AuthScreen({ onAuthenticated }: { onAuthenticated: (sess
     catch (e) { setError((e as Error).message); }
   }
   useEffect(() => { void load(); }, []);
-  return <main className="identity-screen">
+  const initializing = setup && management;
+  const needsAdministrator = setup && !management;
+  return <main className={`identity-screen ${management ? "management-auth" : "learning-auth"}`}>
     <section className="identity-story">
-      <a className="identity-brand" href="/"><Layers3 size={30} /><span>知序 <small>Study</small></span></a>
+      <a className="identity-brand" href={management ? "/admin/" : "/learn/"}>{management ? <ShieldCheck size={30} /> : <Layers3 size={30} />}<span>知序 <small>{management ? "Admin" : "Study"}</small></span></a>
       <div className="identity-story-copy">
-        <p className="identity-eyebrow">LEARN WITH PURPOSE</p>
-        <h1>让知识有序，<br />让进步发生。</h1>
-        <p>从一道题的理解，到一段完整的学习旅程。<br />在属于你的空间里，专注下一步。</p>
+        <p className="identity-eyebrow">{management ? "YOUR LEARNING OPERATIONS" : "LEARN WITH PURPOSE"}</p>
+        <h1>{management ? <>让管理清晰，<br />让学习有序。</> : <>让知识有序，<br />让进步发生。</>}</h1>
+        <p>{management ? <>连接学习者、学习平台与每一天的进步。<br />在独立的管理空间维护整个系统。</> : <>从一道题的理解，到一段完整的学习旅程。<br />在属于你的空间里，专注下一步。</>}</p>
         <div className="identity-features">
-          <span><BookOpen size={20} />数学与计算机，一个学习入口</span>
-          <span><Target size={20} />题目、解析和复习，放在同一张书桌</span>
-          <span><ShieldCheck size={20} />独立账号，跨设备继续计划与记录</span>
+          {management ? <><span><Users size={20} />管理用户与学习账号的分配</span><span><Settings2 size={20} />配置 YYB 与两学科学习平台</span><span><ShieldCheck size={20} />独立管理登录，记录每次重要操作</span></> : <><span><BookOpen size={20} />数学与计算机，一个学习入口</span><span><Target size={20} />题目、解析和复习，放在同一张书桌</span><span><ShieldCheck size={20} />独立账号，跨设备继续计划与记录</span></>}
         </div>
       </div>
-      <p className="identity-story-footer">学有所序 · 行有所至 <span>WEB LEARNING SPACE</span></p>
+      <p className="identity-story-footer">学有所序 · 行有所至 <span>{management ? "SYSTEM MANAGEMENT" : "WEB LEARNING SPACE"}</span></p>
     </section>
     <section className="identity-form-side">
       <div className="identity-form-wrap">
-        <div className="identity-form-icon"><Layers3 size={25} /></div>
+        <div className="identity-form-icon">{management ? <ShieldCheck size={25} /> : <Layers3 size={25} />}</div>
         {setup === undefined ? <>
-          <h2>正在连接学习空间</h2>
+          <h2>正在连接{management ? "管理" : "学习"}空间</h2>
           {error ? <><p className="error-banner" role="alert">{error}</p><button className="btn btn-primary" onClick={load}>重新连接</button></> : <LoaderCircle className="spin" aria-label="加载中" />}
+        </> : needsAdministrator ? <>
+          <p className="eyebrow">WELCOME TO STUDY</p><h2>空间即将就绪</h2><p className="identity-description">系统尚未初始化，请由管理员创建管理账号并配置学习平台。</p><a className="btn btn-primary full-width" href="/admin/">前往初始化管理空间<ArrowRight size={17} /></a>
         </> : <>
-          <p className="eyebrow">{setup ? "欢迎创建你的学习空间" : "WELCOME BACK"}</p>
-          <h2>{setup ? "创建首位管理员" : "登录知序"}</h2>
-          <p className="identity-description">{setup ? "完成初始化后，就可以创建学习账号、分配课程连接并管理整个空间。" : "使用管理员分配的账号，继续你的学习。"}</p>
+          <p className="eyebrow">{initializing ? "欢迎创建你的管理空间" : management ? "ADMINISTRATOR ACCESS" : "WELCOME BACK"}</p>
+          <h2>{initializing ? "创建首位管理员" : management ? "登录管理空间" : "登录学习空间"}</h2>
+          <p className="identity-description">{initializing ? "创建后即可配置平台、管理用户和分配学习账号。" : management ? "使用管理员身份维护系统。管理与学习分别登录。" : "使用分配给你的账号，继续学习。"}</p>
           <form onSubmit={async e => {
             e.preventDefault(); setBusy(true); setError("");
             try {
-              const session = await api<Session>(setup ? "/api/system/setup" : "/api/auth/login", { method: "POST", body: JSON.stringify({ username, password, ...(setup ? { displayName } : {}) }) });
-              setPassword("");
-              onAuthenticated(session);
+              const session = await api<Session>(initializing ? "/api/system/setup" : `/api/${space}/auth/login`, { method: "POST", body: JSON.stringify({ username, password, ...(initializing ? { displayName } : {}) }) });
+              setPassword(""); onAuthenticated(session);
             } catch (e) { setError((e as Error).message); }
             finally { setBusy(false); }
           }}>
-            {setup && <label className="field-label">你的称呼<input className="input" value={displayName} onChange={e => setDisplayName(e.target.value)} maxLength={80} required autoComplete="name" placeholder="例如：学习管理员" disabled={busy} /></label>}
+            {initializing && <label className="field-label">你的称呼<input className="input" value={displayName} onChange={e => setDisplayName(e.target.value)} maxLength={80} required autoComplete="name" placeholder="例如：学习管理员" disabled={busy} /></label>}
             <label className="field-label">用户名<input className="input" value={username} onChange={e => setUsername(e.target.value)} minLength={3} maxLength={40} pattern="[a-zA-Z0-9][a-zA-Z0-9_.-]{2,39}" required autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder="输入用户名" disabled={busy} /></label>
-            <label className="field-label">密码<input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} minLength={setup ? 10 : undefined} maxLength={256} required autoComplete={setup ? "new-password" : "current-password"} placeholder={setup ? "至少 10 位字符" : "输入密码"} disabled={busy} /></label>
+            <label className="field-label">密码<input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} minLength={initializing ? 10 : undefined} maxLength={256} required autoComplete={initializing ? "new-password" : "current-password"} placeholder={initializing ? "至少 10 位字符" : "输入密码"} disabled={busy} /></label>
             {error && <div className="error-banner" role="alert"><CircleAlert size={17} /><span>{error}</span></div>}
-            <button className="btn btn-primary full-width" disabled={busy}>{busy ? <LoaderCircle className="spin" size={17} /> : null}{busy ? "正在进入…" : setup ? "创建并进入管理端" : "进入学习空间"}<ArrowRight size={17} /></button>
+            <button className="btn btn-primary full-width" disabled={busy}>{busy ? <LoaderCircle className="spin" size={17} /> : null}{busy ? "正在进入…" : initializing ? "创建并进入管理空间" : management ? "进入管理空间" : "进入学习空间"}<ArrowRight size={17} /></button>
           </form>
-          <div className="identity-help"><Check size={16} /><p>{setup ? "请在向其他人开放服务前完成初始化。创建后将关闭此入口。" : "还没有账号或忘记密码？请联系学习空间管理员。"}</p></div>
+          <div className="identity-help"><Check size={16} /><p>{initializing ? "请在向其他人开放服务前完成初始化。创建后将关闭此入口。" : management ? "管理权限由系统管理员分配，请妥善保管登录凭据。" : "还没有账号或忘记密码？请联系学习空间管理员。"}</p></div>
         </>}
+        <a className="identity-space-link" href={management ? "/learn/" : "/admin/"}>{management ? "前往学习空间" : "管理员登录"}<ArrowRight size={14} /></a>
       </div>
-      <p className="identity-privacy">你的计划与学习活动随账号保存</p>
+      <p className="identity-privacy">{management ? "独立管理会话 · 权限由服务端核验" : "你的计划与学习活动随账号保存"}</p>
     </section>
   </main>;
 }

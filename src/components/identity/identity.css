@@ -24,3 +24,8 @@
 .identity-privacy { color: #a09aa9; font-size: 10px; margin-top: 20px; }
 @media (min-width: 1900px) { .identity-form-wrap { width: 430px; } }
 @media (max-width: 850px) { .identity-screen { grid-template-columns: 1fr; } .identity-story { padding: 24px 30px; } .identity-story-copy, .identity-story-footer { display: none; } .identity-brand { font-size: 23px; } .identity-story::after { display: none; } .identity-form-side { padding: 24px; min-height: calc(100dvh - 81px); } }
+.identity-space-link { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; margin-top: 28px; color: #7e6c99; }
+.identity-space-link:hover { color: var(--accent); }
+.management-auth .identity-story { background: #ebe9f5; }
+.management-auth .identity-story::after { content: "⌘"; font-size: 500px; right: -100px; top: 25%; transform: rotate(-12deg); }
+.management-auth .identity-description { max-width: 360px; }

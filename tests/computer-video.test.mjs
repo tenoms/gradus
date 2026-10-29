@@ -2,9 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createCipheriv } from "node:crypto";
 import {
-  computerRequest,
+  createUpstreamClient,
   decodeComputerVideoResponse,
 } from "../server/upstream.mjs";
+import { readPlatformDefaults } from "../server/platform-config.mjs";
 const key = Buffer.from("1234567890abcdef"),
   iv = Buffer.from("fedcba0987654321");
 function encrypted(text) {
@@ -48,37 +49,14 @@ test("video permission failures stay unchanged and malformed ciphertext returns 
   );
 });
 test("computer adapter decrypts only V2 media URLs and preserves the Tencent response", async () => {
-  const previousFetch = globalThis.fetch,
-    oldKey = process.env.COMPUTER_VIDEO_KEY,
-    oldIV = process.env.COMPUTER_VIDEO_IV;
-  process.env.COMPUTER_VIDEO_KEY = key.toString();
-  process.env.COMPUTER_VIDEO_IV = iv.toString();
-  globalThis.fetch = async () =>
-    new Response(
-      JSON.stringify({
-        code: 200,
-        data: { mediaList: [{ playURL: encrypted(playable) }] },
-      }),
-      { headers: { "content-type": "application/json" } },
-    );
-  try {
-    const result = await computerRequest(
-      "/api/exam/wx/course/get_play_info/v2",
-      {},
-      { token: "fixture" },
-    );
-    assert.equal(result.data.mediaList[0].playURL, playable);
-    const tencent = await computerRequest(
-      "/api/exam/wx/course/vod/get_play_info",
-      {},
-      { token: "fixture" },
-    );
-    assert.notEqual(tencent.data.mediaList[0].playURL, playable);
-  } finally {
-    globalThis.fetch = previousFetch;
-    if (oldKey === undefined) delete process.env.COMPUTER_VIDEO_KEY;
-    else process.env.COMPUTER_VIDEO_KEY = oldKey;
-    if (oldIV === undefined) delete process.env.COMPUTER_VIDEO_IV;
-    else process.env.COMPUTER_VIDEO_IV = oldIV;
-  }
+  const config = readPlatformDefaults({ env: {}, readLocal: false });
+  config.computer.videoKey = key.toString();
+  config.computer.videoIv = iv.toString();
+  const client = createUpstreamClient(config, {
+    requestJson: async () => ({ code: 200, data: { mediaList: [{ playURL: encrypted(playable) }] } }),
+  });
+  const result = await client.computerRequest("/api/exam/wx/course/get_play_info/v2", {}, { token: "fixture" });
+  assert.equal(result.data.mediaList[0].playURL, playable);
+  const tencent = await client.computerRequest("/api/exam/wx/course/vod/get_play_info", {}, { token: "fixture" });
+  assert.notEqual(tencent.data.mediaList[0].playURL, playable);
 });

@@ -50,10 +50,10 @@ export function createIdentityStore(filename) {
       status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','disabled')),
       yyb_ref TEXT UNIQUE, created_at TEXT NOT NULL, last_login_at TEXT
     );
-    CREATE TABLE IF NOT EXISTS sessions (
-      token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), expires INTEGER NOT NULL
+    CREATE TABLE IF NOT EXISTS auth_sessions (
+      token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id), space TEXT NOT NULL CHECK(space IN ('admin','learning')), expires INTEGER NOT NULL
     );
-    CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);
+    CREATE INDEX IF NOT EXISTS auth_sessions_user ON auth_sessions(user_id);
     CREATE TABLE IF NOT EXISTS study_data (
       user_id TEXT PRIMARY KEY REFERENCES users(id), data TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 0
     );
@@ -118,36 +118,37 @@ export function createIdentityStore(filename) {
         fail("该学习账号已分配给其他用户", 409);
       db.prepare("UPDATE users SET display_name=?,role=?,status=?,yyb_ref=? WHERE id=?")
         .run(displayName, role, status, yybRef, id);
-      if (status === "disabled") db.prepare("DELETE FROM sessions WHERE user_id=?").run(id);
+      if (status === "disabled") db.prepare("DELETE FROM auth_sessions WHERE user_id=?").run(id);
       const user = publicIdentity(rowFor(id));
       audit(actor, "user.updated", user, [role !== row.role ? `角色：${role}` : "", status !== row.status ? `状态：${status}` : "", yybRef !== row.yyb_ref ? "更新学习账号分配" : ""].filter(Boolean).join("；"));
       return user;
     });
   }
-  function login(username, password) {
+  function login(username, password, space = "learning") {
     const row = typeof username === "string" && username.length <= 40
       ? db.prepare("SELECT * FROM users WHERE username=?").get(username.trim()) : null;
     // A fixed dummy derivation keeps nonexistent usernames on the same password verification path.
     const hash = row?.password_hash || `${"0".repeat(32)}:${"0".repeat(128)}`;
     if (!passwordMatches(password, hash) || !row || row.status !== "active") fail("用户名或密码不正确，或账号已停用", 401);
+    if (space === "admin" && row.role !== "admin") fail("此账号没有管理空间权限", 403);
     db.prepare("UPDATE users SET last_login_at=? WHERE id=?").run(now(), row.id);
     const user = publicIdentity(rowFor(row.id));
-    audit(user, "auth.login", user);
+    audit(user, "auth.login", user, space);
     return user;
   }
-  function issueSession(userId, lifetime) {
-    db.prepare("DELETE FROM sessions WHERE expires <= ?").run(Date.now());
+  function issueSession(userId, lifetime, space = "learning") {
+    db.prepare("DELETE FROM auth_sessions WHERE expires <= ?").run(Date.now());
     const token = randomBytes(32).toString("base64url");
-    db.prepare("INSERT INTO sessions (token_hash,user_id,expires) VALUES (?,?,?)").run(tokenHash(token), userId, Date.now() + lifetime);
+    db.prepare("INSERT INTO auth_sessions (token_hash,user_id,space,expires) VALUES (?,?,?,?)").run(tokenHash(token), userId, space, Date.now() + lifetime);
     return token;
   }
-  function sessionUser(token) {
+  function sessionUser(token, space = "learning") {
     if (typeof token !== "string" || token.length > 256) return null;
-    return publicIdentity(db.prepare("SELECT users.* FROM sessions JOIN users ON users.id=sessions.user_id WHERE token_hash=? AND expires>? AND users.status='active'")
-      .get(tokenHash(token), Date.now()));
+    return publicIdentity(db.prepare("SELECT users.* FROM auth_sessions JOIN users ON users.id=auth_sessions.user_id WHERE token_hash=? AND expires>? AND space=? AND users.status='active'")
+      .get(tokenHash(token), Date.now(), space));
   }
   function revokeSession(token) {
-    if (typeof token === "string") db.prepare("DELETE FROM sessions WHERE token_hash=?").run(tokenHash(token));
+    if (typeof token === "string") db.prepare("DELETE FROM auth_sessions WHERE token_hash=?").run(tokenHash(token));
   }
   function studyData(userId) {
     const row = db.prepare("SELECT data,revision FROM study_data WHERE user_id=?").get(userId);
@@ -177,7 +178,7 @@ export function createIdentityStore(filename) {
       if (!user) fail("未找到该用户", 404);
       transaction(() => {
         db.prepare("UPDATE users SET password_hash=? WHERE id=?").run(hash, id);
-        db.prepare("DELETE FROM sessions WHERE user_id=?").run(id);
+        db.prepare("DELETE FROM auth_sessions WHERE user_id=?").run(id);
         audit(actor, "user.password_reset", user);
       });
     },
@@ -187,7 +188,7 @@ export function createIdentityStore(filename) {
       const hash = passwordHash(password);
       transaction(() => {
         db.prepare("UPDATE users SET password_hash=? WHERE id=?").run(hash, userId);
-        db.prepare("DELETE FROM sessions WHERE user_id=? AND token_hash!=?").run(userId, tokenHash(currentToken));
+        db.prepare("DELETE FROM auth_sessions WHERE user_id=? AND token_hash!=?").run(userId, tokenHash(currentToken));
         const user = publicIdentity(row);
         audit(user, "auth.password_changed", user, "当前会话保留，其他登录会话已退出");
       });

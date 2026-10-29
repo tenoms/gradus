@@ -5,6 +5,7 @@ import {
   mathBookNeedsUsageCheck,
   mathQrcodeRequestPlan,
   mathVipActive,
+  mathChoicePracticeAllowed,
 } from "../src/platforms/math-access-model.ts";
 const now = Date.parse("2026-10-29T12:00:00+08:00"),
   book = { IsActCode: 1, ActBusCount: 2, IsVipActCode: 0 };
@@ -144,4 +145,12 @@ test("album permission keeps permanent free, valid free, expired free, VIP-only 
     true,
   );
   assert.equal(mathAlbumAllowed({ Authority: 0, PID: 4 }, {}, now), true);
+});
+
+test("ordinary choice practice keeps the original three-free-paper allowance and active membership", () => {
+  assert.equal(mathChoicePracticeAllowed({}, 0, now), true);
+  assert.equal(mathChoicePracticeAllowed({}, 2, now), true);
+  assert.equal(mathChoicePracticeAllowed({}, 3, now), false);
+  assert.equal(mathChoicePracticeAllowed({ VipEndTime: "2026-10-28 00:00:00" }, 3, now), false);
+  assert.equal(mathChoicePracticeAllowed({ VipEndTime: "2026-10-30 00:00:00" }, 20, now), true);
 });

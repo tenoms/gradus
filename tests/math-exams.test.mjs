@@ -513,3 +513,15 @@ test("ability probe only reads both original question record families without st
   assert.equal(calls[1].query.page, 0);
   assert.equal(calls[1].query.limit, 1000);
 });
+
+test("weekly creation rejects entitlement text returned inside a successful transport envelope", async () => {
+  let call;
+  globalThis.__mathExamPost = async (...args) => { call = args; return { code: 0, SuccessResponse: true, data: "权限次数不够，请充值" }; };
+  await assert.rejects(adapter.mathExamApi.createWeekly({ ID: 4, name: "新练习" }), /权限次数不够/);
+  assert.equal(call[0], "/api/ks_paper/RelPaper3");
+  globalThis.__mathExamPost = async () => ({ code: 0, SuccessResponse: true, data: {} });
+  await assert.rejects(adapter.mathExamApi.createWeekly({ ID: 4 }), /没有返回可作答的试卷编号/);
+  const created = { code: 0, SuccessResponse: true, data: { PaperID: 123 } };
+  globalThis.__mathExamPost = async () => created;
+  assert.equal(await adapter.mathExamApi.createWeekly({ ID: 4 }), created);
+});

@@ -57,11 +57,18 @@ export async function computerRequest(
   });
   if (response && response.statusCode && response.data)
     response = response.data;
+  const emptyHistory =
+    Number(response?.code) === 4104 &&
+    path === "/api/exam/wx/practice/examinationRecord" &&
+    Array.isArray(response?.data?.list) &&
+    response.data.list.length === 0 &&
+    Number(response.data.total) === 0;
   if (
     response &&
     typeof response === "object" &&
     "code" in response &&
-    ![200, 0, "200", "0", 5001, 5002, 4094, 4114].includes(response.code)
+    ![200, 0, "200", "0", 5001, 5002, 4094, 4114].includes(response.code) &&
+    !emptyHistory
   )
     throw new Error(
       [4061, 4064].includes(Number(response.code))

@@ -1,0 +1,8 @@
+.operations-console { display: grid; gap: 22px; }
+.operations-intro { display: flex; align-items: center; justify-content: space-between; gap: 24px; color: #7a7189; font-size: 12px; }
+.operations-intro .btn { flex-shrink: 0; }
+.operations-table td { font-size: 12px; }
+.operations-table code { font: 11px ui-monospace, SFMono-Regular, monospace; }
+.operations-request-id { color: #81768d; user-select: all; }
+.operations-failed { color: #b14949; background: #fff0f0; }
+@media(max-width:700px) { .operations-intro { align-items: start; flex-direction: column; gap: 14px; } }

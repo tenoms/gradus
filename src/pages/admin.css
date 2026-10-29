@@ -201,3 +201,57 @@
 .admin-workspace .admin-tabs a { font-size: 13px; }
 .admin-workspace .admin-state-error, .admin-workspace .admin-form-error { color: #a74d62; }
 @media (max-width: 600px) { .admin-workspace .admin-tabs a { font-size: 12px; } .admin-workspace .admin-table { min-width: 640px; } }
+
+.management-shell { min-height: 100dvh; background: #f6f7fb; }
+.management-sidebar { width: 245px; position: fixed; inset: 0 auto 0 0; display: flex; flex-direction: column; z-index: 30; background: #fff; border-right: 1px solid #e9eaf0; padding: 34px 18px 22px; overflow: auto; }
+.management-brand { display: flex; gap: 12px; align-items: center; padding: 0 12px 37px; font-size: 24px; font-weight: 700; }
+.management-brand > span { width: 43px; height: 45px; display: grid; place-items: center; background: #6750c3; color: white; border-radius: 13px; }
+.management-brand small { font-size: 12px; font-weight: 500; color: #7d708f; }
+.management-brand p { font-size: 10px; font-weight: 400; letter-spacing: .6px; color: #8a8196; margin-top: 4px; }
+.management-nav-caption { color: #938ba0; font-size: 10px; letter-spacing: 1px; margin: 0 14px 14px; }
+.management-sidebar nav { display: grid; gap: 7px; }
+.management-sidebar nav > a { display: flex; align-items: center; gap: 13px; padding: 14px; min-height: 47px; color: #6d657b; font-size: 13px; border-radius: 9px; }
+.management-sidebar nav > a:hover { background: #f8f6fc; color: #654ac0; }
+.management-sidebar nav > a.active { background: #eeeafa; color: #694ec7; font-weight: 600; }
+.management-sidebar-bottom { margin-top: auto; padding-top: 40px; }
+.management-space-switch { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #f8f7fc; padding: 16px 14px; border: 1px solid #eeebf5; border-radius: 10px; color: #645277; font-size: 12px; }
+.management-space-switch small { display: block; color: #93899f; font-size: 10px; margin-top: 6px; }
+.management-sidebar-bottom > p { display: flex; align-items: center; justify-content: center; gap: 5px; color: #9a91a6; font-size: 10px; margin-top: 22px; }
+.management-body { margin-left: 245px; }
+.management-header { height: 79px; display: flex; align-items: center; justify-content: space-between; background: #ffffffeb; backdrop-filter: blur(14px); border-bottom: 1px solid #e9eaf0; padding: 0 38px; position: sticky; top: 0; z-index: 20; }
+.management-header > div { display: flex; align-items: center; gap: 25px; }
+.management-header > div > span { display: flex; align-items: center; gap: 15px; font-size: 12px; color: #8b8298; }
+.management-header strong { color: #5d516d; font-weight: 500; }
+.management-header i { color: #c8c2d0; font-style: normal; }
+.management-account { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6b5685; }
+.management-logout { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; color: #8b7e99; padding: 8px 0 8px 18px; border-left: 1px solid #ebe6f0; }
+.management-content { max-width: 2048px; margin: auto; padding: 34px 38px 0; }
+.management-content .admin-page-heading { margin-bottom: 4px; }
+.management-content .admin-workspace { gap: 24px; }
+.management-footer { display: flex; align-items: center; justify-content: space-between; color: #a098ae; font-size: 10px; padding: 34px 0 24px; }
+.management-loading { display: flex; min-height: 70dvh; flex-direction: column; align-items: center; justify-content: center; gap: 18px; color: #897c9a; }
+.management-loading h1 { font-size: 23px; color: #4d3e60; }
+.management-loading p { font-size: 13px; }
+.management-menu { display: none; }
+.management-backdrop { display: none; }
+@media (min-width: 1700px) { .management-content { padding: 42px 50px 0; } .management-header { padding-inline: 50px; } }
+@media (max-width: 1100px) { .management-sidebar { width: 222px; } .management-body { margin-left: 222px; } .management-header { padding-inline: 25px; } .management-content { padding: 28px 25px 0; } }
+@media (max-width: 850px) {
+  .management-sidebar { width: 245px; transform: translateX(-100%); transition: transform .2s; }
+  .management-sidebar.is-open { transform: translateX(0); }
+  .management-body { margin-left: 0; }
+  .management-menu { display: inline-flex; }
+  .management-backdrop { display: block; position: fixed; inset: 0; z-index: 29; background: #241a394f; }
+  .management-header > div { gap: 15px; }
+}
+@media (max-width: 560px) {
+  .management-header { height: 66px; padding-inline: 17px; }
+  .management-header > div > span { font-size: 11px; gap: 8px; }
+  .management-account span { display: none; }
+  .management-logout { padding-left: 12px; }
+  .management-logout span { display: none; }
+  .management-content { padding: 22px 17px 0; }
+  .management-content .page-heading h1 { font-size: 25px; }
+  .management-footer { font-size: 9px; }
+}
+@media (prefers-reduced-motion: reduce) { .management-sidebar { transition: none; } }

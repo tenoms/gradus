@@ -76,6 +76,10 @@ export function mathNoteQuotaAllowed(
   );
   return !(limit > 0 && count > limit);
 }
+export function mathChoicePracticeAllowed(user: Row, historyCount: number, now = Date.now()) {
+  return mathVipActive(user, now) ||
+    (Number.isInteger(historyCount) && historyCount >= 0 && historyCount < 3);
+}
 export function mathAlbumAllowed(album: Row, user: Row, now = Date.now()) {
   if (Number(album.PID) === 4) return true;
   if (Number(album.Authority) !== 1) return mathVipActive(user, now);

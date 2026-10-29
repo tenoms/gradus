@@ -88,6 +88,15 @@ test("empty review records stay empty; invalid parameters, permissions and group
     /练习组/,
   );
 });
+
+test("the upstream's empty examination history remains an empty page without hiding missing-record errors elsewhere", async () => {
+  const page = { list: [], total: 0, pages: 0 };
+  globalThis.__computerTestRequest = async () => ({ code: 4104, message: "EXERCISE RECORD NOT_FOUND", data: page });
+  assert.deepEqual(await adapter.computerRequest("/api/exam/wx/practice/examinationRecord"), page);
+  await assert.rejects(adapter.computerRequest("/api/exam/wx/practice/examinationRecord/detail"), /EXERCISE RECORD NOT_FOUND/);
+  globalThis.__computerTestRequest = async () => ({ code: 4104, message: "EXERCISE RECORD NOT_FOUND", data: null });
+  await assert.rejects(adapter.computerRequest("/api/exam/wx/practice/examinationRecord"), /EXERCISE RECORD NOT_FOUND/);
+});
 test("request forwards query, body and method without changing the API contract", async () => {
   let seen;
   globalThis.__computerTestRequest = async (...args) => {

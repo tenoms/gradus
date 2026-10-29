@@ -288,6 +288,20 @@ export const computerLearningApi = {
     computerRequest("/api/exam/wx/practice/examinationRecord/detail", {
       examRecordId,
     }),
+  async submittedReport({ recordId, examinationId, majorId, examType, examCategory = 1 }: {
+    recordId?: string; examinationId: string; majorId: string; examType: number; examCategory?: number;
+  }) {
+    let id = recordId;
+    if (!id) {
+      const history = await computerRequest("/api/exam/wx/practice/examinationRecord", {
+        majorId, examType, examCategory, pageNum: 1, pageSize: 100, t: Date.now(),
+      });
+      const ownRecord = records(history).find(item => String(item.examinationId) === String(examinationId));
+      id = ownRecord?.id || ownRecord?.examRecordId;
+    }
+    if (!id) throw new Error("平台尚未返回本次提交的报告，请稍后重试读取。");
+    return computerLearningApi.report(String(id));
+  },
   retryScore: (examRecordId: string) =>
     computerRequest("/api/exam/wx/practice/ai/retry/score", {}, "POST", {
       examRecordId,

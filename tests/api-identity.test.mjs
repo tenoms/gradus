@@ -5,7 +5,7 @@ import { stripTypeScriptTypes } from "node:module";
 
 // Transform the actual source: ApiError uses parameter properties that strip-only mode cannot erase.
 const source = stripTypeScriptTypes(readFileSync(new URL("../src/lib/api.ts", import.meta.url), "utf8"), { mode: "transform" });
-const { api, studyFetch, setApiIdentity, ApiError } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
+const { api, studyFetch, setApiIdentity, configureApiSpace, getSession, resolveApiPath, ApiError } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
 const originalFetch = globalThis.fetch;
 const originalWindow = globalThis.window;
 const deferred = () => {
@@ -20,12 +20,14 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
 beforeEach(() => {
   globalThis.window = new EventTarget();
   setApiIdentity(undefined);
+  configureApiSpace("learning");
 });
 afterEach(() => {
   globalThis.fetch = originalFetch;
   if (originalWindow === undefined) delete globalThis.window;
   else globalThis.window = originalWindow;
   setApiIdentity(undefined);
+  configureApiSpace("learning");
 });
 
 test("JSON requests carry the identity displayed to the caller together with cookies and caller headers", async () => {
@@ -36,7 +38,7 @@ test("JSON requests carry the identity displayed to the caller together with coo
     method: "PUT", body: JSON.stringify({ revision: 1 }), headers: new Headers({ "X-Request-Label": "save-plan" }),
   });
   assert.deepEqual(result, { saved: true });
-  assert.equal(sent.path, "/api/study/data");
+  assert.equal(sent.path, "/api/learning/study/data");
   assert.equal(new Headers(sent.headers).get("X-Study-User"), "user-a");
   assert.equal(new Headers(sent.headers).get("X-Request-Label"), "save-plan");
   assert.equal(new Headers(sent.headers).get("Content-Type"), "application/json");
@@ -51,6 +53,7 @@ test("multipart uploads carry identity without setting a Content-Type that would
   setApiIdentity("user-a");
   const response = await studyFetch("/api/platform/math/upload", { method: "POST", body: form });
   assert.deepEqual(await response.json(), { uploaded: true });
+  assert.equal(sent.path, "/api/learning/platform/math/upload");
   assert.equal(sent.body, form);
   assert.equal(new Headers(sent.headers).get("X-Study-User"), "user-a");
   assert.equal(new Headers(sent.headers).has("Content-Type"), false);
@@ -144,4 +147,35 @@ test("studyFetch rejects an obsolete request if identity changes while a forbidd
   body.resolve({ code: "USER_SCOPE_CHANGED" });
   await assert.rejects(pending, /账号已切换/);
   assert.equal(identityEvents, 0, "an obsolete response must not refresh the new user's identity");
+});
+
+
+test("management and learning authentication use separate session and logout request paths", async () => {
+  const paths = [];
+  globalThis.fetch = async (path, options) => { paths.push([path, options.credentials]); return json({ authenticated: false }); };
+  configureApiSpace("admin");
+  await getSession();
+  await api("/api/auth/login", { method: "POST", body: "{}" });
+  await api("/api/auth/logout", { method: "POST" });
+  configureApiSpace("learning");
+  await getSession();
+  await api("/api/auth/login", { method: "POST", body: "{}" });
+  await api("/api/auth/logout", { method: "POST" });
+  assert.deepEqual(paths, [
+    ["/api/admin/auth/session", "same-origin"], ["/api/admin/auth/login", "same-origin"], ["/api/admin/auth/logout", "same-origin"],
+    ["/api/learning/auth/session", "same-origin"], ["/api/learning/auth/login", "same-origin"], ["/api/learning/auth/logout", "same-origin"],
+  ]);
+});
+
+test("learning data and platform operations stay in the learning namespace while management endpoints stay explicit", () => {
+  for (const space of ["admin", "learning"]) {
+    configureApiSpace(space);
+    assert.equal(resolveApiPath("/api/platform/computer"), "/api/learning/platform/computer");
+    assert.equal(resolveApiPath("/api/platform/math/upload?path=%2Fapi%2Fupload"), "/api/learning/platform/math/upload?path=%2Fapi%2Fupload");
+    assert.equal(resolveApiPath("/api/study/data"), "/api/learning/study/data");
+    assert.equal(resolveApiPath("/api/announcements"), "/api/learning/announcements");
+    assert.equal(resolveApiPath("/api/admin/configuration"), "/api/admin/configuration");
+    assert.equal(resolveApiPath("/api/system/setup"), "/api/system/setup");
+    assert.equal(resolveApiPath("/api/learning/auth/session"), "/api/learning/auth/session");
+  }
 });

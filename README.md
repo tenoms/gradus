@@ -13,9 +13,9 @@ npm install
 npm run dev
 ```
 
-打开 [开发版学习系统](http://127.0.0.1:5173)。首次访问创建管理员，随后进入 `/admin` 创建学习者并分配 YYB 学习账号。学习者使用独立用户名和密码登录，再连接分配给自己的学习账号。请先在可信的本机完成初始化，再开放服务访问。后端默认监听 `127.0.0.1:3001`，两个学科独立连接。
+开发环境分别打开[管理空间](http://127.0.0.1:5173/admin/)和[学习空间](http://127.0.0.1:5173/learn/)。首次进入管理空间创建管理员，在“平台集成配置”中检查 YYB、数学与计算机设置，然后创建学习者并分配 YYB 账号。学习空间使用独立的登录会话；管理员如果需要学习，也在学习空间单独登录并使用分配给自己的账号。请先在本机完成初始化，再开放服务访问。
 
-本机存在未提交的 `yyb.txt` 时，后端从中读取 YYB 服务配置。部署到新环境时，请从 `.env.example` 创建 `.env`，填写 `YYB_BASE_URL` 及所需服务配置。秘密只进入服务端环境变量，不使用 `VITE_*`。
+`.env.example` 中的 YYB、App ID、站点、租户、OAuth、OCR 和录播配置作为配置库首次创建时的初值。本机可读取未提交的 `yyb.txt` 和原小程序材料。此后由管理端维护持久配置；清空的秘密不会被环境变量或本机材料重新填回。秘密只在服务端保存，不使用 `VITE_*`，管理页面仅显示是否已配置。
 
 ```sh
 npm run build
@@ -24,7 +24,7 @@ npm start
 
 `npm run dev` 和 `npm start` 会读取存在的 `.env` 文件。
 
-构建后打开 [本机成品](http://127.0.0.1:3001)。生产环境由同一个后端提供 `dist/` 与 `/api/`。可通过反向代理提供 HTTPS；HTTPS 环境设置 `COOKIE_SECURE=1`，并保留原请求 Host，例如 Nginx 的 `proxy_set_header Host $http_host`，供同源校验使用。默认绑定本机地址，按部署环境设置 `HOST` 和 `PORT`。
+构建后分别打开[管理端成品](http://127.0.0.1:3001/admin/)和[学习端成品](http://127.0.0.1:3001/learn/)。根路径进入学习空间。后端同源提供两个独立前端入口及各自的请求命名空间。可通过反向代理提供 HTTPS；HTTPS 环境设置 `COOKIE_SECURE=1`，并保留原请求 Host，例如 Nginx 的 `proxy_set_header Host $http_host`，供同源校验使用。默认绑定本机地址，按部署环境设置 `HOST` 和 `PORT`。
 
 ## 使用
 
@@ -33,7 +33,7 @@ npm start
 - 计算机支持五科章节/练习组/试卷、自选专业、简答与复试、答题卡/草稿/报告、解析/错题/收藏/笔记、课程试听与授权录播/弹幕、院校对比/目标、打卡和资讯。
 - 原平台个人信息、历史统计及已有权益在相应学科工作区中查看和管理。
 - 学习概览、学习计划和 Web 学习报告记录本系统产生的学习活动，计划、目标与活动按 Web 用户保存在服务端，支持跨设备同步。浏览器保存待同步更改，网络恢复后重试；设置支持 JSON 备份导入/导出。
-- 管理端 `/admin` 提供总览、用户创建与停用、角色管理、YYB 账号分配、密码重置、公告与操作审计。学习者可以自行修改密码；管理员重置密码或停用用户会撤销现有登录。
+- 管理端 `/admin/` 提供总览、用户创建与停用、角色管理、YYB 账号分配、密码重置、公告、操作审计与运行诊断。平台配置可维护YYB地址/Key、两小程序App ID和平台地址、数学站点/登录/OCR、计算机租户/OAuth/录播密钥；可停用平台，并用真实账号检测登录与本人资料。学习者可以自行修改密码；管理员重置密码或停用用户会撤销现有登录。
 - 两科做题区提供大屏题解对照、专注模式、16/18/20 字号和 `Alt + ← / →` 切题（输入时不触发）；考试解析仍受原流程约束。桌面导航可收起，计算机答题卡在大屏侧栏显示。
 - 视频提供倍速与浏览器支持时的画中画，HLS 播放依赖在需要时加载。
 - 上游权限不足、暂无记录和上游异常分别呈现。无演示题库替代真实数据。
@@ -44,9 +44,10 @@ npm start
 npm run typecheck
 npm test
 npm run build
+npm run verify:spaces
 ```
 
-2026-10-29 多用户架构与学习体验改造已通过类型检查、自动化测试和生产构建；最新测试数量与浏览器操作证据见[浏览器验收](docs/browser-acceptance.md#多用户与大屏学习体验改造验收)。多用户 HTTP 回归涵盖数据隔离、权限撤销、持久化、跨标签页身份校验与 revision 冲突；浏览器使用独立 QA 数据库，未修改正式用户和上游学习内容。
+2026-10-29 当前版本完成管理与学习空间分离。类型、请求/权限/配置回归及生产构建通过；实际构建依赖图确认两个入口不互相加载业务模块。YYB现有账号已在新命名空间中完成两平台登录、读取和真实可逆写入；逐项结果以[真实接口记录](docs/live-api-checks.md)及[浏览器验收](docs/browser-acceptance.md)为准。真实业务失败或权限不足单列，不以测试替身宣称线上成功。
 
 此前学习接口迁移验证：233项测试通过。真实账号已完成两平台资料、上传、权益、练习、周测、笔记、讨论、答疑及试听写入，并分别核对读回、清理和保留变化。[本轮真实写入验收](docs/live-write-acceptance.md)逐项记录成功、失败及缺业务前提，不能据此宣称所有线上接口均通过。
 
@@ -69,31 +70,54 @@ npm run build
 ## 结构
 
 ```text
-src/App.tsx                 应用外壳、导航、概览、计划与报告
-src/components/identity/    初始化、登录、平台连接、改密与同步反馈
-src/pages/AdminWorkspace.tsx  管理工作台
-src/components/learning/    共用学习工作台与阅读偏好
-src/pages/MathWorkspace.tsx  数学学习流程
-src/pages/ComputerWorkspace.tsx  计算机学习流程
-src/platforms/              平台数据和请求适配
-src/components/RichContent.tsx  HTML 净化、公式与图片
-src/lib/                    带身份校验的请求、会话与学习同步
-shared/study-data.mjs        前后端共用学习数据校验
-server/app.mjs              身份与权限检查、学习接口、管理接口、静态服务
-server/identity-store.mjs   SQLite 用户、会话、学习数据、公告与审计
-server/upstream.mjs         YYB、两平台认证与数学加解密
-server/*-allowlist.json      原程序学习接口清单
-tests/                      自动化验证
+admin.html / src/admin-main.tsx   管理入口
+learn.html / src/main.tsx         学习入口
+src/apps/AdminApp.tsx             管理登录、独立导航与管理账号
+src/App.tsx                      学习登录、导航、概览、计划与报告
+src/pages/admin/                 平台集成配置与运行诊断
+src/pages/AdminWorkspace.tsx      用户、公告、审计与总览
+src/components/learning/          两学科共用学习工作台
+src/platforms/                   两学科业务适配
+src/lib/                         空间请求、身份与个人学习同步
+shared/study-data.mjs             前后端共用学习记录校验
+server/app.mjs                   应用装配、同源策略与入口分发
+server/session-space.mjs         两空间独立认证
+server/routes/admin.mjs           管理模块接口
+server/routes/learning.mjs        个人学习模块接口
+server/identity-store.mjs         用户、空间会话、学习记录、公告与审计
+server/platform-config.mjs        版本化持久配置与秘密管理
+server/upstream.mjs               根据运行配置访问YYB及两学科
+server/runtime-insights.mjs       不收集正文及凭据的请求诊断
+server/platform-policy.mjs        学习能力清单、本人约束与响应过滤
+tests/                          自动化回归
 ```
 
-## 多用户架构与运行边界
+## 空间、身份与运行配置
 
-Web 用户身份与 YYB 学习账号分开管理：用户名代表进入本系统的人，YYB 账号代表原平台的学习权限。每个 YYB 账号最多分配给一位 Web 用户；学习者不能浏览或连接他人的学习账号。管理员也不能直接连接已经分配给他人的账号，需先明确更改分配。
+```mermaid
+flowchart LR
+  Admin["管理入口 /admin"] --> Management["管理接口 /api/admin"]
+  Learn["学习入口 /learn"] --> Learning["学习接口 /api/learning"]
+  Management --> Identity["用户、角色与空间会话"]
+  Learning --> Identity
+  Management --> Config["持久平台配置"]
+  Config --> Upstream["动态上游客户端"]
+  Learning --> Upstream
+  Upstream --> YYB["YYB"]
+  Upstream --> Math["数学平台"]
+  Upstream --> Computer["计算机平台"]
+```
 
-默认数据库为 `.data/study.sqlite`，通过 `STUDY_DATABASE_PATH` 可改到持久卷。`users`、`sessions`、`study_data`、`announcements`、`audit` 分别保存身份、会话、个人学习记录、公告和管理历史。密码使用随机盐 scrypt；数据库只保存会话 token 的散列。上游令牌只在服务端内存中，按 Web 用户隔离；浏览器使用24小时 HttpOnly/SameSite cookie。
+管理空间和学习空间分别构建，分别拥有导航、登录、会话与请求命名空间。`/api/admin/*` 只接受管理会话，`/api/learning/*` 只接受学习会话；cookie名称、Path与数据库会话space同时区分。退出其中一个空间不会退出另一个。学习空间中的管理员身份也只能访问本人分配账号，不提供全局目录或配置管理。
 
-学习同步以服务端 revision 校验写入。其他设备先保存时，客户端重新读取并重放待同步操作；失败时显示待同步状态。`shared/study-data.mjs` 同时校验服务端写入和备份导入，避免无效备份进入同步队列。旧版本浏览器记录不会自动归入新 Web 用户。连接同一个已分配学习账号后，设置会识别其旧版记录，并可明确合并到当前 Web 用户；也可以导入已有 JSON 备份。合并保留现有记录及目标。
+Web用户与YYB学习账号分开：前者表示系统成员，后者表示原平台资源权限。YYB账号唯一分配，学习请求中的本人身份由服务端约束。浏览器JSON和上传请求携带页面所属 `X-Study-User`，防止同一空间另一标签页换账号后，旧页面把内容提交给新用户。
 
-所有受保护的 JSON 请求和上传携带 `X-Study-User`，服务端与当前 cookie 身份比较；另一标签页更换账号后，旧页面的请求会被拒绝并刷新身份。头像直接请求仍检查 cookie 与账号归属。学习者的路由和管理者的路由都由服务端检查权限。
+默认身份库为 `.data/identity.sqlite`，配置库为同目录 `integrations.sqlite`，可通过 `STUDY_DATABASE_PATH`、`STUDY_CONFIG_DATABASE_PATH` 指定。密码使用随机盐scrypt，会话token只保存散列。配置库及WAL文件使用0600权限，秘密不返回浏览器、不写入审计或请求诊断。上游token只在服务端按Web用户保存在内存中。
 
-当前部署目标为**单 Node 进程、多用户**，配合持久数据目录；不是组织租户隔离或多实例集群部署。重启保留 Web 登录和学习记录，上游连接需重新建立。备份时可先停止服务，再复制整个 SQLite 数据目录；使用 WAL 时不要仅复制运行中的主数据库文件。开发模式修改后端文件会重启服务。原小程序目录和 `yyb.txt` 为本机参考材料，已在 `.gitignore` 中排除，不随 Web 构建发布。独立部署须填写 YYB 配置；数学拍照识别须提供 OCR 配置；计算机录播地址解密须提供 `COMPUTER_VIDEO_KEY` 和 `COMPUTER_VIDEO_IV`（均为16字节UTF-8）。本机运行可从被忽略的原源码读取后两类配置。
+持久配置是运行时唯一来源。保存使用revision检查防止覆盖其他管理者改动；YYB改动使两学科连接失效，单学科改动只使该学科失效。每次新的上游请求读取当前配置，一次登录握手使用同一配置快照。普通计算机请求使用配置的租户代码，图片答案相似度保留原平台要求的租户2。
+
+学习计划、目标与活动按Web用户保存，同步使用revision，冲突后重读并重放待同步操作。前后端共享校验；浏览器缓存用于网络恢复后的重试。项目采用当前开发基线，入口与接口只保留上述两个空间，不提供旧版会话或记录迁移入口。
+
+运行诊断展示当前进程最近100次请求的空间、接口模板、HTTP状态、耗时和请求编号，不采集请求正文、查询参数、cookie或token。响应 `X-Request-ID` 可与管理端诊断对应；配置变更、探测与用户管理另进入持久审计。
+
+当前支持单Node进程、多用户及持久数据目录。重启保留Web登录、学习数据和管理配置，上游平台需要重新连接。备份时先停止服务，再复制整个数据目录。原小程序、`yyb.txt`、数据库、实测凭据与本机验收附件均被Git忽略。

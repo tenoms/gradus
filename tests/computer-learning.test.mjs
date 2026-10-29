@@ -34,6 +34,27 @@ const output = ts
 const adapter = await import(
   `data:text/javascript;base64,${Buffer.from(output).toString("base64")}`
 );
+test("submission success reads the actual matching cloud report when the write only returned true", async () => {
+  const seen = [];
+  const report = { examRecord: { id: "new-record", examinationId: "new-paper", score: 8 }, answerList: [] };
+  globalThis.__computerLearningRequest = async (path, query) => {
+    seen.push({ path, query });
+    if (path.endsWith("/examinationRecord")) return { list: [{ id: "unrelated", examinationId: "other-paper" }, { id: "new-record", examinationId: "new-paper" }] };
+    assert.equal(query.examRecordId, "new-record");
+    return report;
+  };
+  assert.equal(await adapter.computerLearningApi.submittedReport({ examinationId: "new-paper", majorId: "major", examType: 4 }), report);
+  assert.deepEqual(seen.map(call => call.path), ["/api/exam/wx/practice/examinationRecord", "/api/exam/wx/practice/examinationRecord/detail"]);
+  assert.equal(seen[0].query.examType, 4);
+});
+test("report reads never re-submit answers and preserve failures instead of fabricating report data", async () => {
+  const seen = [];
+  globalThis.__computerLearningRequest = async (path) => { seen.push(path); return { list: [{ id: "unrelated", examinationId: "other-paper" }] }; };
+  await assert.rejects(adapter.computerLearningApi.submittedReport({ examinationId: "new-paper", majorId: "major", examType: 4 }), /尚未返回/);
+  assert.deepEqual(seen, ["/api/exam/wx/practice/examinationRecord"]);
+  globalThis.__computerLearningRequest = async (path) => { assert.equal(path, "/api/exam/wx/practice/examinationRecord/detail"); throw new Error("platform unavailable"); };
+  await assert.rejects(adapter.computerLearningApi.submittedReport({ recordId: "known", examinationId: "new-paper", majorId: "major", examType: 4 }), /platform unavailable/);
+});
 test("custom subjects preserve independent graduate/final categories and original major IDs", () => {
   assert.deepEqual(
     adapter.normalizeComputerSubjects([

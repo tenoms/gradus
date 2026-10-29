@@ -39,7 +39,6 @@ import {
   RefreshCw,
   Search,
   Settings2,
-  ShieldCheck,
   Sigma,
   Sparkles,
   Target,
@@ -68,9 +67,7 @@ import AuthScreen from "./components/identity/AuthScreen";
 import StudySyncIndicator, { StudySyncNotice } from "./components/identity/StudySyncIndicator";
 import ConnectionDialog from "./components/identity/ConnectionDialog";
 import PasswordSettings from "./components/identity/PasswordSettings";
-import LegacyStudyImport from "./components/identity/LegacyStudyImport";
 import Announcements from "./components/identity/Announcements";
-const AdminWorkspace = lazy(() => import("./pages/AdminWorkspace"));
 const MathWorkspace = lazy(() => import("./pages/MathWorkspace"));
 const ComputerWorkspace = lazy(() => import("./pages/ComputerWorkspace"));
 const navItems = [
@@ -954,8 +951,8 @@ function Settings() {
         </div>
       </div>
       <section className="panel settings-panel">
-        <h2>我的账号</h2>
-        <div className="settings-row"><div><h3>{session.user?.displayName}</h3><p>{session.user?.username} · {session.user?.role === "admin" ? "管理员" : "学习者"}</p></div><span className="pill success">已登录</span></div>
+        <h2>我的学习账号</h2>
+        <div className="settings-row"><div><h3>{session.user?.displayName}</h3><p>{session.user?.username} · 学习空间</p></div><span className="pill success">已登录</span></div>
         <div className="settings-row">
           <div>
             <h3>
@@ -1002,8 +999,8 @@ function Settings() {
           </button>
         )}
       </section>
+      {session.user?.role === "admin" && <section className="panel settings-panel"><h2>管理空间</h2><div className="settings-row"><p>系统配置、用户和公告在独立管理空间中维护，需单独登录。</p><a className="btn btn-secondary" href="/admin/">打开管理空间<ArrowUpRight size={15} /></a></div></section>}
       <PasswordSettings />
-      <LegacyStudyImport />
       <section className="panel settings-panel">
         <h2>每日学习目标</h2>
         <div className="settings-row">
@@ -1145,9 +1142,8 @@ export default function App() {
     setPlatform(p);
     localStorage.setItem("study-platform", p);
   }
-  const isAdminPage = location.pathname.startsWith("/admin");
   const activeTitle =
-    isAdminPage ? "空间管理" : location.pathname === "/"
+    location.pathname === "/"
       ? "学习概览"
       : location.pathname === "/plan"
         ? "学习计划"
@@ -1157,12 +1153,12 @@ export default function App() {
             ? "学习设置"
             : sectionTitles[location.pathname.split("/")[2]]?.[0] || "学习空间";
   if (booting) return <div className="app-starting"><Spinner text="正在打开你的学习空间…" /></div>;
-  if (!session.authenticated) return <AuthScreen onAuthenticated={value => { acceptSession(value); if (location.pathname === "/" && value.user?.role === "admin") navigate("/admin"); }} />;
+  if (!session.authenticated) return <AuthScreen space="learning" onAuthenticated={acceptSession} />;
   return (
     <SessionContext.Provider
       value={{ session, refresh, openLogin: () => setLoginOpen(true) }}
     >
-      <div key={session.user?.id || "guest"} className={`app-shell ${isAdminPage ? "admin-shell" : ""} ${sidebarCollapsed ? "nav-collapsed" : ""}`} inert={loginOpen || taskOpen}>
+      <div key={session.user?.id || "guest"} className={`app-shell ${sidebarCollapsed ? "nav-collapsed" : ""}`} inert={loginOpen || taskOpen}>
         <a className="skip-link" href="#main-content">
           跳到学习内容
         </a>
@@ -1189,7 +1185,7 @@ export default function App() {
             </div>
           </Link>
           <div className="workspace-label">
-            {session.user?.displayName || "我的学习空间"}<span>{session.user?.role === "admin" ? "ADMIN" : "LEARNER"}</span>
+            {session.user?.displayName || "我的学习空间"}<span>LEARN</span>
           </div>
           <nav aria-label="主导航">
             <div className="nav-group">
@@ -1246,7 +1242,6 @@ export default function App() {
             </div>
           </nav>
           <div className="sidebar-bottom">
-            {session.user?.role === "admin" && <NavLink className="nav-item admin-nav" to="/admin" aria-label="空间管理" title="空间管理"><ShieldCheck size={19} /><span>空间管理</span></NavLink>}
             <div className="study-quote">
               <span>✧</span>
               <p>
@@ -1391,7 +1386,6 @@ export default function App() {
               />
               <Route path="/insights" element={<Insights />} />
               <Route path="/settings" element={<Settings />} />
-              <Route path="/admin/*" element={<Suspense fallback={<Spinner text="正在打开管理工作台…" />}><AdminWorkspace /></Suspense>} />
               <Route
                 path="*"
                 element={

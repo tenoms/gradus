@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "start": "node --env-file-if-exists=.env server/index.mjs",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "verify:spaces": "node scripts/verify-spaces.mjs"
   },
   "dependencies": {
     "cookie-parser": "^1.4.7",
