@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validatePlatformRequest } from "../server/platform-policy.mjs";
+import { validatePlatformRequest } from "../server/integrations/platform-policy.mjs";
 import { startHttpApp, testLearner } from "./http-app.mjs";
 
 test("removed release notifications cannot be read or mutated through the learning proxy", () => {

@@ -293,7 +293,7 @@ test("announcements are managed in the management space and read from learning",
 });
 
 test("PostgreSQL persists space-bound sessions, users, settings and study data without persisting upstream tokens", async () => {
-  const { createDatabase } = await import('../server/database.mjs');
+  const { createDatabase } = await import('../server/infrastructure/database.mjs');
   const { randomUUID } = await import('node:crypto');
   const schemaPrefix = `test_${randomUUID().replaceAll('-', '')}`;
   let database = await createDatabase({ schemaPrefix });

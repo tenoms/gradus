@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {startHttpApp} from './http-app.mjs';
-import {readPlatformDefaults} from '../server/platform-config.mjs';
-import {ApiError} from '../server/upstream.mjs';
+import {readPlatformDefaults} from '../server/integrations/platform-config.mjs';
+import { ApiError } from '../server/infrastructure/api-error.mjs';
 
 const fixture=()=>{
   const calls=[];

@@ -1,16 +1,10 @@
+import { ApiError } from "../infrastructure/api-error.mjs";
 import { createCipheriv, createDecipheriv, createHash } from "node:crypto";
 import { tokenMetadata } from "./token-lifecycle.mjs";
 const iv = Buffer.from("59b87344b54f3197");
 const key = (seed) => Buffer.from(createHash("md5").update(seed).digest("hex"));
 export function encryptMath(value) {
   const cipher = createCipheriv("aes-256-cbc", key("D"), iv);
-  return Buffer.concat([
-    cipher.update(String(value), "utf8"),
-    cipher.final(),
-  ]).toString("base64");
-}
-export function encryptMathMaster(value) {
-  const cipher = createCipheriv("aes-256-cbc", key("1D"), iv);
   return Buffer.concat([
     cipher.update(String(value), "utf8"),
     cipher.final(),
@@ -37,13 +31,6 @@ export function decodeMath(body) {
     value = text;
   }
   return { ...body, [field]: value };
-}
-export class ApiError extends Error {
-  constructor(message, status = 502, details) {
-    super(message);
-    this.status = status;
-    this.details = details;
-  }
 }
 export async function requestJson(url, options = {}) {
   let response;

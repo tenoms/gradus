@@ -1,5 +1,5 @@
 import express from 'express';
-import { ApiError } from '../upstream.mjs';
+import { ApiError } from '../../infrastructure/api-error.mjs';
 
 export function createAdminRouter({ service, identities, connections, configuration, operations, auth, accountPool, resourceSync }) {
   const router = express.Router();

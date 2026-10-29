@@ -1,5 +1,5 @@
 import express from "express";
-import { publicSession } from "./platform-policy.mjs";
+import { publicSession } from "../../integrations/platform-policy.mjs";
 
 const lifetime = 24 * 60 * 60 * 1000;
 

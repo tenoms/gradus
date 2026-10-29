@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createCipheriv } from "node:crypto";
-import { readPlatformDefaults } from "../server/platform-config.mjs";
+import { readPlatformDefaults } from "../server/integrations/platform-config.mjs";
 import { startHttpApp } from "./http-app.mjs";
 
 function configuredStore() {

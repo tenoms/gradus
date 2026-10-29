@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { ApiError } from "./upstream.mjs";
+import { ApiError } from "../infrastructure/api-error.mjs";
 const registries = Object.fromEntries(
   ["math", "computer"].map((name) => [
     name,

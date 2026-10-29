@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {startHttpApp,testLearner} from './http-app.mjs';
 import {createTestDatabase} from './database.mjs';
-import {readPlatformDefaults} from '../server/platform-config.mjs';
+import {readPlatformDefaults} from '../server/integrations/platform-config.mjs';
 
 function fixture(){
   const calls=[];

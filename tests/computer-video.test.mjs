@@ -4,8 +4,8 @@ import { createCipheriv } from "node:crypto";
 import {
   createUpstreamClient,
   decodeComputerVideoResponse,
-} from "../server/upstream.mjs";
-import { readPlatformDefaults } from "../server/platform-config.mjs";
+} from "../server/integrations/upstream.mjs";
+import { readPlatformDefaults } from "../server/integrations/platform-config.mjs";
 const key = Buffer.from("1234567890abcdef"),
   iv = Buffer.from("fedcba0987654321");
 function encrypted(text) {

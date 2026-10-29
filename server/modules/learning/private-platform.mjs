@@ -1,7 +1,8 @@
+import { mergeExerciseDetail } from '../resources/exercise-content.mjs';
 import { randomUUID } from 'node:crypto';
-import { ApiError } from './upstream.mjs';
-import { mathParameters, sharedOperation, stripSharedPersonalState } from './shared-account-policy.mjs';
-import { sourceForSession,resourceIdentity } from './resource-catalog.mjs';
+import { ApiError } from '../../infrastructure/api-error.mjs';
+import { mathParameters, sharedOperation, stripSharedPersonalState } from '../../integrations/shared-account-policy.mjs';
+import { sourceForSession,resourceIdentity } from '../resources/catalog.mjs';
 
 const unwrap = response => {let value=response?.data ?? response?.Data ?? response;if(typeof value==='string'){try{value=JSON.parse(value);}catch{}}return value;};
 const success = (name, data) => name === 'math' ? { SuccessResponse: true, data, storage: 'web' } : { code: 200, data, storage: 'web' };
@@ -10,7 +11,7 @@ const collectionFor = path => path.split('/')[2];
 const records = value => Array.isArray(value) ? value : value?.list || value?.records || value?.exercises || value?.exerciseList || value?.questionList || value?.groupList || [];
 function computerQuestions(response) {
   const data=unwrap(response),map=data?.exerciseMap || {};
-  return records(data?.exercises || data?.exerciseList || data?.questionList || (data?.exerciseId?[data]:data)).map(row=>{const detail=map[row.exerciseId],options=detail?.questions??row.questions??row.questionList;return {...row,...(detail || {}),exerciseId:row.exerciseId || row.id,...(Array.isArray(options)?{questions:options,questionList:options}:{})};});
+  return records(data?.exercises || data?.exerciseList || data?.questionList || (data?.exerciseId?[data]:data)).map(row=>({...mergeExerciseDetail(row,map[row.exerciseId]),exerciseId:row.exerciseId || row.id}));
 }
 const dateBucket = value => {
   const day=86400000,offset=28800000,today=Math.floor((Date.now()+offset)/day),monday=today-((today+3)%7),created=Math.floor((Date.parse(value || '')+offset)/day);

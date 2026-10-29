@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { sharedOperation, stripSharedPersonalState } from '../server/shared-account-policy.mjs';
+import { sharedOperation, stripSharedPersonalState } from '../server/integrations/shared-account-policy.mjs';
 
 // These commands are used by the notebook, history, discussion, enrolment and weekly exam screens.
 const privateMathCommands = [

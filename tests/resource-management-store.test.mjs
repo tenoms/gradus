@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createTestDatabase} from './database.mjs';
-import {createResourceStore} from '../server/resource-store.mjs';
-import {resourceIdentity,inferResourceRequest,publicResourceResponse} from '../server/resource-catalog.mjs';
-import {readPlatformDefaults} from '../server/platform-config.mjs';
+import {createResourceStore} from '../server/modules/resources/store.mjs';
+import {resourceIdentity,inferResourceRequest,publicResourceResponse} from '../server/modules/resources/catalog.mjs';
+import {readPlatformDefaults} from '../server/integrations/platform-config.mjs';
 
 const config=readPlatformDefaults({env:{YYB_BASE_URL:'https://yyb.example'},readLocal:false});
 const a={user:{id:'web-a'},account:{ref:'yyb-a'},yybBaseUrl:'https://yyb-a.example'};

@@ -1,9 +1,9 @@
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual, createHash } from "node:crypto";
-import { ApiError } from "./upstream.mjs";
-import { validateStudyData } from "../shared/study-data.mjs";
-import { adminActions } from "../shared/admin-actions.mjs";
-import { defaultYybSettings, publicYybSettings, updateYybSettings } from "./user-yyb.mjs";
-export { validateStudyData } from "../shared/study-data.mjs";
+import { ApiError } from "../../infrastructure/api-error.mjs";
+import { validateStudyData } from "../../../shared/study-data.mjs";
+import { adminActions } from "../../../shared/admin-actions.mjs";
+import { defaultYybSettings, publicYybSettings, updateYybSettings } from "../accounts/user-yyb.mjs";
+export { validateStudyData } from "../../../shared/study-data.mjs";
 
 const emptyStudy = () => ({ tasks: [], activities: [], goalMinutes: 60 });
 const now = () => new Date().toISOString();

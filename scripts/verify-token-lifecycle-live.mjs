@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import {createTestDatabase} from '../tests/database.mjs';
-import {createPlatformConfigStore} from '../server/platform-config.mjs';
-import {createUpstreamClient,requestJson,decodeMath} from '../server/upstream.mjs';
-import {createTokenLifecycle} from '../server/token-lifecycle.mjs';
+import {createPlatformConfigStore} from '../server/integrations/platform-config.mjs';
+import {createUpstreamClient,requestJson,decodeMath} from '../server/integrations/upstream.mjs';
+import {createTokenLifecycle} from '../server/integrations/token-lifecycle.mjs';
 
 const database=await createTestDatabase(),calls=[],results=[],metadata={};
 const record=(name,evidence={})=>{results.push({name,passed:true,...evidence});console.log(JSON.stringify(results.at(-1)));};

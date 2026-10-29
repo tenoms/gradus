@@ -1,8 +1,9 @@
+import { mergeExerciseDetail } from './exercise-content.mjs';
 import { createHash } from 'node:crypto';
-import { ApiError } from './upstream.mjs';
-import { stripSharedPersonalState } from './shared-account-policy.mjs';
-import { publicPlatformResponse } from './platform-policy.mjs';
-import { resourceKey, resourceRows, resourceMedia, resourceScope, publicResourceResponse } from './resource-catalog.mjs';
+import { ApiError } from '../../infrastructure/api-error.mjs';
+import { stripSharedPersonalState } from '../../integrations/shared-account-policy.mjs';
+import { publicPlatformResponse } from '../../integrations/platform-policy.mjs';
+import { resourceKey, resourceRows, resourceMedia, resourceScope, publicResourceResponse } from './catalog.mjs';
 
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const iso = value => value instanceof Date ? value.toISOString() : value;
@@ -43,7 +44,7 @@ export async function createResourceStore(database) {
   }
   function entityItems(platform, task, response) {
     const body = response?.data ?? response?.Data ?? response;
-    const rows = resourceRows(response).map(row => stripSharedPersonalState(row)).map((row,index) => { const detail = stripSharedPersonalState(body?.exerciseMap?.[row.exerciseId]),options=detail?.questions??row.questions??row.questionList; return {...row,...(detail || {}),_resourceOrder:task.context?._resourceOrder ?? index,...(Array.isArray(options)?{questions:options,questionList:options}:{})}; }), path = task.request.path, command = task.request.data?.command || '';
+    const rows = resourceRows(response).map(row => stripSharedPersonalState(row)).map((row,index) => ({...mergeExerciseDetail(row,stripSharedPersonalState(body?.exerciseMap?.[row.exerciseId])),_resourceOrder:task.context?._resourceOrder ?? index})), path = task.request.path, command = task.request.data?.command || '';
     const kind = /SoleDes|Resolve|Analyse|Analysis/.test(path + command) ? 'analysis' : /question_files/.test(path) ? 'file' : /Question|question|searchExercise\/info|examExercise|exerciseList/.test(path + command) ? 'question' : /course|Course/.test(path + command) ? 'course' : /school|School/.test(path + command) ? 'school' : 'catalog';
     const context = task.context || {};
     const result = [];

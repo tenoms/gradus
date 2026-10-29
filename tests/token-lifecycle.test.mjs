@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createTokenLifecycle,tokenMetadata,isSourceAuthFailure} from '../server/token-lifecycle.mjs';
-import {createUpstreamClient} from '../server/upstream.mjs';
-import {readPlatformDefaults} from '../server/platform-config.mjs';
-import {createResourceSync} from '../server/resource-sync.mjs';
+import {createTokenLifecycle,tokenMetadata,isSourceAuthFailure} from '../server/integrations/token-lifecycle.mjs';
+import {createUpstreamClient} from '../server/integrations/upstream.mjs';
+import {readPlatformDefaults} from '../server/integrations/platform-config.mjs';
+import {createResourceSync} from '../server/modules/resources/sync.mjs';
 
 const jwt=payload=>`header.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.signature`;
 const config=()=>readPlatformDefaults({env:{YYB_BASE_URL:'https://yyb.example'},readLocal:false});

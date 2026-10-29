@@ -6,7 +6,8 @@ import {
   injectMathUser,
   validatePlatformRequest,
 } from "../server/app.mjs";
-import { encryptMath, decodeMath, ApiError } from "../server/upstream.mjs";
+import { ApiError } from "../server/infrastructure/api-error.mjs";
+import { encryptMath, decodeMath } from "../server/integrations/upstream.mjs";
 import { createCipheriv, createHash } from "node:crypto";
 
 import { startHttpApp, testLearner } from "./http-app.mjs";

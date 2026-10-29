@@ -4,8 +4,8 @@ import {createServer} from 'node:http';
 import {once} from 'node:events';
 import {existsSync,mkdirSync,writeFileSync} from 'node:fs';
 import {createApp} from '../server/app.mjs';
-import {createDatabase} from '../server/database.mjs';
-import {createUpstreamClient,requestJson} from '../server/upstream.mjs';
+import {createDatabase} from '../server/infrastructure/database.mjs';
+import {createUpstreamClient,requestJson} from '../server/integrations/upstream.mjs';
 
 if(!process.env.DATABASE_URL&&existsSync('.env'))process.loadEnvFile('.env');
 const database=await createDatabase({schemaPrefix:`verify_${randomUUID().replaceAll('-','')}`});

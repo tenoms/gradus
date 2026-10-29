@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createTestDatabase} from './database.mjs';
-import {createPrivatePlatformStore} from '../server/private-platform.mjs';
+import {createPrivatePlatformStore} from '../server/modules/learning/private-platform.mjs';
 
 test('local shelf removals survive source updates while newly imported books remain visible',async()=>{
   const database=await createTestDatabase();

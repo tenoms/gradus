@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { ApiError } from './upstream.mjs';
+import { ApiError } from '../../infrastructure/api-error.mjs';
 
 const defaultId='default';
 const text=(value,max,label)=>{if(typeof value!=='string'||!value.trim()||value.length>max)throw new ApiError(`${label}格式不正确`,400);return value.trim();};

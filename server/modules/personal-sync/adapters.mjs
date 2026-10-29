@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { ApiError } from './upstream.mjs';
-import { publicPlatformResponse } from './platform-policy.mjs';
+import { ApiError } from '../../infrastructure/api-error.mjs';
+import { publicPlatformResponse } from '../../integrations/platform-policy.mjs';
 
 export const personalScopes=['bookshelf','favorites','mistakes','notes','answers','reports','progress'];
 const noteTypes={favorites:'收藏',mistakes:'错题',notes:'笔记'};

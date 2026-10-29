@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createTestDatabase } from './database.mjs';
-import { createResourceStore } from '../server/resource-store.mjs';
-import { createResourceSync } from '../server/resource-sync.mjs';
-import { sourceForSession, resourceIdentity, isReadableResource, resourceKey } from '../server/resource-catalog.mjs';
-import { readPlatformDefaults } from '../server/platform-config.mjs';
+import { createResourceStore } from '../server/modules/resources/store.mjs';
+import { createResourceSync } from '../server/modules/resources/sync.mjs';
+import { sourceForSession, resourceIdentity, isReadableResource, resourceKey } from '../server/modules/resources/catalog.mjs';
+import { readPlatformDefaults } from '../server/integrations/platform-config.mjs';
 
 const config = readPlatformDefaults({ env: { YYB_BASE_URL:'https://yyb.example' }, readLocal:false });
 const session = {account:{ref:'shared-account'},yybMode:'system',platforms:{math:{connected:true,token:'secret-token',stuId:'source-student'},computer:{connected:true,token:'secret-token'}},expires:Date.now()+86400000};

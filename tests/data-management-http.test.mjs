@@ -41,7 +41,7 @@ test('resource detail and lifecycle mutations require the administrator principa
     const admin=await app.setup();
     await app.createUser(admin,testLearner('resource.reader',''));
     const learner=await app.login('learning','resource.reader','learner-password-123');
-    const {resourceIdentity,inferResourceRequest}=await import('../server/resource-catalog.mjs');
+    const {resourceIdentity,inferResourceRequest}=await import('../server/modules/resources/catalog.mjs');
     const identity=resourceIdentity('math',{user:{id:learner.userId},account:{ref:'source'}},app.app.locals.configuration.snapshot(),{path:'/api/question_list/GetQuestionByQuestionNew',method:'GET',data:{},query:{ID:42}});
     const saved=await app.app.locals.resourceStore.save(identity.source,inferResourceRequest('math',identity.request),{data:[{QuestionID:42,QuestionTitle:'管理权限验收'}]});
     const path=`/api/admin/resources/${saved.platform}/${saved.sourceId}/${saved.key}`;

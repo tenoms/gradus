@@ -1,9 +1,9 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { ApiError } from './upstream.mjs';
-import { updateYybSettings } from './user-yyb.mjs';
-import { sharedOperation, mathParameters } from './shared-account-policy.mjs';
-import { personalScopes, normalizePersonalRequest, personalReadCapability, readPersonalPage } from './personal-sync-adapters.mjs';
-import {createTokenLifecycle,isSourceAuthFailure} from './token-lifecycle.mjs';
+import { ApiError } from '../../infrastructure/api-error.mjs';
+import { updateYybSettings } from '../accounts/user-yyb.mjs';
+import { sharedOperation, mathParameters } from '../../integrations/shared-account-policy.mjs';
+import { personalScopes, normalizePersonalRequest, personalReadCapability, readPersonalPage } from './adapters.mjs';
+import {createTokenLifecycle,isSourceAuthFailure} from '../../integrations/token-lifecycle.mjs';
 
 const stable=value=>Array.isArray(value)?value.map(stable):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(key=>[key,stable(value[key])])):value;
 const hash=value=>createHash('sha256').update(JSON.stringify(stable(value))).digest('hex');

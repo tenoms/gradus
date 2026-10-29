@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { createDatabase } from '../server/database.mjs';
+import { createDatabase } from '../server/infrastructure/database.mjs';
 
 if (!process.env.DATABASE_URL && existsSync('.env')) process.loadEnvFile('.env');
 

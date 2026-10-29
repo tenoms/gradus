@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { createDatabase } from "../server/database.mjs";
+import { createDatabase } from "../server/infrastructure/database.mjs";
 import { startHttpApp, testLearner } from "./http-app.mjs";
 import { createStudySync, emptyStudyData } from "../src/lib/study-sync.mjs";
 

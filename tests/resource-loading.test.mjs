@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createResourceSync } from '../server/resource-sync.mjs';
-import { createPrivatePlatformStore } from '../server/private-platform.mjs';
+import { createResourceSync } from '../server/modules/resources/sync.mjs';
+import { createPrivatePlatformStore } from '../server/modules/learning/private-platform.mjs';
 import { createTestDatabase } from './database.mjs';
 import { startHttpApp, testLearner } from './http-app.mjs';
 
@@ -88,7 +88,7 @@ test('full question snapshots use one batch write and still support private coll
     const snapshots=await query(`SELECT count(*)::integer AS count FROM ${database.web('platform_records')} WHERE collection='questions:source'`);assert.equal(snapshots.rows[0].count,1200);
     const handle=input=>store.handle({userId:'learner',name:'computer',input:{method:'GET',query:{},data:{},...input},platform:{},session,config});
     // The resource domain used by handle must match the domain of the visited question snapshots.
-    const {resourceIdentity}=await import('../server/resource-catalog.mjs');
+    const {resourceIdentity}=await import('../server/modules/resources/catalog.mjs');
     const sourceId=resourceIdentity('computer',session,config,{path:'/api/exam/wx/searchExercise/info/resource-domain',method:'GET',data:{},query:{}}).source.id;
     await store.rememberQuestions('learner','computer',{data:{exercises:[questions[0]]}},sourceId);
     await handle({path:'/api/exam/wx/personal/collectExercise',query:{exerciseId:'q0',collectFlag:0,majorId:'major'}});
@@ -111,7 +111,7 @@ test('a null exerciseMap.questions preserves the four choices returned with the 
     const input={path:'/api/exam/wx/practice/exerciseList',method:'GET',query:{majorId:'major',chapterId:'chapter',number:1},data:{}};
     const response=await app.request('/api/learning/platform/computer',{auth:learner,body:input});assert.equal(response.status,200);const exercise=(await response.json()).data.exercises[0];
     assert.deepEqual(exercise.questions,options);assert.deepEqual(exercise.questionList,options);
-    const {resourceIdentity}=await import('../server/resource-catalog.mjs');
+    const {resourceIdentity}=await import('../server/modules/resources/catalog.mjs');
     const identity=resourceIdentity('computer',session,app.app.locals.configuration.snapshot(),input);
     const entities=await app.app.locals.resourceStore.findEntities({sourceId:identity.source.id,platform:'computer',kind:'question',id:'q1'});
     assert.deepEqual(entities[0].payload.questions,options,'shared question entities preserve choices when map detail is null');

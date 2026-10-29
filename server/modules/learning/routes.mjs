@@ -1,8 +1,9 @@
 import express from "express";
-import { ApiError, bearer } from "../upstream.mjs";
-import { publicPlatformResponse,validatePlatformRequest,injectMathUser,cleanAccount } from "../platform-policy.mjs";
-import { stripSharedPersonalState } from "../shared-account-policy.mjs";
-import { publicYybSettings,userYybOverride } from "../user-yyb.mjs";
+import { ApiError } from "../../infrastructure/api-error.mjs";
+import { bearer } from "../../integrations/upstream.mjs";
+import { publicPlatformResponse,validatePlatformRequest,injectMathUser,cleanAccount } from "../../integrations/platform-policy.mjs";
+import { stripSharedPersonalState } from "../../integrations/shared-account-policy.mjs";
+import { publicYybSettings,userYybOverride } from "../accounts/user-yyb.mjs";
 
 /** Web sessions own learning; a source account is acquired only for a cache miss or explicit upload. */
 export function createLearningRouter({service,identities,connections,auth,accountPool,privatePlatform,resourceSync,personalSync}) {

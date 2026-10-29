@@ -1,4 +1,4 @@
-import { ApiError } from './upstream.mjs';
+import { ApiError } from '../../infrastructure/api-error.mjs';
 
 /** Registration is a Web policy; it does not assign or contact a YYB source. */
 export async function createRegistrationStore({database,identities}) {

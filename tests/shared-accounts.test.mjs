@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { startHttpApp, testLearner } from './http-app.mjs';
-import { resourceIdentity } from '../server/resource-catalog.mjs';
-import { sharedOperation,stripSharedPersonalState } from '../server/shared-account-policy.mjs';
+import { resourceIdentity } from '../server/modules/resources/catalog.mjs';
+import { sharedOperation,stripSharedPersonalState } from '../server/integrations/shared-account-policy.mjs';
 
 const fixture=()=>{
   const calls=[];

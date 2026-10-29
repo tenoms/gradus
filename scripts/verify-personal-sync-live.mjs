@@ -3,8 +3,8 @@ import {randomUUID,randomBytes,createHash} from 'node:crypto';
 import {mkdirSync,writeFileSync,existsSync} from 'node:fs';
 import {once} from 'node:events';
 import {createApp} from '../server/app.mjs';
-import {createDatabase} from '../server/database.mjs';
-import {requestJson as upstreamRequestJson} from '../server/upstream.mjs';
+import {createDatabase} from '../server/infrastructure/database.mjs';
+import {requestJson as upstreamRequestJson} from '../server/integrations/upstream.mjs';
 
 if(!process.env.DATABASE_URL&&existsSync('.env'))process.loadEnvFile('.env');
 const database=await createDatabase({schemaPrefix:`verify_${randomUUID().replaceAll('-','')}`});

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {startHttpApp,testLearner} from './http-app.mjs';
-import {resourceIdentity,inferResourceRequest} from '../server/resource-catalog.mjs';
+import {resourceIdentity,inferResourceRequest} from '../server/modules/resources/catalog.mjs';
 
 const localRequest=(app,auth,name,input)=>app.request(`/api/learning/platform/${name}`,{auth,body:input});
 const fixture=()=>{

@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createCipheriv, createDecipheriv, createHash } from "node:crypto";
-import { createPlatformConfigStore, readPlatformDefaults } from "../server/platform-config.mjs";
-import { ApiError, createUpstreamClient } from "../server/upstream.mjs";
+import { createPlatformConfigStore, readPlatformDefaults } from "../server/integrations/platform-config.mjs";
+import { ApiError } from "../server/infrastructure/api-error.mjs";
+import { createUpstreamClient } from "../server/integrations/upstream.mjs";
 import { createTestDatabase } from "./database.mjs";
 
 const defaults = () => readPlatformDefaults({ env: { YYB_BASE_URL: "https://yyb.test", YYB_API_KEY: "yyb-test-secret" }, readLocal: false });

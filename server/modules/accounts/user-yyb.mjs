@@ -1,4 +1,4 @@
-import { ApiError } from "./upstream.mjs";
+import { ApiError } from "../../infrastructure/api-error.mjs";
 
 export const defaultYybSettings = () => ({ mode: "system", baseUrl: "", apiKey: "", ref: "", revision: 0 });
 

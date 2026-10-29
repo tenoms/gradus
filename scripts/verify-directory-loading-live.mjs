@@ -5,14 +5,14 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createTestDatabase } from '../tests/database.mjs';
-import { readPlatformDefaults } from '../server/platform-config.mjs';
+import { readPlatformDefaults } from '../server/integrations/platform-config.mjs';
 
 // The optional source root lets the same real, read-only workload measure a Git baseline.
 const sourceRoot = resolve(process.env.DIRECTORY_SOURCE_ROOT || '.');
 const label = process.env.DIRECTORY_CHECK_LABEL || 'current';
 assert.match(label, /^[a-z0-9-]+$/);
 const { createApp } = await import(pathToFileURL(resolve(sourceRoot, 'server/app.mjs')));
-const { requestJson } = await import(pathToFileURL(resolve(sourceRoot, 'server/upstream.mjs')));
+const { requestJson } = await import(pathToFileURL(resolve(sourceRoot, 'server/integrations/upstream.mjs')));
 const database = await createTestDatabase();
 const calls = [], results = [];
 let queryCount = 0;

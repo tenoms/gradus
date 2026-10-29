@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
-import { validatePlatformRequest } from './platform-policy.mjs';
-import { sharedOperation, stripSharedPersonalState } from './shared-account-policy.mjs';
-import { publicPlatformResponse } from './platform-policy.mjs';
+import { validatePlatformRequest } from '../../integrations/platform-policy.mjs';
+import { sharedOperation, stripSharedPersonalState } from '../../integrations/shared-account-policy.mjs';
+import { publicPlatformResponse } from '../../integrations/platform-policy.mjs';
 
 const stable = value => Array.isArray(value) ? value.map(stable) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().filter(key => !['t', '_t', 'timestamp'].includes(key)).map(key => [key, stable(value[key])])) : value;
 export const resourceKey = request => {

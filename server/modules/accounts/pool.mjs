@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
-import { ApiError } from './upstream.mjs';
-import { cleanAccount } from './platform-policy.mjs';
+import { ApiError } from '../../infrastructure/api-error.mjs';
+import { cleanAccount } from '../../integrations/platform-policy.mjs';
 import { userYybOverride } from './user-yyb.mjs';
 import { createYybServices } from './yyb-services.mjs';
-import { createTokenLifecycle } from './token-lifecycle.mjs';
+import { createTokenLifecycle } from '../../integrations/token-lifecycle.mjs';
 
 export const accountAlgorithms = ['round_robin','least_loaded','sticky'];
 const rawRef=account=>String(account.id??account.ref??'');

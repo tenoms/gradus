@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createTestDatabase } from './database.mjs';
-import { createIdentityStore } from '../server/identity-store.mjs';
-import { createPlatformConfigStore, readPlatformDefaults } from '../server/platform-config.mjs';
+import { createIdentityStore } from '../server/modules/identity/store.mjs';
+import { createPlatformConfigStore, readPlatformDefaults } from '../server/integrations/platform-config.mjs';
 
 const adminInput = { username: 'admin', password: 'admin-password-123' };
 const learnerInput = username => ({ username, password: 'learner-password-123', yybRef: 'shared-account' });

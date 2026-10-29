@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createUpstreamClient } from "../server/upstream.mjs";
-import { readPlatformDefaults } from "../server/platform-config.mjs";
+import { createUpstreamClient } from "../server/integrations/upstream.mjs";
+import { readPlatformDefaults } from "../server/integrations/platform-config.mjs";
 
 test("math GETs keep the original timestamp cache avoidance for real write readback", async () => {
   const before = Date.now(), calls = [];

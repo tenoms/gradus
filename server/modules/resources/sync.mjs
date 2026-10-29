@@ -1,7 +1,8 @@
-import { ApiError } from './upstream.mjs';
-import { stripSharedPersonalState } from './shared-account-policy.mjs';
-import { publicPlatformResponse, injectMathUser } from './platform-policy.mjs';
-import { sourceForSession,resourceManifest,resourceRows,inferResourceRequest,resourceIdentity,resourceKey,publicResourceResponse } from './resource-catalog.mjs';
+import { mergeExerciseDetail } from './exercise-content.mjs';
+import { ApiError } from '../../infrastructure/api-error.mjs';
+import { stripSharedPersonalState } from '../../integrations/shared-account-policy.mjs';
+import { publicPlatformResponse, injectMathUser } from '../../integrations/platform-policy.mjs';
+import { sourceForSession,resourceManifest,resourceRows,inferResourceRequest,resourceIdentity,resourceKey,publicResourceResponse } from './catalog.mjs';
 
 function succeeded(response) {
   const code=response?.code??response?.Code,message=String(response?.Message||response?.msg||response?.Msg||'');
@@ -108,7 +109,7 @@ export function createResourceSync({store,service,configuration,accountPool}) {
       const clean=publicResourceResponse(publicContent(response)),data=clean?.data??clean?.Data??clean;
       const returned=resourceRows(clean);
       if(!returned.length&&data?.exerciseId)returned.push(data);
-      const questions=returned.map((row,index)=>{const detail=data?.exerciseMap?.[row.exerciseId],options=detail?.questions??row.questions??row.questionList;return {...query,...row,...(detail||{}),_resourceOrder:(number>0?number-1:0)+index,...(Array.isArray(options)?{questions:options,questionList:options}:{})};});
+      const questions=returned.map((row,index)=>({...query,...mergeExerciseDetail(row,data?.exerciseMap?.[row.exerciseId]),_resourceOrder:(number>0?number-1:0)+index}));
       const questionIds=(Array.isArray(data?.examExerciseIdList)?data.examExerciseIdList:questions.map(row=>row.exerciseId||row.id)).map(String);
       const total=Number(data?.exerciseTotalNumber??data?.total??questionIds.length);
       return {imported:true,persisted,cacheState,questions,total,questionIds,examId:data?.examId??data?.examinationId,response:clean};
