@@ -40,10 +40,11 @@ export function resourceScope(platform, request) {
   return 'public';
 }
 const actorField=/^(?:StuID|StuId|stuid|userId|UserID|SysUserID|OpenID|WxID|WeChatID|t|_t|timestamp)$/i;
-function withoutActors(value) {
-  if(Array.isArray(value))return value.map(withoutActors);
+function withoutRequestIdentity(value, platform) {
+  if(Array.isArray(value))return value.map(item=>withoutRequestIdentity(item,platform));
   if(!value||typeof value!=='object')return value;
-  return Object.fromEntries(Object.entries(value).filter(([key])=>!actorField.test(key)).map(([key,item])=>[key,withoutActors(item)]));
+  // Math station already belongs to the configured source domain, not the request key.
+  return Object.fromEntries(Object.entries(value).filter(([key])=>!actorField.test(key)&&!(platform==='math'&&/^System_Station_ID$/i.test(key))).map(([key,item])=>[key,withoutRequestIdentity(item,platform)]));
 }
 const privateIdentity=/^(?:StuID|StuId|stuid|userId|UserID|SysUserID|OpenID|WxID|WeChatID|phone|phoneNumber|mobile|tel|telephone|email|unionid)$/i;
 export function publicResourceResponse(response) {
@@ -61,7 +62,7 @@ export function resourceIdentity(platform,session,config,request) {
   if(data.command&&typeof data.data==='string'){try{data.data=JSON.parse(data.data);}catch{}}
   const method=String(request.method||'GET').toUpperCase();
   const transportValues=value=>Array.isArray(value)?value.map(transportValues):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).map(([key,item])=>[key,transportValues(item)])):typeof value==='number'||typeof value==='boolean'?String(value):value;
-  const normalized={path:request.path,method,data:method==='GET'?{}:withoutActors(data),query:transportValues(withoutActors(method==='GET'?{...(request.query||{}),...data}:request.query||{}))};
+  const normalized={path:request.path,method,data:method==='GET'?{}:withoutRequestIdentity(data,platform),query:transportValues(withoutRequestIdentity(method==='GET'?{...(request.query||{}),...data}:request.query||{},platform))};
   return {source:{...domain,id:createHash('sha256').update(JSON.stringify(domain)).digest('hex'),accountRef:''},request:normalized,scope};
 }
 export function resourceRows(response) {

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {startHttpApp,testLearner} from '../support/http-app.mjs';
 import {resourceIdentity,inferResourceRequest} from '../../server/modules/resources/catalog.mjs';
+import {readPlatformDefaults} from '../../server/integrations/platform-config.mjs';
 
 const localRequest=(app,auth,name,input)=>app.request(`/api/learning/platform/${name}`,{auth,body:input});
 const fixture=()=>{
@@ -51,6 +52,31 @@ test('a local public resource is readable with an unavailable account pool and n
     const missing=await localRequest(app,auth,'math',{...request,query:{ID:43}});
     assert.ok([502,503].includes(missing.status));
     const state=await(await app.request('/api/learning/auth/session',{auth})).json();assert.equal(state.authenticated,true);assert.equal(state.platforms.math.available,true);
+  }finally{await app.close();}
+});
+
+test('public math cache selects the configured station domain regardless of client station fields',async()=>{
+  let sourceCalls=0;
+  const configurationDefaults=readPlatformDefaults({env:{},configFile:false});configurationDefaults.math.stationId=7;
+  const app=await startHttpApp({configurationDefaults,yybRequest:async()=>{sourceCalls++;throw new Error('offline');},loginPlatform:async()=>{sourceCalls++;throw new Error('offline');}});
+  try{
+    const admin=await app.setup(),auth=await learner(app,admin,'station.reader');
+    const request={path:'/api/question_list/GetQuestionByQuestionNew',method:'GET',data:{},query:{ID:42}};
+    const initial=app.app.locals.configuration.snapshot(),domains=[];
+    for(const stationId of [7,17]){
+      const config={...initial,math:{...initial.math,stationId}};
+      const identity=resourceIdentity('math',{user:{id:auth.userId}},config,request);domains.push(identity.source.id);
+      await app.app.locals.resourceStore.save(identity.source,inferResourceRequest('math',identity.request),{SuccessResponse:true,data:[{QuestionID:42,QuestionTitle:`站点${stationId}题目`}]});
+    }
+    assert.notEqual(domains[0],domains[1]);
+    const read=async(clientStation)=>{
+      const response=await localRequest(app,auth,'math',{...request,query:{ID:42,...(clientStation===undefined?{}:{System_Station_ID:clientStation})}});
+      assert.equal(response.status,200);return(await response.json()).data[0].QuestionTitle;
+    };
+    for(const station of [undefined,7,17,999])assert.equal(await read(station),'站点7题目');
+    const changed=await app.request('/api/admin/configuration',{auth:admin,method:'PUT',body:{revision:0,config:{math:{stationId:17}}}});assert.equal(changed.status,200);
+    for(const station of [undefined,7,17,999])assert.equal(await read(station),'站点17题目');
+    assert.equal(sourceCalls,0,'both configured domains use only their own saved resource without contacting a source');
   }finally{await app.close();}
 });
 
