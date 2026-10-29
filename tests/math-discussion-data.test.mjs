@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { loadDiscussionPage } from "../src/components/math/discussion-data.mjs";
+import { loadDiscussionPage } from "../src/features/math/community/discussion-data.mjs";
 test("discussion reads current zero likes instead of the stale GetUser counter", async () => {
   const calls = [];
   const result = await loadDiscussionPage({

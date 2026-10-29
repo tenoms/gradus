@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   gradeMathAnswer,
   mergeMathQuestion,
-} from "../src/platforms/math-grading.ts";
+} from "../src/features/math/exams/math-grading.ts";
 
 test("exercise wrapper and nested question retain the original answer when refreshed detail omits it", () => {
   const question = mergeMathQuestion(

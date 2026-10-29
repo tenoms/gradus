@@ -6,7 +6,7 @@ import {
   computerKnowledgeReferences,
   createComputerKnowledgeLoader,
   resolveComputerKnowledgeTags,
-} from "../src/components/computer/computer-knowledge.mjs";
+} from "../src/features/computer/practice/computer-knowledge.mjs";
 
 const major = "701769479767592960", chapter = "701807269960093696", point = "1217877249962024960";
 const question = { exerciseProperty: { knowledgeTags: [`${major},${chapter},${point}`] } };

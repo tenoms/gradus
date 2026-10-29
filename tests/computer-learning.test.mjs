@@ -17,7 +17,7 @@ globalThis.__computerLearningFixture = {
   records: rows,
 };
 const source = await readFile(
-  new URL("../src/components/computer/computer-learning.ts", import.meta.url),
+  new URL("../src/features/computer/practice/computer-learning.ts", import.meta.url),
   "utf8",
 );
 const output = ts
@@ -28,7 +28,7 @@ const output = ts
     },
   })
   .outputText.replace(
-    /import \{([^}]+)\} from ['"]\.\.\/\.\.\/platforms\/computer['"];?/,
+    /import \{([^}]+)\} from ['"]\.\.\/api\/computer['"];?/,
     (_, names) => `const {${names}}=globalThis.__computerLearningFixture;`,
   );
 const adapter = await import(

@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import ts from "typescript";
 
 const source = await readFile(
-  new URL("../src/platforms/computer.ts", import.meta.url),
+  new URL("../src/features/computer/api/computer.ts", import.meta.url),
   "utf8",
 );
 const compiled = ts
@@ -15,7 +15,7 @@ const compiled = ts
     },
   })
   .outputText.replace(
-    /import \{ catalogResource, platformRequest, studyFetch \} from ['"]\.\.\/lib\/api['"];?/,
+    /import \{ catalogResource, platformRequest, studyFetch \} from ['"]\.\.\/\.\.\/\.\.\/shared\/api\/client['"];?/,
     "const catalogResource=(_key,load)=>load();const platformRequest=(...args)=>globalThis.__computerTestRequest(...args); const studyFetch=(...args)=>globalThis.__computerTestFetch(...args);",
   );
 const adapter = await import(

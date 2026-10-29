@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeMathAnalysisContent } from "../src/components/math/math-analysis-content.mjs";
-import { formatLearningContent } from "../src/lib/content.mjs";
+import { normalizeMathAnalysisContent } from "../src/features/math/questions/math-analysis-content.mjs";
+import { formatLearningContent } from "../src/shared/content/content.mjs";
 
 test("source answer wrappers become one heading while the answer and its inline code survive", () => {
   const normalized = normalizeMathAnalysisContent("《答案》【答案】`(D).`《/答案》\\\n《分析》【解析】《/分析》");

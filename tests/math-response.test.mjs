@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   mathResponseData,
   mathResponseError,
-} from "../src/platforms/math-response.ts";
+} from "../src/features/math/api/math-response.ts";
 
 test("legacy SQL exception responses become concise errors without leaking server details", () => {
   const body = {

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { loadBookNotes } from "../src/components/math/notebook-data.mjs";
+import { loadBookNotes } from "../src/features/math/notebook/notebook-data.mjs";
 test("all note categories use an actor-scoped list without the uncategorized filter", async () => {
   const calls = [];
   const result = await loadBookNotes({

@@ -13,7 +13,7 @@ globalThis.__computingFixture = {
   mathPost: (...args) => globalThis.__computingPost(...args),
 };
 const source = await readFile(
-  new URL("../src/components/math/math-computing.ts", import.meta.url),
+  new URL("../src/features/math/practice/math-computing.ts", import.meta.url),
   "utf8",
 );
 const output = ts
@@ -24,7 +24,7 @@ const output = ts
     },
   })
   .outputText.replace(
-    /import \{([^}]+)\} from ['"]\.\.\/\.\.\/platforms\/math['"];?/,
+    /import \{([^}]+)\} from ['"]\.\.\/api\/math['"];?/,
     (_, names) => `const {${names}}=globalThis.__computingFixture;`,
   );
 const adapter = await import(

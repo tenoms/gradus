@@ -9,7 +9,7 @@ import {
   targetSchoolIds,
   targetSchoolPayload,
   matchingSchoolPlan,
-} from "../src/components/computer/school-model.mjs";
+} from "../src/features/computer/schools/school-model.mjs";
 
 test("school query preserves repeated province and major values and original degree and score semantics", () => {
   const q = schoolQuery(
@@ -113,7 +113,7 @@ globalThis.__schoolFixture = {
   computerRequest: (...args) => globalThis.__schoolRequest(...args),
 };
 const source = await readFile(
-  new URL("../src/components/computer/computer-schools.ts", import.meta.url),
+  new URL("../src/features/computer/schools/computer-schools.ts", import.meta.url),
   "utf8",
 );
 const output = ts

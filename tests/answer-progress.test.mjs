@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { answerProgress } from "../src/components/learning/answer-progress.mjs";
-import { computerQuestionProgress } from "../src/components/computer/question-workflow.mjs";
+import { answerProgress } from "../src/features/learning/workbench/answer-progress.mjs";
+import { computerQuestionProgress } from "../src/features/computer/practice/question-workflow.mjs";
 
 test("saved answers show their grade instead of treating persistence as correctness", () => {
   assert.deepEqual(answerProgress({ saved: true, correct: false }), { state: "incorrect", label: "回答错误" });

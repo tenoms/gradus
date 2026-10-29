@@ -4,7 +4,7 @@ import {
   modelExerciseCount,
   modelStudyPayload,
   guideStudyPayload,
-} from "../src/platforms/math-model.ts";
+} from "../src/features/math/practice/math-model.ts";
 
 test("guide continuation updates only the current album log and keeps another lesson's history intact", () => {
   const lesson = { ID: 462, BusID: 405 };
@@ -17,7 +17,7 @@ test("guide continuation updates only the current album log and keeps another le
   assert.equal(existing.ID, 88);
   assert.equal(existing.UpdateColumns, "ID,AddTime");
 });
-import { normalizedCrop, cropPixels } from "../src/platforms/math-image.ts";
+import { normalizedCrop, cropPixels } from "../src/features/math/library/math-image.ts";
 test("model study logs preserve distinct content, question and previous answer IDs", () => {
   const value = modelStudyPayload({
     stuid: "current-user",

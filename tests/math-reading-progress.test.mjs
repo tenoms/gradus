@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { bookViewPayload } from "../src/components/math/reading-progress.mjs";
+import { bookViewPayload } from "../src/features/math/questions/reading-progress.mjs";
 test("书籍解析进度保留原view业务类型、题目与书籍编号", () => {
   assert.deepEqual(
     bookViewPayload({

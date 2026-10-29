@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { relatedPackageRows } from "../src/platforms/math-related-packages.ts";
+import { relatedPackageRows } from "../src/features/math/questions/math-related-packages.ts";
 
 test("book packages retain all returned books without local ownership or trial annotations", () => {
   const input = [

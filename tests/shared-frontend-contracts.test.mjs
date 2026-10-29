@@ -3,16 +3,16 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import ts from 'typescript';
 import {startHttpApp,testLearner} from './http-app.mjs';
-import {loadBookNotes} from '../src/components/math/notebook-data.mjs';
+import {loadBookNotes} from '../src/features/math/notebook/notebook-data.mjs';
 
 async function moduleFrom(relative,replace){
   const source=await readFile(new URL(relative,import.meta.url),'utf8');
   const code=replace(ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText);
   return import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`);
 }
-const frontend=await moduleFrom('../src/platforms/computer.ts',code=>code.replace(/import \{ catalogResource, platformRequest, studyFetch \} from ['"]\.\.\/lib\/api['"];?/,"const catalogResource=(_key,load)=>load();const platformRequest=(...args)=>globalThis.__sharedFrontendTransport(...args);const studyFetch=()=>{throw new Error('upload not in this case')};"));
+const frontend=await moduleFrom('../src/features/computer/api/computer.ts',code=>code.replace(/import \{ catalogResource, platformRequest, studyFetch \} from ['"]\.\.\/\.\.\/\.\.\/shared\/api\/client['"];?/,"const catalogResource=(_key,load)=>load();const platformRequest=(...args)=>globalThis.__sharedFrontendTransport(...args);const studyFetch=()=>{throw new Error('upload not in this case')};"));
 globalThis.__sharedFrontendComputer=frontend;
-const learning=await moduleFrom('../src/components/computer/computer-learning.ts',code=>code.replace(/import \{([^}]+)\} from ['"]\.\.\/\.\.\/platforms\/computer['"];?/,(_,names)=>`const {${names}}=globalThis.__sharedFrontendComputer;`));
+const learning=await moduleFrom('../src/features/computer/practice/computer-learning.ts',code=>code.replace(/import \{([^}]+)\} from ['"]\.\.\/api\/computer['"];?/,(_,names)=>`const {${names}}=globalThis.__sharedFrontendComputer;`));
 const q=(id,answer='A')=>({exerciseId:id,exerciseType:1,exerciseAnswer:answer,majorId:'major',chapterId:'chapter',questions:[{questionCode:'A',questionContent:'选项A'},{questionCode:'B',questionContent:'选项B'}]});
 function fixture(){const sourceCalls=[];return {
   sourceCalls,

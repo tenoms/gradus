@@ -5,7 +5,7 @@ import {
   reportSnapshotDocument,
   reportSnapshotFilename,
   safeReportSnapshotImage,
-} from "../src/components/math/report-share-model.mjs";
+} from "../src/features/math/exams/report-share-model.mjs";
 
 const now = new Date("2026-10-29T12:34:56Z");
 test("report filenames are identifiable HTML snapshots and remove filesystem separators", () => {

@@ -4,7 +4,7 @@ import {
   schoolAllAnswered,
   schoolCompletionRecord,
   schoolQuestionRecord,
-} from "../src/components/math/school-course-model.mjs";
+} from "../src/features/math/schools/school-course-model.mjs";
 const context = {
   stuid: "fixture-student",
   CourseID: 11,

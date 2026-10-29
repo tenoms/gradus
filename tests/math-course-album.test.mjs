@@ -5,7 +5,7 @@ import {
   courseAlbumWork,
   courseAlbumOperation,
   courseAlbumLog,
-} from "../src/components/math/course-album-model.mjs";
+} from "../src/features/math/courses/course-album-model.mjs";
 test("album work follows the parent group teacher flag and actual first child paper identity", () => {
   const content = [
     { ID: 1, PID: 0, Type: "作业", BusValue: 1 },
@@ -73,7 +73,7 @@ globalThis.__courseAlbumFixture = {
   mathPost: (...a) => globalThis.__albumPost(...a),
 };
 const source = await readFile(
-    new URL("../src/components/math/math-course-album.ts", import.meta.url),
+    new URL("../src/features/math/courses/math-course-album.ts", import.meta.url),
     "utf8",
   ),
   output = ts

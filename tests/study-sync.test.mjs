@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createStudySync, emptyStudyData } from "../src/lib/study-sync.mjs";
+import { createStudySync, emptyStudyData } from "../src/features/learning/state/study-sync.mjs";
 
 const task = (id) => ({ id, title: id, platform: "math", date: "2026-10-29", done: false, createdAt: "2026-10-29T03:00:00Z" });
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; };

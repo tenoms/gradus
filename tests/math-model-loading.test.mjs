@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
 
-const source = await readFile(new URL("../src/components/math/MathModelTraining.tsx", import.meta.url), "utf8");
+const source = await readFile(new URL("../src/features/math/practice/MathModelTraining.tsx", import.meta.url), "utf8");
 const ast = ts.createSourceFile("MathModelTraining.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 const loader = ast.statements.find(node => ts.isFunctionDeclaration(node) && node.name?.text === "loadModuleQuestion");
 assert.ok(loader, "the component and regression use the same question loader");

@@ -6,7 +6,7 @@ import {
   relatedProperties,
   relatedGradeState,
   relatedResetPayload,
-} from "../src/platforms/math-related-model.ts";
+} from "../src/features/math/questions/math-related-model.ts";
 
 test("question-bank scope follows the target by returned property labels, including common and shared questions", () => {
   const definitions = [

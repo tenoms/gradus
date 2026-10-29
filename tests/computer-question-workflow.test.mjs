@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { computerAnalysisVisible, computerAnswerMode, computerDraftScope, computerImmediateChoice, computerChoiceAnswer, computerOptionFeedback, computerQuestionVideoSource } from "../src/components/computer/question-workflow.mjs";
+import { computerAnalysisVisible, computerAnswerMode, computerDraftScope, computerImmediateChoice, computerChoiceAnswer, computerOptionFeedback, computerQuestionVideoSource } from "../src/features/computer/practice/question-workflow.mjs";
 
 test("computer drafts belong to the Web learner across resource source changes", () => {
   const learner = (web, upstream, endpoint = "http://yyb-one.test", ref = "same-ref") => ({ user: { id: web, yyb: { mode: "custom", baseUrl: endpoint } }, account: { ref }, platforms: { computer: { user: { userId: upstream } } } });

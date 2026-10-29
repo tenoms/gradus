@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mathMessageTarget } from "../src/platforms/math-messages.ts";
+import { mathMessageTarget } from "../src/features/math/community/math-messages.ts";
 test("learning message targets preserve original question and order IDs", () => {
   assert.deepEqual(
     mathMessageTarget({ BusType: "题目报错", BusRelationID: 25 }),

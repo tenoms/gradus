@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hasMathQuestionContent, mathOptionFeedback, mathQuestionPrompt, mathQuestionChoice, mathQuestionMedia } from "../src/components/math/math-question-presentation.mjs";
+import { hasMathQuestionContent, mathOptionFeedback, mathQuestionPrompt, mathQuestionChoice, mathQuestionMedia } from "../src/features/math/questions/math-question-presentation.mjs";
 
 test("math choice feedback grades known answers only after checking or handing in", () => {
   const options = [{ ID: 11, IsAnswer: "1" }, { ID: 12, IsAnswer: 0 }, { ID: 13, IsAnswer: 0 }];

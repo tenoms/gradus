@@ -5,7 +5,7 @@ import { runInNewContext } from "node:vm";
 
 // Exercise the component's actual navigation effect without introducing a DOM
 // renderer: the hook runner preserves React's dependency comparison semantics.
-const source = await readFile(new URL("../src/pages/MathWorkspace.tsx", import.meta.url), "utf8");
+const source = await readFile(new URL("../src/features/math/MathWorkspace.tsx", import.meta.url), "utf8");
 const effect = source.match(/useEffect\(\(\) => \{\n    if \(!current\) return;\n    const currentIndex[\s\S]+?\n  \}, \[[^\]]+\]\);/)?.[0];
 assert.ok(effect, "BookWorkspace keeps its selected-question navigation effect");
 

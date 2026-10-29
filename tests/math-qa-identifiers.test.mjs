@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeMathQuestionOrder } from "../src/platforms/math-qa.ts";
+import { normalizeMathQuestionOrder } from "../src/features/math/community/math-qa.ts";
 test("student joined list separates order ID, entity QID and printed question number", () => {
   const row = normalizeMathQuestionOrder({
     ID: 92250,

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
-import * as model from "../src/components/math/course-recommendations-model.mjs";
+import * as model from "../src/features/math/courses/course-recommendations-model.mjs";
 
 const context = {
   stuid: "student",
@@ -37,7 +37,7 @@ globalThis.__recommendFixture = {
 globalThis.__recommendModel = model;
 const source = await readFile(
   new URL(
-    "../src/components/math/math-course-recommendations.ts",
+    "../src/features/math/courses/math-course-recommendations.ts",
     import.meta.url,
   ),
   "utf8",
@@ -50,7 +50,7 @@ const compiled = ts
     },
   })
   .outputText.replace(
-    /import \{([^}]+)\} from ['"]\.\.\/\.\.\/platforms\/math['"];?/,
+    /import \{([^}]+)\} from ['"]\.\.\/api\/math['"];?/,
     (_, names) => `const {${names}}=globalThis.__recommendFixture;`,
   )
   .replace(

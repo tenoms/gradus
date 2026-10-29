@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   studyProfilePayload,
-} from "../src/components/math/account-model.mjs";
+} from "../src/features/math/profile/account-model.mjs";
 
 test("study profile uses original province text, lower-case API course field and fixed actor", () => {
   const payload = studyProfilePayload(

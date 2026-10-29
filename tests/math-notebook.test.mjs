@@ -6,7 +6,7 @@ import {
   noteQuestionRow,
   noteRecordId,
   sortCatalogPayload,
-} from "../src/components/math/notebook-model.mjs";
+} from "../src/features/math/notebook/notebook-model.mjs";
 test("book notes and question-bank notes preserve separate record and question identities", () => {
   assert.equal(noteRecordId({ ID: 1, RelD: 9 }, "book"), "1");
   assert.equal(noteRecordId({ ID: 1, RelD: 9 }, "bank"), "9");
@@ -70,7 +70,7 @@ test("large exports split into file batches without losing selected records", ()
   assert.equal(new Set(files.flatMap((x) => x.recordIds)).size, 65);
 });
 test("print-history matching preserves original per-question and book scope", async () => {
-  const { notePrintHistoryParams, noteWasPrinted } = await import("../src/components/math/notebook-model.mjs");
+  const { notePrintHistoryParams, noteWasPrinted } = await import("../src/features/math/notebook/notebook-model.mjs");
   assert.deepEqual(notePrintHistoryParams("me", "7"), { StuID: "me", BusKey: 7 });
   const history = [{ Question_ID: 33, BookID: 44 }];
   assert.equal(noteWasPrinted({ QuestionID: 33, BookID: 44 }, history), true);

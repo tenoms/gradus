@@ -9,7 +9,7 @@ import {
   reconcileCourseRanking,
   latestCourseExamParams,
   latestCourseScore,
-} from "../src/components/math/course-report-more-model.mjs";
+} from "../src/features/math/courses/course-report-more-model.mjs";
 const context = {
   stuid: "fixture",
   CourseID: 1,

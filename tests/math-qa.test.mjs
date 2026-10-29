@@ -4,7 +4,7 @@ import {
   qaTeacherRights,
   qaVoicePayload,
   qaReportDetailParams,
-} from "../src/platforms/math-qa.ts";
+} from "../src/features/math/community/math-qa.ts";
 test("teacher editing keeps author ownership without local response expiry", () => {
   const info = { State: 2, TeacherID: 7, UpdateTime: "2000-01-01 00:00:00" };
   assert.equal(qaTeacherRights(info, { TeacherID: "7" }).editAnswer, true);

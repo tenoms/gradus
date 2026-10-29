@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { stripTypeScriptTypes } from "node:module";
 
 // Transform the actual source: ApiError uses parameter properties that strip-only mode cannot erase.
-const source = stripTypeScriptTypes(readFileSync(new URL("../src/lib/api.ts", import.meta.url), "utf8"), { mode: "transform" });
+const source = stripTypeScriptTypes(readFileSync(new URL("../src/shared/api/client.ts", import.meta.url), "utf8"), { mode: "transform" });
 const { catalogResource, invalidateCatalogResources, api, studyFetch, setApiIdentity, configureApiSpace, getSession, resolveApiPath, ApiError } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
 const originalFetch = globalThis.fetch;
 const originalWindow = globalThis.window;

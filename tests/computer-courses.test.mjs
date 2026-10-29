@@ -6,7 +6,7 @@ import {
   maskCourseReviewer,
   orderedSubcourses,
   studyCourseId,
-} from "../src/components/computer/course-model.mjs";
+} from "../src/features/computer/courses/course-model.mjs";
 test("subcourse order and active study identity follow source courseRelated instead of arbitrary array order", () => {
   const c = {
     id: "package",

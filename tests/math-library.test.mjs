@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mathLibraryTag, mathLibraryTagOptions, matchesMathLibraryTag, mergeMathLibraryCatalog } from "../src/platforms/math-library.ts";
+import { mathLibraryTag, mathLibraryTagOptions, matchesMathLibraryTag, mergeMathLibraryCatalog } from "../src/features/math/library/math-library.ts";
 
 test("real combined catalog shape has no BusType: the source paper list supplies classification", () => {
   const all = [

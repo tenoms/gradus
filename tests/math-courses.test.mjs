@@ -6,7 +6,7 @@ import {
   taskType,
   videoProgressRecord,
   leakPaperState,
-} from "../src/components/math/course-model.mjs";
+} from "../src/features/math/courses/course-model.mjs";
 test("course duration parses the source HH:mm:ss representation", () => {
   assert.equal(durationSeconds("01:02:03"), 3723);
   assert.equal(durationSeconds("04:30"), 270);
@@ -86,7 +86,7 @@ import {
   completedCourseAssignments,
   courseResumeTarget,
   packetResumeEntry,
-} from "../src/components/math/course-model.mjs";
+} from "../src/features/math/courses/course-model.mjs";
 test("packet tree presentation retains every returned chapter and depth regardless of entitlement flags", () => {
   const rows = [{ ID: 1, PID: "" }, { ID: 2, PID: 1 }, { ID: 3, PID: 2, hasAuth: false }, { ID: 4, PID: 3, CourseID: 50 }];
   const tree = packetTreeRows(rows);
@@ -184,7 +184,7 @@ test("course durations display seconds as minutes", () => {
 import {
   courseTasksFinished,
   packetVisitRecord,
-} from "../src/components/math/course-model.mjs";
+} from "../src/features/math/courses/course-model.mjs";
 test("packet continuation writes the original packet progress type and verifies previous single-task completion", () => {
   assert.deepEqual(
     packetVisitRecord(
@@ -245,7 +245,7 @@ globalThis.__courseFixture = {
   mathPost: (...args) => globalThis.__coursePost(...args),
 };
 const courseSource = await readFile(
-    new URL("../src/components/math/math-courses.ts", import.meta.url),
+    new URL("../src/features/math/courses/math-courses.ts", import.meta.url),
     "utf8",
   ),
   courseOutput = ts
@@ -319,7 +319,7 @@ test("course catalogues only read without activating subscriptions", async () =>
   assert.equal(Object.hasOwn(courseAdapter.courseApi, "freeClaim"), false);
 });
 
-import { courseQuestionRecord } from "../src/components/math/course-model.mjs";
+import { courseQuestionRecord } from "../src/features/math/courses/course-model.mjs";
 test("standalone calendar questions retain their original relation ID and answer-only update contract", () => {
   const context = { StuID: "s", CourseID: 10, CalendarID: 20, ProductID: 30 },
     task = { BusID: 44, Data: { ID: 44, BookID: 55 } };

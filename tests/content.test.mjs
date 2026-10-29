@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { formatLearningContent } from "../src/lib/content.mjs";
+import { formatLearningContent } from "../src/shared/content/content.mjs";
 
 test("math platform multiline inline formulas render without exposing the original TeX delimiters", () => {
   const html = formatLearningContent(

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { paginationState, paginationPages } from "../src/lib/pagination-model.mjs";
+import { paginationState, paginationPages } from "../src/shared/ui/pagination/pagination-model.mjs";
 
 test("pagination reaches every record once including the final partial page", () => {
   const all = Array.from({ length: 103 }, (_, index) => index);

@@ -11,7 +11,7 @@ globalThis.__scoreFixture = {
   mathCommand: (...args) => globalThis.__scoreCommand(...args),
 };
 const source = await readFile(
-  new URL("../src/components/math/math-score-rank.ts", import.meta.url),
+  new URL("../src/features/math/profile/math-score-rank.ts", import.meta.url),
   "utf8",
 );
 const output = ts
@@ -22,11 +22,11 @@ const output = ts
     },
   })
   .outputText.replace(
-    /import \{ api \} from ['"]\.\.\/\.\.\/lib\/api['"];?/,
+    /import \{ api \} from ['"]\.\.\/\.\.\/\.\.\/shared\/api\/client['"];?/,
     "const api=(...args)=>globalThis.__scoreApi(...args);",
   )
   .replace(
-    /import \{([^}]+)\} from ['"]\.\.\/\.\.\/platforms\/math['"];?/,
+    /import \{([^}]+)\} from ['"]\.\.\/api\/math['"];?/,
     (_, names) => `const {${names}}=globalThis.__scoreFixture;`,
   );
 const adapter = await import(

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { albumStage, groupMathAlbums, initialMathSubject, matchesMathSubject, mathMenuTree, weeklySubjectCode, weeklyStageCode } from "../src/components/math/learning-plan-model.mjs";
+import { albumStage, groupMathAlbums, initialMathSubject, matchesMathSubject, mathMenuTree, weeklySubjectCode, weeklyStageCode } from "../src/features/math/preparation/learning-plan-model.mjs";
 
 test("weekly papers derive the original question-scope codes from the shared preparation target", () => {
   assert.equal(weeklySubjectCode("数一"), "10,13,14,15");

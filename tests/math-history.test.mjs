@@ -4,7 +4,7 @@ import {
   mathHistoryCommands,
   mathHistoryParams,
   mathHistoryQuestion,
-} from "../src/platforms/math-history.ts";
+} from "../src/features/math/profile/math-history.ts";
 test("study history pagination is an offset and papers retain the original Notes scope", () => {
   assert.equal(
     mathHistoryCommands.拍照搜题,

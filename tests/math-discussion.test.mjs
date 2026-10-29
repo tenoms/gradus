@@ -4,7 +4,7 @@ import {
   discussionGivePayload,
   discussionReplyPayload,
   discussionTree,
-} from "../src/components/math/discussion-model.mjs";
+} from "../src/features/math/community/discussion-model.mjs";
 test("discussion reply payload preserves original parent, reply and recipient semantics for each level", () => {
   const input = {
     qid: 99,

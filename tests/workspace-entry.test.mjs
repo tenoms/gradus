@@ -4,8 +4,8 @@ import { readFile } from "node:fs/promises";
 import React, { useEffect, useRef, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
-import { mathLibraryTag, mathLibraryTagOptions, matchesMathLibraryTag } from "../src/platforms/math-library.ts";
-import { matchesMathSubject } from "../src/components/math/learning-plan-model.mjs";
+import { mathLibraryTag, mathLibraryTagOptions, matchesMathLibraryTag } from "../src/features/math/library/math-library.ts";
+import { matchesMathSubject } from "../src/features/math/preparation/learning-plan-model.mjs";
 
 let search = "";
 let libraryRows = [];
@@ -49,9 +49,9 @@ async function component(file, name) {
   const fixture = `const {${Object.keys(globalThis.__workspaceEntryFixture).filter(key => key !== name).join(",")}}=globalThis.__workspaceEntryFixture;`;
   return (await import(`data:text/javascript;base64,${Buffer.from(fixture + output).toString("base64")}`))[name];
 }
-const QuestionBank = await component("../src/pages/ComputerWorkspace.tsx", "QuestionBank");
-globalThis.__workspaceEntryFixture.MathLibraryTagFilter = await component("../src/components/math/MathLibraryTagFilter.tsx", "MathLibraryTagFilter");
-const Library = await component("../src/pages/MathWorkspace.tsx", "Library");
+const QuestionBank = await component("../src/features/computer/ComputerWorkspace.tsx", "QuestionBank");
+globalThis.__workspaceEntryFixture.MathLibraryTagFilter = await component("../src/features/math/library/MathLibraryTagFilter.tsx", "MathLibraryTagFilter");
+const Library = await component("../src/features/math/MathWorkspace.tsx", "Library");
 
 test("computer question bank opens sequential practice and loads practice chapters", () => {
   search = "";

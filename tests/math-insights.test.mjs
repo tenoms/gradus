@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   mathCapacityPayload,
   mathFrequencyRows,
-} from "../src/platforms/math-insights.ts";
+} from "../src/features/math/questions/math-insights.ts";
 test("question frequencies retain actual year scores and zero values without inventing predictions", () => {
   const [r] = mathFrequencyRows([
     {

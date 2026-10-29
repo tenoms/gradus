@@ -6,7 +6,7 @@ import {
   danmakuTime,
   courseDanmakuPayload,
   sendCourseDanmaku,
-} from "../src/components/computer/course-danmaku-model.mjs";
+} from "../src/features/computer/courses/course-danmaku-model.mjs";
 
 test("lesson danmaku reads original fields, integer release times, stable duplicates and actual absence", () => {
   const rows = lessonDanmaku({

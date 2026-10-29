@@ -2,23 +2,23 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
-import { mergeMathLibraryCatalog } from "../src/platforms/math-library.ts";
-import { mathResponseData, mathResponseError } from "../src/platforms/math-response.ts";
+import { mergeMathLibraryCatalog } from "../src/features/math/library/math-library.ts";
+import { mathResponseData, mathResponseError } from "../src/features/math/api/math-response.ts";
 
 const compile = source => ts.transpileModule(source, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
 }).outputText;
-const source = await readFile(new URL("../src/platforms/math.ts", import.meta.url), "utf8");
+const source = await readFile(new URL("../src/features/math/api/math.ts", import.meta.url), "utf8");
 const output = compile(source)
-  .replace(/import \{ catalogResource, platformRequest, studyFetch \} from ["']\.\.\/lib\/api["'];?/, "const catalogResource=(_key,load)=>load();const platformRequest=(...args)=>globalThis.__mathContentRequest(...args); const studyFetch=()=>{throw new Error('unexpected upload')};")
-  .replace(/import \{ mergeMathLibraryCatalog \} from ["']\.\/math-library["'];?/, "const {mergeMathLibraryCatalog}=globalThis.__mathContentFixture;")
+  .replace(/import \{ catalogResource, platformRequest, studyFetch \} from ["']\.\.\/\.\.\/\.\.\/shared\/api\/client["'];?/, "const catalogResource=(_key,load)=>load();const platformRequest=(...args)=>globalThis.__mathContentRequest(...args); const studyFetch=()=>{throw new Error('unexpected upload')};")
+  .replace(/import \{ mergeMathLibraryCatalog \} from ["']\.\.\/library\/math-library["'];?/, "const {mergeMathLibraryCatalog}=globalThis.__mathContentFixture;")
   .replace(/import \{ mathResponseData, mathResponseError \} from ["']\.\/math-response["'];?/, "const {mathResponseData,mathResponseError}=globalThis.__mathContentFixture;");
 globalThis.__mathContentFixture = { mergeMathLibraryCatalog, mathResponseData, mathResponseError };
 const adapter = await import(`data:text/javascript;base64,${Buffer.from(output).toString("base64")}`);
 globalThis.__mathContentFixture.mathCommand = adapter.mathCommand;
 globalThis.__mathContentFixture.mathRows = adapter.mathRows;
-const qrOutput = compile(await readFile(new URL("../src/platforms/math-access.ts", import.meta.url), "utf8"))
-  .replace(/import \{ mathCommand, mathRows \} from ["']\.\/math["'];?/, "const {mathCommand,mathRows}=globalThis.__mathContentFixture;");
+const qrOutput = compile(await readFile(new URL("../src/features/math/library/math-access.ts", import.meta.url), "utf8"))
+  .replace(/import \{ mathCommand, mathRows \} from ["']\.\.\/api\/math["'];?/, "const {mathCommand,mathRows}=globalThis.__mathContentFixture;");
 const qr = await import(`data:text/javascript;base64,${Buffer.from(qrOutput).toString("base64")}`);
 
 test("the library keeps all returned books without fetching course grants or allocations", async () => {

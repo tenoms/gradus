@@ -7,7 +7,7 @@ import {
   weeklyDimensionScores,
   weeklyRhythm,
   weeklyTaskGroups,
-} from "../src/components/math/report-model.mjs";
+} from "../src/features/math/exams/report-model.mjs";
 test("report download links only use actual HTTP URLs returned by metadata", () => {
   const links = reportFileLinks({
     Files: "https://files.example.test/paper.pdf",
@@ -87,7 +87,7 @@ test("recommended study tasks group around the original two-hour target without 
   assert.equal(groups[0].hours, 2.5);
 });
 
-import { courseReportPrintLinks } from "../src/components/math/report-model.mjs";
+import { courseReportPrintLinks } from "../src/features/math/exams/report-model.mjs";
 test("explicit course print links preserve the three actual legacy paths and exact parameter casing", () => {
   const context = {
     kind: "course",

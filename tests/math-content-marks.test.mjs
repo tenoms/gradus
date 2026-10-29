@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mathContentLikeDelete, mathContentMarkType } from "../src/platforms/math-content-marks.ts";
+import { mathContentLikeDelete, mathContentMarkType } from "../src/features/math/questions/math-content-marks.ts";
 
 test("template resources use the source module action type; book references do not invent unsupported votes", () => {
   assert.equal(mathContentMarkType("模板资源"), "小模块");
