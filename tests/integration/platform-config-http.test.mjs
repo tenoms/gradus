@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createCipheriv } from "node:crypto";
-import { readPlatformDefaults } from "../../server/integrations/platform-config.mjs";
+import { platformConfigFixture } from "../support/platform-config.mjs";
 import { startHttpApp } from "../support/http-app.mjs";
 
 function configuredStore() {
-  const defaults = readPlatformDefaults({ env: { YYB_BASE_URL: "https://yyb.original.test" }, configFile: false });
+  const defaults = platformConfigFixture({ yyb: { baseUrl: "https://yyb.original.test" } });
   return defaults;
 }
 function transport(calls) {

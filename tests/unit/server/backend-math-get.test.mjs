@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createUpstreamClient } from "../../../server/integrations/upstream.mjs";
-import { readPlatformDefaults } from "../../../server/integrations/platform-config.mjs";
+import { platformConfigFixture } from "../../support/platform-config.mjs";
 
 test("math GETs keep the original timestamp cache avoidance for real write readback", async () => {
   const before = Date.now(), calls = [];
-  const client = createUpstreamClient(readPlatformDefaults({ env: {}, configFile: false }), {
+  const client = createUpstreamClient(platformConfigFixture(), {
     requestJson: async (url, options) => { calls.push({ url: new URL(url), options }); return { code: 0, data: [] }; },
   });
   await client.mathRequest("/api/sys_users_info/GetListByAll", { query: { StuID: "fixture-student", t: 1 } }, { token: "fixture-token" });

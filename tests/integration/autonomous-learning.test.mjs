@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {startHttpApp,testLearner} from '../support/http-app.mjs';
 import {resourceIdentity,inferResourceRequest} from '../../server/modules/resources/catalog.mjs';
-import {readPlatformDefaults} from '../../server/integrations/platform-config.mjs';
+import { platformConfigFixture } from "../support/platform-config.mjs";
 
 const localRequest=(app,auth,name,input)=>app.request(`/api/learning/platform/${name}`,{auth,body:input});
 const fixture=()=>{
@@ -57,7 +57,7 @@ test('a local public resource is readable with an unavailable account pool and n
 
 test('public math cache selects the configured station domain regardless of client station fields',async()=>{
   let sourceCalls=0;
-  const configurationDefaults=readPlatformDefaults({env:{},configFile:false});configurationDefaults.math.stationId=7;
+  const configurationDefaults=platformConfigFixture();configurationDefaults.math.stationId=7;
   const app=await startHttpApp({configurationDefaults,yybRequest:async()=>{sourceCalls++;throw new Error('offline');},loginPlatform:async()=>{sourceCalls++;throw new Error('offline');}});
   try{
     const admin=await app.setup(),auth=await learner(app,admin,'station.reader');

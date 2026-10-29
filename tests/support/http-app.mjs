@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { once } from "node:events";
 import { createTestDatabase } from "./database.mjs";
 import { createApp } from "../../server/app.mjs";
-import { readPlatformDefaults } from "../../server/integrations/platform-config.mjs";
+import { platformConfigFixture } from "./platform-config.mjs";
 
 export const testAdmin = { username: "admin", password: "administration-123", displayName: "管理员" };
 export const testLearner = (username, yybRef, extra = {}) => ({ username, password: "learner-password-123", displayName: username, yybRef, ...extra });
@@ -10,7 +10,7 @@ export const testLearner = (username, yybRef, extra = {}) => ({ username, passwo
 /** Test clients obtain both cookie and principal from the public authentication response. */
 export async function startHttpApp(overrides = {}) {
   const database = overrides.database || await createTestDatabase();
-  const app = await createApp({ configurationDefaults: readPlatformDefaults({ env: {}, configFile: false }), ...overrides, database });
+  const app = await createApp({ configurationDefaults: platformConfigFixture(), ...overrides, database });
   const server = app.listen(0, "127.0.0.1");
   await once(server, "listening");
   const base = `http://127.0.0.1:${server.address().port}`;

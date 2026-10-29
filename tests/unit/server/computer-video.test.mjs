@@ -5,7 +5,7 @@ import {
   createUpstreamClient,
   decodeComputerVideoResponse,
 } from "../../../server/integrations/upstream.mjs";
-import { readPlatformDefaults } from "../../../server/integrations/platform-config.mjs";
+import { platformConfigFixture } from "../../support/platform-config.mjs";
 const key = Buffer.from("1234567890abcdef"),
   iv = Buffer.from("fedcba0987654321");
 function encrypted(text) {
@@ -49,7 +49,7 @@ test("video permission failures stay unchanged and malformed ciphertext returns 
   );
 });
 test("computer adapter decrypts only V2 media URLs and preserves the Tencent response", async () => {
-  const config = readPlatformDefaults({ env: {}, configFile: false });
+  const config = platformConfigFixture();
   config.computer.videoKey = key.toString();
   config.computer.videoIv = iv.toString();
   const client = createUpstreamClient(config, {

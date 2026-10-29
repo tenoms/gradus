@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {startHttpApp,testLearner} from '../support/http-app.mjs';
 import {createTestDatabase} from '../support/database.mjs';
-import {readPlatformDefaults} from '../../server/integrations/platform-config.mjs';
+import { platformConfigFixture } from "../support/platform-config.mjs";
 
 function fixture(){
   const calls=[];
-  return {calls,configurationDefaults:readPlatformDefaults({env:{YYB_BASE_URL:'https://system-yyb.test',YYB_API_KEY:'system-private-key'},configFile: false}),requestJson:async(input,options={})=>{
+  return {calls,configurationDefaults:platformConfigFixture({ yyb: { baseUrl: 'https://system-yyb.test', apiKey: 'system-private-key' } }),requestJson:async(input,options={})=>{
     const url=new URL(input);calls.push({url,options});
     if(url.pathname==='/accounts')return {code:0,data:[{id:'same-ref',nickname:'资源来源',status:'alive'}]};
     if(url.pathname==='/wxapp/getCode')return {code:0,data:{code:'source-code'}};

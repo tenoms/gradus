@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createTokenLifecycle,tokenMetadata,isSourceAuthFailure} from '../../../server/integrations/token-lifecycle.mjs';
 import {createUpstreamClient} from '../../../server/integrations/upstream.mjs';
-import {readPlatformDefaults} from '../../../server/integrations/platform-config.mjs';
+import { platformConfigFixture } from "../../support/platform-config.mjs";
 import {createResourceSync} from '../../../server/modules/resources/sync.mjs';
 
 const jwt=payload=>`header.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.signature`;
-const config=()=>readPlatformDefaults({env:{YYB_BASE_URL:'https://yyb.example'},configFile: false});
+const config=()=>platformConfigFixture({ yyb: { baseUrl: 'https://yyb.example' } });
 const account={ref:'source',openid:'same-wechat'};
 const state=(token='opaque',expiresAt=null)=>({connected:true,token,stuId:'math-student',user:{StuID:'math-student',userId:'computer-student'},auth:{issuedAt:0,expiresAt}});
 

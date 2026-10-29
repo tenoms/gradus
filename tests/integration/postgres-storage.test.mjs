@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createTestDatabase } from '../support/database.mjs';
 import { createIdentityStore } from '../../server/modules/identity/store.mjs';
-import { createPlatformConfigStore, readPlatformDefaults } from '../../server/integrations/platform-config.mjs';
+import { createPlatformConfigStore } from '../../server/integrations/platform-config.mjs';
+import { platformConfigFixture } from "../support/platform-config.mjs";
 
 const adminInput = { username: 'admin', password: 'admin-password-123' };
 const learnerInput = username => ({ username, password: 'learner-password-123', yybRef: 'shared-account' });
@@ -45,7 +46,7 @@ test('concurrent study updates reject one stale revision including the first wri
 test('independent configuration clients enforce PostgreSQL compare-and-swap and preserve secrets', async () => {
   const db = await createTestDatabase();
   try {
-    const defaults = readPlatformDefaults({ env: { YYB_API_KEY: 'private-key' }, configFile: false });
+    const defaults = platformConfigFixture({ yyb: { apiKey: 'private-key' } });
     const first = await createPlatformConfigStore({ database: db, defaults });
     const second = await createPlatformConfigStore({ database: db, defaults });
     const outcomes = await Promise.allSettled([

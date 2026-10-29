@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { resourceIdentity, resourceKey } from '../../../server/modules/resources/catalog.mjs';
-import { readPlatformDefaults } from '../../../server/integrations/platform-config.mjs';
+import { platformConfigFixture } from "../../support/platform-config.mjs";
 import { injectMathUser } from '../../../server/integrations/platform-policy.mjs';
 
 const configured = stationId => {
-  const config = readPlatformDefaults({ env: {}, configFile: false });
+  const config = platformConfigFixture();
   config.math.stationId = stationId;
   return config;
 };

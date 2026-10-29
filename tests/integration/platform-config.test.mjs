@@ -1,15 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createCipheriv, createDecipheriv, createHash } from "node:crypto";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
-import { createPlatformConfigStore, readPlatformDefaults } from "../../server/integrations/platform-config.mjs";
+import { createPlatformConfigStore, initialPlatformConfig } from "../../server/integrations/platform-config.mjs";
 import { ApiError } from "../../server/infrastructure/api-error.mjs";
 import { createUpstreamClient } from "../../server/integrations/upstream.mjs";
 import { createTestDatabase } from "../support/database.mjs";
+import { platformConfigFixture } from "../support/platform-config.mjs";
 
-const defaults = () => readPlatformDefaults({ env: { YYB_BASE_URL: "https://yyb.test", YYB_API_KEY: "yyb-test-secret" }, configFile: false });
+const defaults = () => platformConfigFixture({ yyb: { baseUrl: "https://yyb.test", apiKey: "yyb-test-secret" } });
 const memory = async () => {
   const database = await createTestDatabase();
   const store = await createPlatformConfigStore({ database, defaults: defaults() });
@@ -56,22 +54,37 @@ test("configuration updates persist and reject stale admin revisions across Post
   } finally { await database.close(); }
 });
 
-test("deployment files seed new stores once and cannot restore credentials cleared in management", async () => {
-  const directory = mkdtempSync(path.join(tmpdir(), "study-platform-store-"));
-  const configFile = path.join(directory, "deployment.json");
+test("platform environment variables cannot seed or override managed configuration or restore cleared credentials", async () => {
   const database = await createTestDatabase();
+  const environment = {
+    YYB_BASE_URL: "https://environment-source.test", YYB_API_KEY: "environment-key",
+    MATH_ENABLED: "false", MATH_BASE_URL: "https://math.environment.test", MATH_STATION_ID: "8", MATH_OCR_PASSWORD: "environment-password",
+    COMPUTER_BASE_URL: "https://computer.environment.test", COMPUTER_OAUTH_CLIENT_SECRET: "environment-secret", COMPUTER_VIDEO_KEY: "1234567890abcdef",
+  };
+  const previous = Object.fromEntries(Object.keys(environment).map(name => [name, process.env[name]]));
   try {
-    writeFileSync(configFile, JSON.stringify({ platforms: { yyb: { baseUrl: "https://file-source.test", apiKey: "file-key" }, math: { ocrPassword: "file-password" } } }));
-    const first = await createPlatformConfigStore({ database, env: {}, configFile });
-    assert.equal(first.snapshot().yyb.apiKey, "file-key");
-    await first.update({ revision: 0, config: {}, clearSecrets: ["yyb.apiKey", "math.ocrPassword"] });
-    writeFileSync(configFile, JSON.stringify({ platforms: { yyb: { baseUrl: "https://replacement-source.test", apiKey: "replacement-key" }, math: { ocrPassword: "replacement-password" } } }));
-    const restarted = await createPlatformConfigStore({ database, env: { YYB_API_KEY: "environment-key" }, configFile });
-    assert.equal(restarted.snapshot().yyb.baseUrl, "https://file-source.test");
+    Object.assign(process.env, environment);
+    const first = await createPlatformConfigStore({ database });
+    assert.deepEqual(first.snapshot(), initialPlatformConfig());
+    await first.update({ revision: 0, config: {
+      yyb: { baseUrl: "https://managed-source.test", apiKey: "managed-key" },
+      math: { stationId: 7, ocrPassword: "managed-password" },
+      computer: { baseUrl: "https://computer.managed.test", oauthClientSecret: "managed-secret" },
+    } });
+    await first.update({ revision: 1, config: {}, clearSecrets: ["yyb.apiKey", "math.ocrPassword"] });
+    const managed = first.snapshot();
+    const restarted = await createPlatformConfigStore({ database });
+    assert.deepEqual(restarted.snapshot(), managed);
     assert.equal(restarted.snapshot().yyb.apiKey, "");
     assert.equal(restarted.snapshot().math.ocrPassword, "");
-    assert.equal(restarted.publicConfig().revision, 1);
-  } finally { await database.close(); rmSync(directory, { recursive: true, force: true }); }
+    assert.equal(restarted.publicConfig().revision, 2);
+  } finally {
+    for (const [name, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+    await database.close();
+  }
 });
 
 test("invalid platform fields cannot partially save a configuration", async () => {

@@ -1,4 +1,4 @@
-import { readFileConfiguration } from "../infrastructure/configuration.mjs";
+import systemConfiguration from "../../config/system.json" with { type: "json" };
 
 const secretPaths = ["yyb.apiKey", "math.ocrUsername", "math.ocrPassword", "computer.oauthClientSecret", "computer.videoKey", "computer.videoIv"];
 const fields = {
@@ -9,44 +9,18 @@ const fields = {
 const failure = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
 const clone = (value) => structuredClone(value);
 const isObject = (value) => !!value && typeof value === "object" && !Array.isArray(value);
-const environmentFields = {
-  yyb: { baseUrl: "YYB_BASE_URL", apiKey: "YYB_API_KEY" },
-  math: {
-    enabled: "MATH_ENABLED", baseUrl: "MATH_BASE_URL", appId: "MATH_APP_ID",
-    stationId: "MATH_STATION_ID", loginId: "MATH_LOGIN_ID", ocrUrl: "MATH_OCR_URL",
-    ocrUsername: "MATH_OCR_USERNAME", ocrPassword: "MATH_OCR_PASSWORD",
-  },
-  computer: {
-    enabled: "COMPUTER_ENABLED", baseUrl: "COMPUTER_BASE_URL", appId: "COMPUTER_APP_ID",
-    tenantCode: "COMPUTER_TENANT_CODE", oauthClientId: "COMPUTER_OAUTH_CLIENT_ID",
-    oauthClientSecret: "COMPUTER_OAUTH_CLIENT_SECRET", videoKey: "COMPUTER_VIDEO_KEY", videoIv: "COMPUTER_VIDEO_IV",
-  },
-};
 
-/** Files and environment seed new stores; saved management settings remain authoritative. */
-export function readPlatformDefaults({ env = process.env, configFile } = {}) {
-  const configured = readFileConfiguration({ env, configFile }).platforms;
+/** Only public presets seed a new store; credentials are entered in management. */
+export function initialPlatformConfig() {
+  const configured = systemConfiguration.initialPlatforms;
   if (!isObject(configured) || Object.keys(configured).some(section => !fields[section])) failure("平台初始配置分组不正确");
   const result = {};
   for (const [section, names] of Object.entries(fields)) {
     const values = configured[section];
-    if (!isObject(values) || Object.keys(values).some(name => !names.includes(name))) failure("平台初始配置字段不正确");
+    if (!isObject(values) || Object.keys(values).some(name => !names.includes(name) || secretPaths.includes(`${section}.${name}`))) failure("平台初始配置只能包含公开预设字段");
     result[section] = {};
     for (const name of names) {
-      const field = `${section}.${name}`, environmentName = environmentFields[section][name];
-      let value = values[name];
-      if (env[environmentName] !== undefined && env[environmentName] !== null) {
-        const override = env[environmentName];
-        // Empty required public overrides keep the file value, as in standard .env templates.
-        const optional = secretPaths.includes(field) || field === "yyb.baseUrl" || field === "math.ocrUrl";
-        if (optional || typeof override !== "string" || override.trim() !== "") {
-          if (name === "enabled") {
-            const boolean = String(override).trim().toLowerCase();
-            if (!["0", "1", "true", "false"].includes(boolean)) failure("平台启用状态配置不正确");
-            value = ["1", "true"].includes(boolean);
-          } else value = ["stationId", "loginId"].includes(name) ? Number(override) : override;
-        }
-      }
+      const value = secretPaths.includes(`${section}.${name}`) ? "" : values[name];
       result[section][name] = validField(section, name, value);
     }
   }
@@ -84,13 +58,13 @@ function validField(section, name, value) {
 }
 
 /** Stores one versioned server configuration; the public interface never returns credentials. */
-export async function createPlatformConfigStore({ database: db, defaults, env, configFile } = {}) {
+export async function createPlatformConfigStore({ database: db, defaults } = {}) {
   if (!db) throw new Error("平台配置需要 PostgreSQL 数据库连接");
   const table = db.web('platform_configuration');
   await db.query(`CREATE TABLE IF NOT EXISTS ${table} (id INTEGER PRIMARY KEY CHECK(id=1),revision INTEGER NOT NULL,config JSONB NOT NULL,updated_at TIMESTAMPTZ NOT NULL)`);
   const existing = (await db.query(`SELECT id FROM ${table} WHERE id=1`)).rows[0];
   if (!existing) {
-    const initial = defaults || readPlatformDefaults({ ...(env ? { env } : {}), configFile });
+    const initial = defaults || initialPlatformConfig();
     await db.query(`INSERT INTO ${table}(id,revision,config,updated_at) VALUES(1,0,$1,$2) ON CONFLICT(id) DO NOTHING`, [JSON.stringify(initial), new Date().toISOString()]);
   }
   let revision, config, updatedAt;
