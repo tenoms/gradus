@@ -3,6 +3,7 @@ import { Flag, ImagePlus, LoaderCircle, Mic, Square, X } from "lucide-react";
 import { computerUpload, safeLink } from "../../platforms/computer";
 import type { ComputerRecord as R } from "../../platforms/computer";
 import { computerLearningApi, computerVoiceAnswer } from "./computer-learning";
+import { computerRecordingFormat, prepareComputerAudioFile } from "./computer-audio.mjs";
 
 export default function ComputerQuestionTools({
   question,
@@ -28,8 +29,16 @@ export default function ComputerQuestionTools({
     [detail, setDetail] = useState(""),
     [images, setImages] = useState<string[]>([]),
     [busy, setBusy] = useState(false),
+    [markedWrong,setMarkedWrong] = useState(Number(question.incorrectNumber)>0),
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
+  async function toggleMistake() {
+    setBusy(true);setError("");
+    try {
+      await computerLearningApi.markMistake(question,majorId,chapterId,examCategory,markedWrong);
+      setMarkedWrong(!markedWrong);setNotice(markedWrong?"已从错题本移除":"已加入错题本");
+    } catch(error:any) {setError(error.message);} finally {setBusy(false);}
+  }
   async function share() {
     setError("");
     try {
@@ -106,6 +115,7 @@ export default function ComputerQuestionTools({
   return (
     <div className="computer-question-tools">
       <div className="computer-toolbar">
+        <button className="btn btn-secondary" disabled={busy} onClick={()=>void toggleMistake()}>{markedWrong?"移出错题本":"加入错题本"}</button>
         <button
           className="btn btn-secondary"
           disabled={busy}
@@ -263,9 +273,11 @@ export function ComputerInterviewRecorder({
     try {
       if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder)
         throw new Error("当前浏览器不支持录音，可上传已有录音文件。");
+      const format = computerRecordingFormat((type) => MediaRecorder.isTypeSupported(type));
+      if (!format) throw new Error("当前浏览器无法录制平台支持的音频，请上传已有的 MP3 或 MP4 录音。");
       const source = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.current = source;
-      const active = new MediaRecorder(source);
+      const active = new MediaRecorder(source, { mimeType: format.mimeType });
       recorder.current = active;
       chunks.current = [];
       active.ondataavailable = (e) => {
@@ -274,15 +286,11 @@ export function ComputerInterviewRecorder({
       active.onstop = () => {
         source.getTracks().forEach((t) => t.stop());
         setRecording(false);
-        const duration = Math.max(
-            1,
-            Math.round((Date.now() - startAt.current) / 1000),
-          ),
-          mime = active.mimeType || "audio/webm",
+        const duration = Math.max(0.001, (Date.now() - startAt.current) / 1000),
           file = new File(
             chunks.current,
-            `interview-${Date.now()}.${mime.includes("mp4") ? "m4a" : "webm"}`,
-            { type: mime },
+            `interview-${Date.now()}.${format.extension}`,
+            { type: active.mimeType || format.mimeType },
           );
         void saveAudio(file, duration);
       };
@@ -291,6 +299,8 @@ export function ComputerInterviewRecorder({
       setSeconds(0);
       setRecording(true);
     } catch (e: any) {
+      stream.current?.getTracks().forEach((track) => track.stop());
+      stream.current = null;
       setError(
         e.name === "NotAllowedError"
           ? "请在浏览器中允许麦克风后重试，或上传录音文件。"
@@ -302,9 +312,10 @@ export function ComputerInterviewRecorder({
     setBusy(true);
     setError("");
     try {
-      const data = await computerUpload(file),
-        audioUrl = data.previewUrl || data.url;
-      if (!audioUrl) throw new Error("上传服务没有返回录音地址");
+      const upload = await prepareComputerAudioFile(file),
+        data = await computerUpload(upload),
+        audioUrl = safeLink(data.previewUrl || data.url);
+      if (!audioUrl) throw new Error("平台未返回可播放的录音地址，请改用 MP3 或 MP4 录音文件。");
       setUrl(audioUrl);
       onAnswer(computerVoiceAnswer(audioUrl, duration));
     } catch (e: any) {
@@ -342,7 +353,7 @@ export function ComputerInterviewRecorder({
           上传已有录音
           <input
             type="file"
-            accept="audio/*"
+            accept=".mp3,.mp4,.m4a,audio/mpeg,audio/mp4"
             disabled={disabled || busy || recording}
             onChange={(e) => {
               const file = e.target.files?.[0];

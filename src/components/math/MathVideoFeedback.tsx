@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { Flag, Heart, LoaderCircle, Star } from "lucide-react";
 import RichContent from "../RichContent";
 import { useSession } from "../../lib/session";
-import { mathCommand, mathPost, mathRows } from "../../platforms/math";
+import { mathCommand, mathGet, mathPost, mathRows } from "../../platforms/math";
 import type { MathRow } from "../../platforms/math";
+import { mathContentLikeDelete } from "../../platforms/math-content-marks";
 import { MathFeedbackButton } from "./MathQuestionTools";
 import "./math-video-feedback.css";
 export default function MathVideoFeedback({
@@ -50,10 +51,12 @@ export default function MathVideoFeedback({
     let active = true;
     setLoading(true);
     setError("");
-    mathCommand("GetSysGiveAutoLimit", {
+    mathGet("/api/sys_give/GetListBypage", {
       ...params,
-      offset: page * 10,
+      page: page + 1,
       limit: 10,
+      SortDesc: "AddTime Desc",
+      t: Date.now(),
     })
       .then((r) => {
         if (active) {
@@ -76,11 +79,13 @@ export default function MathVideoFeedback({
     if (!stuid) return;
     let active = true;
     setOwnLoaded(false);
-    mathCommand("GetSysGiveAutoLimit", {
+    mathGet("/api/sys_give/GetListBypage", {
       ...params,
       StuID: stuid,
-      offset: 0,
+      page: 1,
       limit: 1,
+      SortDesc: "AddTime Desc",
+      t: Date.now(),
     })
       .then((r) => {
         if (active) {
@@ -109,8 +114,9 @@ export default function MathVideoFeedback({
         StuID: stuid,
         BusID: fileId,
         BusType: "",
+        t: Date.now(),
       }),
-      mathCommand("GetSysGiveAuto", {
+      mathGet("/api/sys_give/GetListBypage", {
         BusType: 1,
         StuID: stuid,
         Type: 4,
@@ -118,6 +124,9 @@ export default function MathVideoFeedback({
         BusID: questionId,
         BaseType: "视频解析",
         BusValue: fileId,
+        t: Date.now(),
+        page: 1,
+        limit: 10,
       }),
     ])
       .then(([a, b]) => {
@@ -144,10 +153,8 @@ export default function MathVideoFeedback({
     try {
       if (type === "like") {
         if (like)
-          await mathPost("/api/question_files_give/Del_question_files_give", {
-            ID: like.ID,
-            StuID: stuid,
-          });
+          await mathPost("/api/question_files_give/Del_question_files_give",
+            mathContentLikeDelete(stuid, like.ID, fileId!));
         else
           await mathPost("/api/question_files_give/Inner_question_files_give", {
             StuID: stuid,

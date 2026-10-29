@@ -29,6 +29,7 @@ import {
 } from "../../platforms/math-grading";
 import { useSession } from "../../lib/session";
 import { mathVipActive } from "../../platforms/math-access";
+import { mathContentLikeDelete } from "../../platforms/math-content-marks";
 import { recordStudy } from "../../lib/store";
 import {
   modelExerciseCount,
@@ -860,8 +861,9 @@ function ModuleMarks({
         StuID: stuid,
         BusID: fileId,
         BusType: "小模块",
+        t: Date.now(),
       }),
-      mathCommand("GetSysGiveAuto", {
+      mathGet("/api/sys_give/GetListBypage", {
         BusType: 1,
         StuID: stuid,
         Type: 4,
@@ -869,6 +871,9 @@ function ModuleMarks({
         BusID: questionId,
         BaseType: "小模块",
         BusValue: fileId,
+        t: Date.now(),
+        page: 1,
+        limit: 10,
       }),
     ]),
   );
@@ -882,10 +887,8 @@ function ModuleMarks({
     try {
       if (type === "like") {
         if (like)
-          await mathPost("/api/question_files_give/Del_question_files_give", {
-            StuID: stuid,
-            ID: like.ID,
-          });
+          await mathPost("/api/question_files_give/Del_question_files_give",
+            mathContentLikeDelete(stuid, like.ID, fileId));
         else
           await mathPost("/api/question_files_give/Inner_question_files_give", {
             StuID: stuid,

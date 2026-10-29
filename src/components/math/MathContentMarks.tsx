@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Flag, Heart } from "lucide-react";
 import { useSession } from "../../lib/session";
-import { mathCommand, mathPost, mathRows } from "../../platforms/math";
+import { mathCommand, mathGet, mathPost, mathRows } from "../../platforms/math";
 import type { MathRow } from "../../platforms/math";
+import { mathContentLikeDelete, mathContentMarkType } from "../../platforms/math-content-marks";
 import { MathFeedbackButton } from "./MathQuestionTools";
 export default function MathContentMarks({
   fileId,
@@ -17,6 +18,7 @@ export default function MathContentMarks({
 }) {
   const { session } = useSession();
   const stuid = session.platforms.math?.user?.StuID || "";
+  const markType = mathContentMarkType(baseType);
   const [like, setLike] = useState<MathRow>(),
     [marked, setMarked] = useState<MathRow>(),
     [loading, setLoading] = useState(true),
@@ -25,7 +27,7 @@ export default function MathContentMarks({
     [version, setVersion] = useState(0);
   useEffect(() => {
     let active = true;
-    if (!stuid || !questionId || !fileId) return;
+    if (!stuid || !questionId || !fileId || !markType) return;
     setLoading(true);
     setError("");
     Promise.all([
@@ -34,16 +36,20 @@ export default function MathContentMarks({
         IsValid: 1,
         StuID: stuid,
         BusID: fileId,
-        BusType: baseType,
+        BusType: markType,
+        t: Date.now(),
       }),
-      mathCommand("GetSysGiveAuto", {
+      mathGet("/api/sys_give/GetListBypage", {
         BusType: 1,
         StuID: stuid,
         Type: 4,
         System_Station_ID: 1,
         BusID: questionId,
-        BaseType: baseType,
+        BaseType: markType,
         BusValue: fileId,
+        t: Date.now(),
+        page: 1,
+        limit: 10,
       }),
     ])
       .then(([a, b]) => {
@@ -61,24 +67,22 @@ export default function MathContentMarks({
     return () => {
       active = false;
     };
-  }, [stuid, fileId, questionId, baseType, version]);
-  if (!stuid || !questionId || !fileId) return null;
+  }, [stuid, fileId, questionId, markType, version]);
+  if (!stuid || !questionId || !fileId || !markType) return null;
   const toggle = async (type: "like" | "flag") => {
     setBusy(true);
     setError("");
     try {
       if (type === "like") {
         if (like)
-          await mathPost("/api/question_files_give/Del_question_files_give", {
-            StuID: stuid,
-            ID: like.ID,
-          });
+          await mathPost("/api/question_files_give/Del_question_files_give",
+            mathContentLikeDelete(stuid, like.ID, fileId));
         else
           await mathPost("/api/question_files_give/Inner_question_files_give", {
             StuID: stuid,
             BusID: fileId,
             QuestionID: questionId,
-            BusType: baseType,
+            BusType: markType,
             IsValid: 1,
             System_Station_ID: 1,
           });
@@ -91,7 +95,7 @@ export default function MathContentMarks({
           Type: 4,
           System_Station_ID: 1,
           BusID: questionId,
-          BaseType: baseType,
+          BaseType: markType,
           BusValue: fileId,
         });
       setVersion((v) => v + 1);
@@ -123,7 +127,7 @@ export default function MathContentMarks({
         stuid={stuid}
         qid={questionId}
         bookId={bookId}
-        baseType={baseType}
+        baseType={markType}
       />
       {error && (
         <p className="math-error-text" role="alert">

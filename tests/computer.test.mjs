@@ -22,6 +22,13 @@ const adapter = await import(
   `data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`
 );
 
+test("cloud skip records restore independently of the empty answer list", () => {
+  const response = { answerTotalNumber: 0, answerList: [], answers: [], skipExerciseIdList: ["skipped-one", "skipped-one", 2, null] };
+  assert.deepEqual(adapter.restoreComputerAnswers(response), {});
+  assert.deepEqual(adapter.computerSkippedIds(response), ["skipped-one", "2"]);
+  assert.deepEqual(adapter.computerSkippedIds({ skipExerciseIdList: null }), []);
+});
+
 test("computer adapter preserves actual top-level arrays and unwraps code/data and old HTTP wrappers", async () => {
   const course = [{ id: "course", courseName: "fixture" }];
   globalThis.__computerTestRequest = async () => course;
@@ -48,9 +55,9 @@ test("computer adapter preserves actual top-level arrays and unwraps code/data a
     [{ id: "chapter" }],
   );
 });
-test("empty review code is an empty state; permission and invalid group-selection errors remain visible", async () => {
+test("empty review records stay empty; invalid parameters, permissions and group errors remain visible", async () => {
   globalThis.__computerTestRequest = async () => ({
-    code: 4127,
+    code: 4114,
     data: { list: [], total: 0, pages: 0 },
   });
   assert.deepEqual(
@@ -61,6 +68,8 @@ test("empty review code is an empty state; permission and invalid group-selectio
     ),
     [],
   );
+  globalThis.__computerTestRequest = async () => ({code:4127,msg:"PARAMETER INVALID",data:{list:[],total:0}});
+  await assert.rejects(adapter.computerRequest("/api/exam/wx/personal/collectExerciseList"),/PARAMETER INVALID/);
   globalThis.__computerTestRequest = async () => ({
     code: 403,
     msg: "无权访问此课程",
@@ -103,6 +112,7 @@ test("request forwards query, body and method without changing the API contract"
   ]);
 });
 test("actual exercise response normalization preserves options and merges scored subquestions", () => {
+  assert.equal(adapter.extractExercises({exerciseId:'random-one',exerciseType:1,collected:false}).length,1);
   const q = {
     exerciseId: "q1",
     exerciseType: 1,

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { LoaderCircle, RefreshCw, ThumbsUp, Trophy } from "lucide-react";
-import { mathCommand, mathPost, mathRows } from "../../platforms/math";
+import { mathCommand, mathData, mathGet, mathPost, mathRows } from "../../platforms/math";
 import type { MathRow } from "../../platforms/math";
 import type { MathPaperContext } from "./math-exams";
 import {
@@ -8,6 +8,8 @@ import {
   courseQuestionAccuracy,
   courseRankingRequest,
   courseRankingVote,
+  courseRankingVoteResult,
+  reconcileCourseRanking,
   latestCourseExamParams,
   latestCourseScore,
 } from "./course-report-more-model.mjs";
@@ -48,8 +50,22 @@ export default function MathCourseReportMore({
     const load = async () => {
       if (tab === "ranking") {
         const request = courseRankingRequest(context);
-        const result = await mathCommand(request.command, request.params);
-        if (active) setRows(mathRows(result));
+        const ownReactions = async () => {
+          const reactions: MathRow[] = [];
+          for (let page = 1; ; page += 1) {
+            const result = await mathGet("/api/sys_give/GetListBypage", {
+              StuID: context.stuid, BusType: 3, Type: 1,
+              System_Station_ID: 1, limit: 1000, page,
+            });
+            const batch = mathRows(result);
+            reactions.push(...batch);
+            if (batch.length < 1000) return reactions;
+          }
+        };
+        const [result, reactions] = await Promise.all([
+          mathCommand(request.command, request.params), ownReactions(),
+        ]);
+        if (active) setRows(reconcileCourseRanking(mathRows(result), reactions));
       } else if (tab === "comparison") {
         const score = await mathCommand(
             "GetUserExamLastScore",
@@ -93,8 +109,12 @@ export default function MathCourseReportMore({
     setError("");
     try {
       const request = courseRankingVote(context.stuid, row);
-      await mathPost(request.path, request.data);
-      setVersion((v) => v + 1);
+      const result = await mathPost(request.path, request.data);
+      if (mathData(result) === false) throw new Error("平台未保存点赞状态，请刷新后重试。");
+      const updated = courseRankingVoteResult(row, mathData(result));
+      setRows((current) => current.map((item) =>
+        String(item.id) === String(row.id) ? updated : item,
+      ));
     } catch (e: any) {
       setError(e.message);
     } finally {

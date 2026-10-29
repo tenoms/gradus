@@ -1,5 +1,6 @@
 import { platformRequest } from "../lib/api";
 import { mathVisibleBooks } from "./math-book-visibility";
+import { mergeMathLibraryCatalog } from "./math-library";
 import { mathResponseData, mathResponseError } from "./math-response";
 
 export type MathRow = Record<string, any>;
@@ -28,6 +29,11 @@ export async function mathCommand(
       },
     }),
   );
+}
+// AutoModel also caches personalized reports by command parameters. Reads that
+// follow a write need a new parameter, just as the original GET client does.
+export function mathFreshCommand(command: string, params: MathRow = {}) {
+  return mathCommand(command, { ...params, t: Date.now() });
 }
 export async function mathGet(path: string, query: MathRow = {}) {
   return checked(await platformRequest("math", { path, method: "GET", query }));
@@ -81,9 +87,23 @@ export const mathApi = {
       },
       true,
     ),
+  papers: () =>
+    mathCommand(
+      "GetBookListCountAndLookCount_New",
+      {
+        IsValid: 1,
+        System_Station_ID: station,
+        BusType: "试卷",
+        IsBook: 1,
+        IsBeta: 0,
+        IsRecommend: "",
+      },
+      true,
+    ),
   async books() {
-    const [response, grants, allocations] = await Promise.all([
+    const [response, papers, grants, allocations] = await Promise.all([
       mathApi.rawBooks(),
+      mathApi.papers(),
       mathCommand("GetUserBookBy1149", {}),
       mathCommand("GetFunctionAllocationListAuto", {
         BusType: "考试用户",
@@ -92,7 +112,7 @@ export const mathApi = {
       }),
     ]);
     const allowed = mathVisibleBooks(
-        mathRows(response),
+        mergeMathLibraryCatalog(mathRows(response), mathRows(papers)),
         mathRows(grants),
         mathRows(allocations),
       ),
@@ -194,6 +214,7 @@ export const mathApi = {
     Type: string,
   ) =>
     mathCommand("GetCatalogHistoryList", {
+      t: Date.now(),
       StuID,
       BusType,
       ExanType,

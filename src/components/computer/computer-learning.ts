@@ -26,6 +26,13 @@ export interface ComputerExerciseLaunch {
   voice?: boolean;
   redo?: { kind: "mistakes" | "collection"; dateFlag: string; sort: string };
 }
+export function computerFeedbackSource(launch: ComputerExerciseLaunch) {
+  if(launch.voice)return 'TEACHER_RECRUITMENT';
+  const sources:Record<string,string>={school:'COLLEGE_EXAM',mooc:'ENHANCE_PASS',self:'BASE_PASS',online:'MODAL_EXAM',hot:'MISTAKE_REPORT',photo:'PHOTO_SEARCH',scan:'SCAN_CODE'};
+  if(launch.source&&sources[launch.source])return sources[launch.source];
+  const stages:Record<number,string>={20:'CENTER_TEST',21:'PREPARE_TEST',22:'COLLEGE_MODAL_EXAM'};
+  return stages[launch.examType]||(launch.random?'HOLE_PASS':launch.readOnly?'ANSWER_PARSE':'KNOWLEDGE_TAG');
+}
 export const computerSubjectGroups = [
   { name: "计算机考研", children: computerSubjects },
   {
@@ -63,7 +70,7 @@ export const computerHistoryTypes = [
   { id: 19, name: "复试专业问答" },
 ];
 export function computerVoiceAnswer(url: string, seconds: number) {
-  return `${url}$-$${Math.max(1, Math.round(seconds))}`;
+  return `${url}$-$${Math.max(1, Math.round(seconds * 1000))}`;
 }
 export function computerSubjectKey(s: R) {
   return `${s.id || s.majorId}:${s.examCategory || 1}`;
@@ -114,7 +121,8 @@ export function buildComputerRedo(
 }
 export function normalizeComputerReport(data: R) {
   const exam = data.examRecord || data,
-    answers = records(data.answerList || data.answers),
+    returnedAnswers = records(data.answerList || data.answers),
+    answers = returnedAnswers.filter((answer) => answer && typeof answer === "object" && answer.exerciseId),
     exerciseMap = data.exerciseMap || {};
   const merged: R[] = answers.map((a) => ({
     ...a,
@@ -134,7 +142,7 @@ export function normalizeComputerReport(data: R) {
     correct: merged.filter((a) => Number(a.answerType) === 1).length,
     incorrect: merged.filter((a) => Number(a.answerType) === 2).length,
     selfCheck: merged.filter((a) => Number(a.answerType) === 3).length,
-    unanswered: merged.filter(
+    unanswered: returnedAnswers.length - answers.length + merged.filter(
       (a) => !a.answer && !a.llmAnswer && Number(a.answerType) !== 1,
     ).length,
     score: pending
@@ -191,6 +199,19 @@ export const computerLearningApi = {
     ),
   redo: (payload: R) =>
     computerRequest("/api/exam/wx/personal/exerciseRedo", {}, "POST", payload),
+  async markMistake(question: R, majorId: string, chapterId: string, examCategory: number, remove = false) {
+    const result = await computerRequest("/api/exam/wx/personal/incorrectExercise", {
+      incorrectExerciseId: question.exerciseId || question.id,
+      majorId: question.majorId || majorId,
+      chapterId: question.chapterId || chapterId,
+      examCategory,
+      flag: remove ? 2 : 1,
+    });
+    if (result === false) throw new Error(remove ? "平台未完成错题移除，请刷新记录后核对。" : "平台未确认加入错题本，请刷新记录后核对。");
+    return result;
+  },
+  saveSheetIndex: (examRecordId: string, sheetIndex: number) =>
+    computerRequest("/api/exam/wx/practice/submit/sheet/index", {}, "POST", {examRecordId,sheetIndex}),
   dates: (majorId: string, examCategory: number, itemFlag: number) =>
     computerRequest("/api/exam/wx/personal/countDiffDateExercise", {
       majorId,
@@ -250,11 +271,17 @@ export const computerLearningApi = {
   async resetRecords(examRecordIdList: string[]) {
     if (!examRecordIdList.length) throw new Error("请选择已有学习记录的练习组");
     const stat = await computerRequest("/api/exam/wx/personal/exercise/stat");
+    let identifier = stat.identifier;
+    if (!identifier) {
+      const detail = await computerLearningApi.report(examRecordIdList[0]);
+      identifier = detail.examRecord?.identifier || detail.identifier;
+    }
+    if (!identifier) throw new Error("平台未返回本人学习记录标识，请刷新记录后再重置。");
     return computerRequest(
       "/api/exam/wx/practice/examination/exercise/reset",
       {},
       "POST",
-      { examRecordIdList, identifier: stat.identifier || "" },
+      { examRecordIdList, identifier },
     );
   },
   report: (examRecordId: string) =>

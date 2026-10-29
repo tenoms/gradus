@@ -56,6 +56,15 @@ test("custom subjects preserve independent graduate/final categories and origina
   assert.equal(adapter.computerPracticeType(2), 10);
   assert.equal(adapter.computerPracticeType(2, true), 9);
 });
+test('feedback origin retains the distinct original source enum for every exercise family',()=>{
+  const base={data:{},title:'test',majorId:'m',examType:2};
+  for(const[source,expected]of Object.entries({school:'COLLEGE_EXAM',mooc:'ENHANCE_PASS',self:'BASE_PASS',online:'MODAL_EXAM',hot:'MISTAKE_REPORT',photo:'PHOTO_SEARCH',scan:'SCAN_CODE'}))assert.equal(adapter.computerFeedbackSource({...base,source}),expected);
+  assert.equal(adapter.computerFeedbackSource(base),'KNOWLEDGE_TAG');
+  assert.equal(adapter.computerFeedbackSource({...base,voice:true}),'TEACHER_RECRUITMENT');
+  assert.equal(adapter.computerFeedbackSource({...base,random:true}),'HOLE_PASS');
+  assert.equal(adapter.computerFeedbackSource({...base,readOnly:true}),'ANSWER_PARSE');
+  assert.equal(adapter.computerFeedbackSource({...base,examType:22}),'COLLEGE_MODAL_EXAM');
+});
 test("review redo uses direct single-answer contract and distinct collection/mistake answer sources", async () => {
   const calls = [];
   globalThis.__computerLearningRequest = async (...args) => {
@@ -141,6 +150,21 @@ test("report joins exact exercise map and separates pending AI score from final 
   );
   assert.equal(launch.readOnly, true);
   assert.equal(launch.voice, true);
+  assert.equal(launch.data.exercises.length, 1);
+});
+test("partial interview reports preserve null unanswered slots without inventing skipped answers", () => {
+  const skipOnly = adapter.normalizeComputerReport({ examRecord: { examType: 18 }, answerList: [null, null], exerciseMap: {} });
+  assert.equal(skipOnly.unanswered, 2);
+  assert.equal(skipOnly.correct, 0);
+  assert.equal(skipOnly.score, 0);
+  assert.deepEqual(skipOnly.answers, []);
+  const voice = adapter.normalizeComputerReport({ examRecord: { examType: 19 }, answerList: [null, { exerciseId: "voice", answer: "https://fixture.invalid/answer.mp3$-$500", answerType: 3, markStatus: 1, score: 0 }], exerciseMap: { voice: { exerciseId: "voice", exerciseType: 4 } } });
+  assert.equal(voice.unanswered, 1);
+  assert.equal(voice.selfCheck, 1);
+  assert.equal(voice.correct, 0);
+  assert.equal(voice.answers[0].answer.endsWith("$-$500"), true);
+  const launch = adapter.reportLaunch({ examRecord: { examType: 19 }, answerList: [null, voice.answers[0]] }, "major");
+  assert.equal(launch.readOnly, true);
   assert.equal(launch.data.exercises.length, 1);
 });
 test("specialized practice and stage requests use verified source routes and parameters", async () => {
@@ -277,12 +301,32 @@ test("record reset stays within explicitly selected upstream records and voice a
     "POST",
     { examRecordIdList: ["one", "two"], identifier: "fixture" },
   ]);
+  calls.length=0;
+  globalThis.__computerLearningRequest=async(...args)=>{calls.push(args);return args[0].endsWith('/stat')?{identifier:null}:args[0].endsWith('/detail')?{examRecord:{identifier:'record-owner'}}:null;};
+  await adapter.computerLearningApi.resetRecords(['new-own-record']);
+  assert.equal(calls[1][0],'/api/exam/wx/practice/examinationRecord/detail');
+  assert.deepEqual(calls[2][3],{examRecordIdList:['new-own-record'],identifier:'record-owner'});
   assert.equal(
     adapter.computerVoiceAnswer("https://fixture.invalid/answer.webm", 31.6),
-    "https://fixture.invalid/answer.webm$-$32",
+    "https://fixture.invalid/answer.webm$-$31600",
+  );
+  assert.equal(
+    adapter.computerVoiceAnswer("https://fixture.invalid/answer.mp3", 0.5),
+    "https://fixture.invalid/answer.mp3$-$500",
   );
   assert.equal(
     adapter.computerVoiceAnswer("https://fixture.invalid/answer.webm", 0),
     "https://fixture.invalid/answer.webm$-$1",
   );
+});
+test('mistake mutations reject an unconfirmed false result and cloud continuation uses the original one-based index',async()=>{
+  const calls=[];
+  globalThis.__computerLearningRequest=async(...args)=>{calls.push(args);return false;};
+  await assert.rejects(adapter.computerLearningApi.markMistake({exerciseId:'new-q'},'m','chapter',1,true),/未完成错题移除/);
+  assert.equal(calls[0][1].flag,2);
+  globalThis.__computerLearningRequest=async(...args)=>{calls.push(args);return true;};
+  await adapter.computerLearningApi.markMistake({exerciseId:'new-q'},'m','chapter',1);
+  assert.equal(calls[1][1].flag,1);
+  await adapter.computerLearningApi.saveSheetIndex('own-record',2);
+  assert.deepEqual(calls[2],['/api/exam/wx/practice/submit/sheet/index',{},'POST',{examRecordId:'own-record',sheetIndex:2}]);
 });

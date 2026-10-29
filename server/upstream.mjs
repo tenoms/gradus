@@ -140,6 +140,8 @@ export async function mathRequest(
   addQuery(url, query);
   if (method.toUpperCase() === "GET") {
     addQuery(url, payload);
+    // The source mini-program adds a fresh timestamp to every GET, including readback after writes.
+    url.searchParams.set("t", String(Date.now()));
     headers["content-type"] = "application/json";
   } else {
     headers["content-type"] = "application/x-www-form-urlencoded;charset=utf-8";

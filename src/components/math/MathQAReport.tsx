@@ -9,7 +9,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import RichContent from "../RichContent";
-import { mathCommand, mathRows } from "../../platforms/math";
+import { mathFreshCommand as mathCommand, mathRows } from "../../platforms/math";
 import type { MathRow } from "../../platforms/math";
 import "./math-qa-report.css";
 import { qaReportDetailParams } from "../../platforms/math-qa";

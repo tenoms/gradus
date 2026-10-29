@@ -18,7 +18,7 @@ import {
 import RichContent from "../RichContent";
 import {
   mathApi,
-  mathCommand,
+  mathFreshCommand as mathCommand,
   mathData,
   mathGet,
   mathPost,
@@ -31,6 +31,7 @@ import "./MathQuestions.css";
 import MathQAReport from "./MathQAReport";
 import MathVoiceRecorder from "./MathVoiceRecorder";
 import {
+  normalizeMathQuestionOrder,
   qaStudentCanFollow,
   qaTeacherRights,
   qaVoicePayload,
@@ -278,11 +279,13 @@ export default function MathQuestions({
       PageSize: 30,
     }),
   );
-  const rows = mathRows(remote.data).filter(
-    (r) =>
-      !search ||
-      [r.Title, r.Name, r.BookName, r.QuestionID].join(" ").includes(search),
-  );
+  const rows = mathRows(remote.data)
+    .map(normalizeMathQuestionOrder)
+    .filter(
+      (r) =>
+        !search ||
+        [r.Title, r.Name, r.BookName, r.QuestionID].join(" ").includes(search),
+    );
   const [reportShown, setReportShown] = useState(false);
   if (teacherShown && teacherInfo)
     return (
@@ -735,7 +738,7 @@ export function NewMathQuestion({
 }
 
 function QuestionOrder({
-  row,
+  row: sourceRow,
   stuid,
   teacher,
   back,
@@ -745,6 +748,7 @@ function QuestionOrder({
   teacher?: MathRow;
   back: () => void;
 }) {
+  const row = normalizeMathQuestionOrder(sourceRow);
   const qid = row.QuestionID;
   const orderId = row.ID || row.OrderID;
   const remote = useData(`order-${orderId}`, () =>
@@ -778,7 +782,7 @@ function QuestionOrder({
       },
     ),
   );
-  const info = mathRows(remote.data)[0] || row;
+  const info = normalizeMathQuestionOrder(mathRows(remote.data)[0] || row);
   const [text, setText] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);

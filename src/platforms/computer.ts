@@ -61,7 +61,7 @@ export async function computerRequest(
     response &&
     typeof response === "object" &&
     "code" in response &&
-    ![200, 0, "200", "0", 4127, 5001, 5002, 4094, 4114].includes(response.code)
+    ![200, 0, "200", "0", 5001, 5002, 4094, 4114].includes(response.code)
   )
     throw new Error(
       [4061, 4064].includes(Number(response.code))
@@ -147,7 +147,7 @@ export function plain(value: any): string {
     .trim();
 }
 export function extractExercises(data: any): ComputerRecord[] {
-  return records(data?.exercises || data?.exerciseList || data).map((item) => ({
+  return records(data?.exercises || data?.exerciseList || (data?.exerciseId ? [data] : data)).map((item) => ({
     ...item,
     exerciseTotalScore:
       data?.exerciseMap?.[item.exerciseId]?.exerciseTotalScore ||
@@ -243,6 +243,11 @@ export function restoreComputerAnswers(
       .filter((a) => a.exerciseId)
       .map((a) => [String(a.exerciseId), String(a.answer || "")]),
   );
+}
+export function computerSkippedIds(data: ComputerRecord): string[] {
+  return Array.isArray(data.skipExerciseIdList)
+    ? [...new Set(data.skipExerciseIdList.filter((id: unknown) => typeof id === "string" || typeof id === "number").map(String))]
+    : [];
 }
 export function computerClozeGroups(
   question: ComputerRecord,

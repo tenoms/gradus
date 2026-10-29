@@ -18,6 +18,7 @@ import {
   buildComputerSubmission,
   computerClozeGroups,
   restoreComputerAnswers,
+  computerSkippedIds,
   computerUpload,
   exerciseSource,
   extractExercises,
@@ -29,6 +30,7 @@ import {
 import type { ComputerRecord as R } from "../../platforms/computer";
 import {
   buildComputerRedo,
+  computerFeedbackSource,
   computerLearningApi,
   computerReviewData,
 } from "./computer-learning";
@@ -93,8 +95,9 @@ export default function ExerciseSession({
         ].map((a) => [String(a.exerciseId), a]),
       ),
     ),
+    [skipped, setSkipped] = useState<string[]>(() => computerSkippedIds(launch.data)),
     [collected, setCollected] = useState<string[]>(
-      launch.data.collectExerciseId || [],
+      launch.data.collectExerciseId || (launch.data.collected && launch.data.exerciseId ? [String(launch.data.exerciseId)] : []),
     ),
     [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
@@ -108,13 +111,14 @@ export default function ExerciseSession({
   const started = useRef(Date.now()),
     questionStarted = useRef(Date.now()),
     lastActivity = useRef(Date.now()),
+    progressRecord = useRef(String(launch.data.examRecordId || launch.recordId || "")),
     recordedIds = useRef(new Set<string>());
   const question = questions[current] || {},
     id = String(question.exerciseId || question.id || ""),
     type = Number(question.exerciseType),
     answer = answers[id] || "",
     isReadOnly = !!launch.readOnly,
-    hasSubmitted = !!submitted[id] || isReadOnly,
+    hasSubmitted = !!submitted[id] || skipped.includes(id) || isReadOnly,
     total = Number(launch.data.exerciseTotalNumber || questions.length),
     examId = launch.data.examId || launch.data.examinationId,
     score = Number(
@@ -166,7 +170,7 @@ export default function ExerciseSession({
       answerSource: launch.answerSource,
       deriveMajor: launch.deriveMajor,
       startedAt: questionStarted.current,
-      skip,
+      skip: skip || skipped.includes(itemId),
       aiResult: ai[itemId],
     });
   }
@@ -230,6 +234,7 @@ export default function ExerciseSession({
         ...s,
         ...Object.fromEntries(payload.answers.map((a) => [a.exerciseId, a])),
       }));
+      if (skip) setSkipped((ids) => [...new Set([...ids, id])]);
       setNotice(
         all ? "试卷已提交，学习记录已同步。" : "答案已保存至计算机学习记录。",
       );
@@ -309,6 +314,8 @@ export default function ExerciseSession({
               sectionId: launch.sectionId,
             });
         const next = extractExercises(data);
+        setSkipped((ids) => [...new Set([...ids, ...computerSkippedIds(data)])]);
+        if(data.examRecordId)progressRecord.current=String(data.examRecordId);
         setQuestions((q) => {
           const updated = [...q];
           updated[index] = next[0];
@@ -322,6 +329,10 @@ export default function ExerciseSession({
       }
     } else setCurrent(index);
     setShowSheet(false);
+    if(!isReadOnly&&!launch.redo&&isSequential&&progressRecord.current) {
+      try {await computerLearningApi.saveSheetIndex(progressRecord.current,index+1);}
+      catch(error:any){setNotice(`题目已切换，云端续学位置尚未同步：${error.message}`);}
+    }
   }
   async function collect() {
     setLoading(true);
@@ -430,7 +441,7 @@ export default function ExerciseSession({
         <div className="computer-sheet">
           {Array.from({ length: total }, (_, i) => (
             <button
-              className={`${i === current ? "active" : ""} ${submitted[String(questions[i]?.exerciseId)] ? "answered" : ""}`}
+              className={`${i === current ? "active" : ""} ${submitted[String(questions[i]?.exerciseId || launch.data.examExerciseIdList?.[i])] || skipped.includes(String(questions[i]?.exerciseId || launch.data.examExerciseIdList?.[i])) ? "answered" : ""}`}
               key={i}
               onClick={() => void move(i)}
             >
@@ -617,6 +628,7 @@ export default function ExerciseSession({
       {(hasSubmitted || finished) && (
         <div className="computer-analysis">
           <h3>答案与解析</h3>
+          {skipped.includes(id) && <p className="computer-dim">本题已跳过，未计为实际作答。</p>}
           {launch.voice && safeLink(answer.split("$-$")[0]) && (
             <audio controls src={safeLink(answer.split("$-$")[0])} />
           )}
@@ -762,23 +774,7 @@ export default function ExerciseSession({
         examId={String(examId || "")}
         index={current}
         examCategory={category}
-        source={
-          launch.voice
-            ? "TEACHER_RECRUITMENT"
-            : launch.source === "school"
-              ? "COLLEGE_EXAM"
-              : launch.examType === 20
-                ? "CENTER_TEST"
-                : launch.examType === 21
-                  ? "PREPARE_TEST"
-                  : launch.examType === 22
-                    ? "COLLEGE_MODAL_EXAM"
-                    : launch.random
-                      ? "HOLE_PASS"
-                      : launch.examType === 2
-                        ? "MODAL_EXAM"
-                        : "KNOWLEDGE_TAG"
-        }
+        source={computerFeedbackSource(launch)}
         onRelated={(data) =>
           setRelated({
             data,

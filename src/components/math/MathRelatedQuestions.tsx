@@ -27,6 +27,7 @@ import type { MathRow } from "../../platforms/math";
 import {
   matchesRelatedProperties,
   relatedGradeState,
+  relatedResetPayload,
   relatedProperties,
   relatedPropertyGroups,
 } from "../../platforms/math-related-model";
@@ -459,6 +460,7 @@ function RelatedCollection({
     mathCommand("GetUserQuestionLogTypeList_zyk", {
       StuID: stuid,
       BusID: scope,
+      t: Date.now(),
     }),
   );
   const logTables = mathTables(logs.data);
@@ -575,6 +577,11 @@ function RelatedCollection({
       await mathPost("/api/rel_question_log/ResetSubmitAll", {
         ids: ids.join(","),
       });
+      // The current source endpoint can acknowledge without clearing newer
+      // exercise rows. Update only the explicitly confirmed exercise IDs.
+      for (const id of ids)
+        await mathPost("/api/rel_question_log/Inner_rel_question_log",
+          relatedResetPayload(id));
       setLocal({});
       logs.reload();
       setConfirmReset(false);
@@ -904,6 +911,7 @@ function RelatedReader({
         QuestionID: row.QuestionID,
         StuID: stuid,
         BusID: scope,
+        t: Date.now(),
       }),
       mathCommand("GetQuestionLogInfo_rel2", { QuestionID: row.QuestionID }),
     ]),

@@ -1,0 +1,4 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mathRequest} from '../server/upstream.mjs';
+test('math GETs keep the original timestamp cache avoidance for real write readback',async()=>{const before=Date.now(),calls=[],original=globalThis.fetch;globalThis.fetch=async(url,options)=>{calls.push({url:new URL(url),options});return new Response(JSON.stringify({code:0,data:[]}),{status:200,headers:{'content-type':'application/json'}});};try{await mathRequest('/api/sys_users_info/GetListByAll',{query:{StuID:'fixture-student',t:1}},{token:'fixture-token'});assert.equal(calls[0].url.searchParams.get('StuID'),'fixture-student');assert.ok(Number(calls[0].url.searchParams.get('t'))>=before);assert.equal(calls[0].url.searchParams.getAll('t').length,1);assert.equal(calls[0].options.method,'GET');}finally{globalThis.fetch=original;}});

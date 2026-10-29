@@ -75,7 +75,7 @@ export function mergeShelfBooks(
 export const bookshelfApi = {
   async load(stuid: string) {
     const [profile, catalog, recent] = await Promise.all([
-      mathCommand("GetUserInfoByStuID", { StuID: stuid }),
+      mathCommand("GetUserInfoByStuID", { StuID: stuid, t: Date.now() }),
       mathApi.books(),
       mathCommand(
         "GetBookListCountAndLookCount_LastTop3",

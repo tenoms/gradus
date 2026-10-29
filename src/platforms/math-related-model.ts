@@ -1,4 +1,16 @@
 export type RelatedRow = Record<string, any>;
+export function relatedResetPayload(id: string | number) {
+  return {
+    ID: id,
+    State: 0,
+    IsSubmit: 0,
+    MyAnswer: "",
+    ActiveOptionIDs: [],
+    Notes: 0,
+    IsNew: 1,
+    UpdateColumns: "ID,State,IsSubmit,MyAnswer,ActiveOptionIDs,Notes,IsNew",
+  };
+}
 export function relatedProperties(
   row: RelatedRow,
 ): { PropertyID: string; PropertyContentID: string }[] {

@@ -375,6 +375,7 @@ function QuestionBank({ launch }: { launch: (s: ExerciseLaunch) => void }) {
           exercises: found.length ? found : Array.isArray(data) ? data : [data],
         },
         title: file ? "图片搜题结果" : "题目检索",
+        source: file ? "photo" : "scan",
         majorId: major,
         examType: 3,
         readOnly: true,

@@ -1,4 +1,14 @@
 type Row = Record<string, any>;
+export function normalizeMathQuestionOrder(row: Row): Row {
+  const printed = row.QID !== undefined || row.QuestionID1 !== undefined;
+  return {
+    ...row,
+    ID: row.OrderID ?? row.ID,
+    QuestionID: row.QID ?? row.QuestionID1 ?? row.QuestionID,
+    QuestionSort: row.QuestionSort ?? (printed ? row.QuestionID : undefined),
+    State: row.StateID ?? row.State,
+  };
+}
 function time(value: unknown) {
   const raw = String(value || "")
     .trim()

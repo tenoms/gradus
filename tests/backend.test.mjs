@@ -381,6 +381,7 @@ test("known own profile writes update session display and entitlement actions re
         JSON.parse(calls.at(-1).input.data.data).StuID,
         "current-student",
       );
+      assert.equal(typeof JSON.parse(calls.at(-1).input.data.data).t, "number");
     },
   );
 });
@@ -443,3 +444,7 @@ test("raw business responses remove nonempty authentication fields and retain au
     },
   );
 });
+
+test("successful computer own profile writes update only the known nickname and avatar session fields", async()=>{await serve({...fixtures,computerRequest:async()=>({code:200,data:null})},async request=>{const login=await request('/api/auth/connect',{method:'POST',body:JSON.stringify({ref:'7'})}),cookie=login.headers.get('set-cookie');await request('/api/platform/computer',{method:'POST',headers:{cookie},body:JSON.stringify({path:'/api/user/wx/user/updateUserInfo',method:'PUT',data:{name:'账户验证',previewUrl:'https://example.test/avatar.png',phone:'must-not-enter-session'}})});const user=(await(await request('/api/auth/session',{headers:{cookie}})).json()).platforms.computer.user;assert.equal(user.nickName,'账户验证');assert.equal(user.previewUrl,'https://example.test/avatar.png');assert.equal(user.phone,undefined);});});
+
+test("computer image similarity keeps the source Tenant 2 while ordinary attachments stay Tenant 1",async()=>{const calls=[];await serve({...fixtures,requestJson:async(url,options)=>{calls.push({url,options});return {code:200,data:{previewUrl:'https://example.test/fixture.png'}};}},async request=>{const login=await request('/api/auth/connect',{method:'POST',body:JSON.stringify({ref:'7'})}),cookie=login.headers.get('set-cookie');for(const path of ['/api/exam/wx/searchExercise/text/similarity','/api/user/v1/attachment/upload/']){const response=await request('/api/platform/computer/upload?path='+encodeURIComponent(path),{method:'POST',headers:{cookie,'content-type':'multipart/form-data; boundary=fixture'},body:'--fixture\r\nContent-Disposition: form-data; name="file"; filename="fixture.png"\r\nContent-Type: image/png\r\n\r\nfixture\r\n--fixture--\r\n'});assert.equal(response.status,200);}assert.deepEqual(calls.map(call=>call.options.headers['Tenant-Code']),['2','1']);assert.ok(calls.every(call=>Buffer.isBuffer(call.options.body)));});});

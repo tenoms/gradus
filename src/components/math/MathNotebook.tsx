@@ -1,3 +1,4 @@
+import { loadBookNotes } from "./notebook-data.mjs";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import {
@@ -20,7 +21,7 @@ import {
 import RichContent from "../RichContent";
 import { useSession } from "../../lib/session";
 import {
-  mathCommand,
+  mathFreshCommand as mathCommand,
   mathGet,
   mathPost,
   mathRows,
@@ -118,12 +119,13 @@ export default function MathNotebook({
     `notes:${stuid}:${kind}:${catalog}:${book}:${origin}`,
     () =>
       origin === "book"
-        ? mathCommand("GetSysUserBookQuestionList", {
-            StuID: stuid,
-            Type: kind,
-            System_Station_ID: 1,
-            BookID: Number(book),
-            CatalogID: Number(catalog),
+        ? loadBookNotes({
+            get: mathGet,
+            command: mathCommand,
+            stuid,
+            kind,
+            bookId: book,
+            catalogId: catalog,
           })
         : mathCommand("GetRelQuestionLogMistakesOrFavoriteList", {
             StuID: stuid,
@@ -143,7 +145,25 @@ export default function MathNotebook({
     .filter((r) => r.Name)
     .sort((a, b) => Number(a.Sort || 0) - Number(b.Sort || 0));
   const tables = mathTables(entries.data);
-  const sourceRows = origin === "book" ? tables[0] || [] : tables[bank] || [];
+  const sourceRows: MathRow[] =
+    origin === "book"
+      ? (tables[0] || []).map((row) => {
+          const sourceBook = mathRows(books.data).find(
+            (book) =>
+              Number(book.BookID || book.ID) ===
+              Number(row.BookID || row.bookID),
+          );
+          return {
+            ...row,
+            bookName:
+              row.bookName || sourceBook?.bookName || sourceBook?.BookName,
+            CatalogName:
+              row.CatalogName ||
+              catalogs.find((c) => Number(c.ID) === Number(row.CatalogID))
+                ?.Name,
+          };
+        })
+      : tables[bank] || [];
   const rows = sourceRows
     .filter(
       (r) =>

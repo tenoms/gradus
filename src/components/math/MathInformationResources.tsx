@@ -13,6 +13,7 @@ import {
 import RichContent from "../RichContent";
 import { mathGet, mathPost, mathRows } from "../../platforms/math";
 import type { MathRow } from "../../platforms/math";
+import { mathUpdateListQuery, mathOwnUpdateLogs } from "../../platforms/math-information";
 import "./math-information-resources.css";
 const url = (value: any) =>
   typeof value === "string" && /^https?:\/\//i.test(value) ? value : "";
@@ -89,14 +90,7 @@ export default function MathInformationResources({
           Type: -1,
           IsLayer: 1,
         })
-      : mathGet("/api/content_list/GetListByAll", {
-          System_Station_ID: 1,
-          StuID: stuid,
-          IsValid: 1,
-          BusType: "小程序版本更新",
-          Title: "小程序版本更新通知",
-          SortDesc: "Sort Desc",
-        }),
+      : mathGet(mathUpdateListQuery(stuid).path, mathUpdateListQuery(stuid).query),
   );
   const [selected, setSelected] = useState<MathRow>();
   const [busy, setBusy] = useState(false),
@@ -123,12 +117,9 @@ export default function MathInformationResources({
       new Date(r.BusValue).getTime() <= Date.now(),
   );
   const log = async (row: MathRow, type: "give" | "tread" | "read") => {
-    const logs: MathRow[] = row._content_list_log || [];
+    const logs = mathOwnUpdateLogs(row, stuid);
     const prior = logs.find(
       (r) =>
-        r.CID === row.ID &&
-        String(r.BusValue) === stuid &&
-        Number(r.BusID) === 1 &&
         (type === "read"
           ? r.BusType === "read"
           : ["give", "tread"].includes(r.BusType)),
@@ -228,10 +219,7 @@ export default function MathInformationResources({
       ) : (
         <div className="mir-updates">
           {rows.map((r, i) => {
-            const own = (r._content_list_log || []).filter(
-              (l: MathRow) =>
-                String(l.BusValue) === stuid && Number(l.BusID) === 1,
-            );
+            const own = mathOwnUpdateLogs(r, stuid);
             return (
               <article className="panel" key={r.ID || i}>
                 <div className="mir-update-date">

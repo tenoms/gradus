@@ -4,7 +4,19 @@ import {
   matchesRelatedProperties,
   relatedProperties,
   relatedGradeState,
+  relatedResetPayload,
 } from "../src/platforms/math-related-model.ts";
+
+test("retraining clears a submitted answer on the explicitly selected log without changing question ownership", () => {
+  const previous = { ID: 99, QuestionID: 6075, State: 1, IsSubmit: 1, MyAnswer: "123", ActiveOptionIDs: ["123"] };
+  const result = { ...previous, ...relatedResetPayload(previous.ID) };
+  assert.equal(result.QuestionID, 6075);
+  assert.equal(result.State, 0);
+  assert.equal(result.IsSubmit, 0);
+  assert.equal(result.MyAnswer, "");
+  assert.deepEqual(result.ActiveOptionIDs, []);
+  assert.match(result.UpdateColumns, /State,IsSubmit,MyAnswer,ActiveOptionIDs/);
+});
 
 test("hierarchical question filters accept descendants and combine property groups", () => {
   const definitions = [

@@ -140,7 +140,7 @@ export default function ComputerReview({
     [tab, setTab] = useState(initial),
     [subject, setSubject] = useState<R>(computerSubjects[0]),
     [page, setPage] = useState(1),
-    [date, setDate] = useState(""),
+    [date, setDate] = useState("1"),
     [sort, setSort] = useState("create_date"),
     [chapter, setChapter] = useState(""),
     [historyType, setHistoryType] = useState(3),
@@ -308,13 +308,7 @@ export default function ComputerReview({
     setError("");
     try {
       if (tab === "mistakes")
-        await request("/api/exam/wx/personal/incorrectExercise", {
-          incorrectExerciseId: item.exerciseId,
-          majorId: item.majorId || major,
-          chapterId: item.chapterId,
-          examCategory: category,
-          flag: 2,
-        });
+        await computerLearningApi.markMistake(item,major,item.chapterId,category,true);
       else
         await request("/api/exam/wx/personal/collectExercise", {
           exerciseId: item.exerciseId,
@@ -444,7 +438,6 @@ export default function ComputerReview({
                       setPage(1);
                     }}
                   >
-                    <option value="">全部时间</option>
                     {["本周", "上周", "两周前", "一个月前"].map((title, i) => (
                       <option key={i} value={i + 1}>
                         {title}

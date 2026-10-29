@@ -499,7 +499,7 @@ export function createApp(overrides = {}) {
           headers: {
             Authorization: bearer(p.token),
             ...(name === "computer"
-              ? { "Tenant-Code": "1" }
+              ? { "Tenant-Code": requestPath === "/api/exam/wx/searchExercise/text/similarity" ? "2" : "1" }
               : { DesEncryptModel: "PKCS7" }),
             "content-type": req.get("content-type"),
           },
@@ -554,7 +554,7 @@ export function createApp(overrides = {}) {
           method: "POST",
           data: {
             command: "GetUserInfoByStuID",
-            data: JSON.stringify({ StuID: own, System_Station_ID: 1 }),
+            data: JSON.stringify({ StuID: own, System_Station_ID: 1, t: Date.now() }),
           },
         },
         platform,
@@ -586,6 +586,10 @@ export function createApp(overrides = {}) {
     const respond = async () => {
       const result = await invoke();
       if (name === "math") await updateMathSession(input, result, platform);
+      if (name === "computer" && input.path === "/api/user/wx/user/updateUserInfo" && [0, 200, "0", "200"].includes(result?.code)) {
+        if (input.data.name !== undefined) platform.user.nickName = input.data.name;
+        if (input.data.previewUrl !== undefined) platform.user.previewUrl = input.data.previewUrl;
+      }
       res.json(publicPlatformResponse(result));
     };
     try {

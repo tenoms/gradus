@@ -1,3 +1,4 @@
+import { loadDiscussionPage } from "./discussion-data.mjs";
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -75,20 +76,15 @@ export default function MathDiscussion({
     [error, setError] = useState("");
   const limit = 20;
   const remote = useDiscussion(`comments:${qid}:${order}:${page}`, () =>
-    Promise.all([
-      mathGet("/api/sys_comment/GetUser", {
-        ID: qid,
-        limit,
-        page,
-        SortDesc: order === "hot" ? "" : "1",
-        StuID: page === 1 && order === "hot" ? stuid : "",
-      }),
-      mathCommand("GetUserCommentGiveList_lt", {
-        StuID: stuid,
-        PID: qid,
-        Type: "题目讨论区",
-      }),
-    ]),
+    loadDiscussionPage({
+      get: mathGet,
+      command: mathCommand,
+      qid,
+      stuid,
+      order,
+      page,
+      limit,
+    }),
   );
   const rows = remote.data ? mathRows(remote.data[0]) : [];
   const likes = new Set(
@@ -387,15 +383,17 @@ function DiscussionThread({
     [notice, setNotice] = useState("");
   const remote = useDiscussion(`thread:${thread.ID}:${qid}`, () =>
     Promise.all([
-      mathCommand("GetCommentInfoByID_lt", { ID: thread.ID }),
+      mathCommand("GetCommentInfoByID_lt", { ID: thread.ID, t: Date.now() }),
       mathCommand("GetCommentLevelList_lt", {
         PID: thread.ID,
+        t: Date.now(),
         BusID: qid,
         BusType: busType,
       }),
       mathCommand("GetUserCommentGiveList_lt", {
         StuID: stuid,
         PID: qid,
+        t: Date.now(),
         Type: busType,
       }),
     ]),

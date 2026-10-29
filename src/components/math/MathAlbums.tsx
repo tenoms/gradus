@@ -123,7 +123,7 @@ export default function MathAlbums({
   const user = session.platforms.math.user || {};
   const [myOnly, setMyOnly] = useState(false);
   const profile = useAlbumData(`album-profile-${stuid}`, () =>
-    mathCommand("GetUserInfoByStuID", { StuID: stuid }),
+    mathCommand("GetUserInfoByStuID", { StuID: stuid, t: Date.now() }),
   );
   const currentProfile = mathRows(profile.data)[0] || {};
   const mine = String(currentProfile.AlbumIDs || "")
@@ -169,6 +169,7 @@ export default function MathAlbums({
           CatalogID: catalog.ID,
           AlbumID: album?.ID,
           StuID: stuid,
+          t: Date.now(),
         })
       : Promise.resolve({ data: [] }),
   );
