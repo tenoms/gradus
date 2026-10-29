@@ -74,8 +74,8 @@ test('resource catalog filters and sorts the complete selection with global face
     assert.deepEqual(all.summary,{total:3,fresh:1,expired:2,mediaReferences:3});
     assert.equal(all.pagination.total,3);assert.equal(all.resources.length,1);
     assert.equal(all.resources[0].mediaCount,1);assert.equal(all.resources[0].entityCount,1);
-    assert.deepEqual(all.facets.kinds,[{value:'computer.question',count:1},{value:'math.catalog',count:1},{value:'math.question',count:1}]);
-    assert.deepEqual(all.facets.sources,[{id:'computer-source',platform:'computer',accountRef:'account-c',count:1},{id:'math-source',platform:'math',accountRef:'',count:2}]);
+    assert.deepEqual(all.facets.kinds.map(({value,count})=>({value,count})),[{value:'computer.question',count:1},{value:'math.catalog',count:1},{value:'math.question',count:1}]);
+    assert.deepEqual(all.facets.sources.map(({id,platform,accountRef,count})=>({id,platform,accountRef,count})),[{id:'computer-source',platform:'computer',accountRef:'account-c',count:1},{id:'math-source',platform:'math',accountRef:'',count:2}]);
     const fresh=await store.list({validity:'fresh'});
     assert.deepEqual(fresh.resources.map(row=>row.title),['Alpha']);
     assert.deepEqual(fresh.summary,{total:1,fresh:1,expired:0,mediaReferences:1});

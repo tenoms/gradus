@@ -40,11 +40,12 @@
 .resource-table tr.is-selected { background: #f7f5ff; }
 .resource-table .resource-checkbox { width: 34px; min-width: 34px; padding-right: 0; }
 .resource-checkbox input { width: 15px; height: 15px; margin: 2px 0 0; cursor: pointer; accent-color: #7561bb; }
-.resource-name { text-align: left; display: block; border: 0; background: transparent; padding: 0; font: inherit; font-size: 13px; font-weight: 600; color: #4f46a5; cursor: pointer; overflow-wrap: anywhere; line-height: 1.6; }
+.resource-name { text-align: left; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; border: 0; background: transparent; padding: 0; font: inherit; font-size: 13px; font-weight: 600; color: #4f46a5; cursor: pointer; overflow-wrap: anywhere; line-height: 1.6; }
 .resource-name:hover { text-decoration: underline; }
 .resource-name:disabled { cursor: default; }
-.resource-path, .resource-kind, .resource-source { display: block; color: #94a3b8; font-size: 10px; line-height: 1.6; margin-top: 4px; overflow-wrap: anywhere; }
-.resource-kind { color: #64748b; }
+.resource-subtitle, .resource-kind, .resource-source { display: block; color: #94a3b8; font-size: 10px; line-height: 1.6; margin-top: 4px; overflow-wrap: anywhere; }
+.resource-kind { display: inline-block; color: #70608f; background: #f4f0fa; border-radius: 4px; padding: 2px 6px; margin-right: 6px; }
+.resource-subtitle { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: #64748b; font-size: 11px; line-height: 1.7; margin-block: 5px 2px; }
 .resource-source { display: inline-block; color: #64748b; background: #f1f5f9; border-radius: 4px; padding: 1px 5px; max-width: 240px; }
 .resource-scope { display: table; font-size: 10px; border-radius: 999px; padding: 3px 7px; background: #f1f5f9; color: #64748b; margin-top: 7px; }
 .resource-scope.scope-public { background: #edf7f1; color: #21714c; }
@@ -135,3 +136,8 @@
   .resource-confirm-list li { flex-direction: column; gap: 4px; }
   .resource-editor textarea { min-height: 240px; }
 }
+
+.resource-detail-subtitle { color: #64748b; font-size: 12px; line-height: 1.8; margin: -10px 0 20px; }
+.resource-technical { border-top: 1px solid #e2e8f0; margin-top: 20px; }
+.resource-technical > summary { color: #64748b; cursor: pointer; font-size: 12px; padding: 16px 0; }
+.resource-technical > .resource-metadata { margin-top: 0; }

@@ -158,3 +158,38 @@ test("resource content accepts objects and arrays but rejects scalar or malforme
   assert.deepEqual(resourceData.parseResource('{"data":[]}'), { data: [] });
   for (const value of ["null", "true", "3", '"text"', "{"]) assert.throws(() => resourceData.parseResource(value));
 });
+
+test("resource directory uses business names and Chinese labels without exposing transport identifiers", async () => {
+  const named = { ...row, platform: "computer", title: "操作系统强化课程", typeLabel: "课程课时", subtitle: "内存管理 · 第三讲", kind: "computer.lessons", path: "/api/wx/course/getLessonList", sourceId: "b".repeat(64) };
+  const data = { ...page, resources: [named], facets: { kinds: [{ value: named.kind, label: "课程课时", count: 1 }], sources: [{ id: named.sourceId, platform: "computer", accountRef: "private-raw-reference", label: "计算机 408 公共课程库", count: 1 }] } };
+  const f = controller("ResourceManager", {}, async () => data);
+  await f.flush();
+  const text = textOf(f.tree);
+  assert.match(text, /操作系统强化课程/); assert.match(text, /内存管理 · 第三讲/);
+  assert.match(text, /课程课时/); assert.match(text, /计算机 408 公共课程库/);
+  for (const identifier of [named.path, named.kind, named.sourceId, "private-raw-reference"]) assert.equal(text.includes(identifier), false, identifier);
+  assert.equal(nodes(f.tree).some(node => String(node.props?.title || "").includes(named.sourceId)), false, "hover titles do not reveal source hashes");
+});
+
+test("resource details keep technical identifiers in a collapsed section and label content indexes in Chinese", async () => {
+  const response = { ...detail, typeLabel: "课程课时", subtitle: "操作系统 · 内存管理", sourceId: "c".repeat(64), path: "/api/wx/course/getLessonList", kind: "computer.lessons", command: "GetLessons", source: { ...detail.source, accountRef: "source-account-001", label: "课程共享资源" }, entities: [{ kind: "question", count: 3 }] };
+  const f = controller("ResourceDialog", { item: response, onClose() {}, onChanged() {} }, async () => response);
+  await f.flush();
+  const technical = f.find(node => node.type === "details" && nodes(node).some(child => child.type === "summary" && textOf(child) === "技术信息"));
+  assert.equal(technical.props.open, undefined);
+  const technicalText = textOf(technical);
+  for (const identifier of [response.path, response.sourceId, response.kind, response.command, response.source.accountRef]) assert.ok(technicalText.includes(identifier), identifier);
+  const publicText = node => Array.isArray(node) ? node.map(publicText).join("") : !node || typeof node !== "object" ? textOf(node) : node === technical ? "" : publicText(node.children);
+  const overview = publicText(f.tree);
+  assert.match(overview, /课程课时/); assert.match(overview, /操作系统 · 内存管理/); assert.match(overview, /课程共享资源/); assert.match(overview, /题目3/);
+  assert.equal(overview.includes(response.path), false); assert.equal(overview.includes(response.sourceId), false); assert.equal(overview.includes(response.kind), false);
+});
+
+test("missing business names and source labels fall back to readable categories rather than paths or hashes", () => {
+  for (const title of [row.path, row.kind, "f".repeat(64), "/api/books/GetList"]) {
+    assert.equal(resourceData.displayName({ ...row, title }), "教辅书籍");
+  }
+  assert.equal(resourceData.displayName({ ...row, title: "GetLessons", command: "GetLessons", typeLabel: "课程课时" }), "课程课时");
+  assert.equal(resourceData.sourceName({ id: "f".repeat(64), platform: "math", accountRef: "private-source-ref" }), "考研数学账号资源");
+  assert.equal(resourceData.entityName("analysis"), "题目解析"); assert.equal(resourceData.entityName("file"), "附件");
+});

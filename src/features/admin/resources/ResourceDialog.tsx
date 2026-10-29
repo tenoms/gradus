@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, CircleAlert, Download, Edit3, ExternalLink, FileJson, Link2, LoaderCircle, RefreshCw, Trash2, X } from "lucide-react";
 import { api, ApiError } from "../../../shared/api/client";
 import { useDialogFocus } from "../../../shared/lib/focus";
-import { dateTime, displayName, downloadResources, message, parseResource, platformName, pretty, resourcePath, scopeNames, sourceName, validityName } from "./resource-data";
+import { dateTime, displayName, downloadResources, entityName, message, parseResource, platformName, pretty, resourcePath, scopeNames, sourceName, typeName, validityName } from "./resource-data";
 import type { ResourceDetail, ResourceItem } from "./resource-data";
 
 type DetailView = "overview" | "content" | "request" | "media";
@@ -52,14 +52,30 @@ export default function ResourceDialog({ item, onClose, onChanged }: { item: Res
       {error && <div className="resource-error" role="alert"><p>{error}</p>{conflict && <button type="button" className="text-link" disabled={!!busy} onClick={() => { setDeleting(false); void load(); }}>重新读取最新资源</button>}</div>}
       <div className="resource-dialog-actions"><button type="button" className="btn btn-secondary" disabled={!!busy} onClick={() => { setDeleting(false); setError(""); }}>保留资源</button><button type="button" className="btn resource-danger" disabled={!!busy || conflict} onClick={() => void change("delete")}>{busy === "delete" && <LoaderCircle size={15} className="spin" />}确认删除资源</button></div>
     </> : <>
-      <p className="resource-dialog-description">{platformName(current.platform)} · {scopeNames[current.scope]} · 版本 {current.revision}</p>
+      <p className="resource-dialog-description">{platformName(current.platform)} · {typeName(current.kind, current.typeLabel)} · {scopeNames[current.scope]} · 版本 {current.revision}</p>{current.subtitle && <p className="resource-detail-subtitle">{current.subtitle}</p>}
       {loading ? <div className="resource-state" role="status"><LoaderCircle size={22} className="spin" /><p>正在读取资源内容…</p></div> : resource && <>
         <div className="resource-detail-nav" aria-label="资源详情分类">{views.map(tab => <button type="button" key={tab.value} aria-pressed={view === tab.value} className={view === tab.value ? "is-active" : ""} onClick={() => setView(tab.value)}>{tab.label}{tab.value === "media" && <span>{resource.media?.length || 0}</span>}</button>)}</div>
         {view === "overview" && <div className="resource-detail-panel">
-          <dl className="resource-metadata"><div><dt>资源类型</dt><dd>{resource.kind}</dd></div><div><dt>读取状态</dt><dd>{validityName(resource)}</dd></div><div><dt>最近同步</dt><dd>{dateTime(resource.syncedAt)}</dd></div><div><dt>最近内容变更</dt><dd>{dateTime(resource.changedAt)}</dd></div><div><dt>资源来源</dt><dd>{sourceName(resource.source)}</dd></div><div><dt>缓存有效期</dt><dd>{resource.expiresAt ? dateTime(resource.expiresAt) : "按访问实时读取"}</dd></div><div className="resource-metadata-wide"><dt>来源标识</dt><dd>{resource.sourceId}</dd></div><div className="resource-metadata-wide"><dt>接口</dt><dd>{resource.path}{resource.command ? ` · ${resource.command}` : ""}</dd></div><div className="resource-metadata-wide"><dt>资源标识</dt><dd className="resource-monospace">{resource.key}</dd></div></dl>
+          <dl className="resource-metadata">
+            <div><dt>资源类型</dt><dd>{typeName(resource.kind, resource.typeLabel)}</dd></div><div><dt>读取状态</dt><dd>{validityName(resource)}</dd></div>
+            <div><dt>最近同步</dt><dd>{dateTime(resource.syncedAt)}</dd></div><div><dt>最近内容变更</dt><dd>{dateTime(resource.changedAt)}</dd></div>
+            <div><dt>资源来源</dt><dd>{sourceName(resource.source)}</dd></div><div><dt>缓存有效期</dt><dd>{resource.expiresAt ? dateTime(resource.expiresAt) : "按访问实时读取"}</dd></div>
+          </dl>
           <p className="resource-inline-help">{resource.scope === "public" ? "有效公共缓存优先供学习使用；标记需更新后，下次访问时重新向小程序读取。" : "账号与短效资源按访问实时向小程序读取，这里保存最近一次响应供查看与维护。"}</p>
-          <section className="resource-derived"><h3><FileJson size={16} />内容索引 <span>{resource.entityCount || 0}</span></h3>{resource.entities?.length ? <div className="resource-entity-list">{resource.entities.map(entity => <span key={entity.kind}>{entity.kind}<strong>{entity.count}</strong></span>)}</div> : <p>该响应没有可提取的结构化内容索引。</p>}</section>
-          {!!resource.context && Object.keys(resource.context).length > 0 && <details className="resource-json"><summary>关联上下文</summary><pre>{pretty(resource.context)}</pre></details>}
+          <section className="resource-derived"><h3><FileJson size={16} />内容索引 <span>{resource.entityCount || 0}</span></h3>{resource.entities?.length ? <div className="resource-entity-list">{resource.entities.map(entity => <span key={entity.kind}>{entityName(entity.kind)}<strong>{entity.count}</strong></span>)}</div> : <p>该响应没有可提取的结构化内容索引。</p>}</section>
+          <details className="resource-technical">
+            <summary>技术信息</summary>
+            <dl className="resource-metadata">
+              <div className="resource-metadata-wide"><dt>接口路径</dt><dd className="resource-monospace">{resource.path}</dd></div>
+              {resource.command && <div className="resource-metadata-wide"><dt>接口命令</dt><dd className="resource-monospace">{resource.command}</dd></div>}
+              <div><dt>原始类型</dt><dd className="resource-monospace">{resource.kind}</dd></div>
+              {resource.source?.accountRef && <div><dt>来源账号标识</dt><dd className="resource-monospace">{resource.source.accountRef}</dd></div>}
+              <div className="resource-metadata-wide"><dt>来源哈希</dt><dd className="resource-monospace">{resource.sourceId}</dd></div>
+              <div className="resource-metadata-wide"><dt>资源标识</dt><dd className="resource-monospace">{resource.key}</dd></div>
+              {!!resource.entities?.length && <div className="resource-metadata-wide"><dt>原始索引类型</dt><dd className="resource-monospace">{resource.entities.map(entity => `${entity.kind} (${entity.count})`).join(" · ")}</dd></div>}
+            </dl>
+            {!!resource.context && Object.keys(resource.context).length > 0 && <div className="resource-json"><pre>{pretty(resource.context)}</pre></div>}
+          </details>
         </div>}
         {view === "request" && <div className="resource-detail-panel"><p className="resource-inline-help">同步此资源时使用的接口与请求参数。</p><div className="resource-json"><pre>{pretty(resource.request)}</pre></div></div>}
         {view === "media" && <div className="resource-detail-panel"><p className="resource-inline-help">从响应中提取的媒体、附件或页面链接。引用记录不代表文件已经下载。</p>{resource.media?.length ? <ul className="resource-media-list">{resource.media.map(media => <li key={media.url}><Link2 size={16} /><div>{safeUrl(media.url) ? <a href={media.url} target="_blank" rel="noopener noreferrer">{media.url}<ExternalLink size={13} /></a> : <span>{media.url}</span>}<small>发现于 {dateTime(media.observedAt)}</small></div></li>)}</ul> : <div className="resource-state"><Link2 size={25} /><p>该响应中没有链接引用。</p></div>}</div>}

@@ -4,18 +4,26 @@ import { ApiError } from '../../infrastructure/api-error.mjs';
 import { stripSharedPersonalState } from '../../integrations/shared-account-policy.mjs';
 import { publicPlatformResponse } from '../../integrations/platform-policy.mjs';
 import { resourceKey, resourceRows, resourceMedia, resourceScope, publicResourceResponse } from './catalog.mjs';
+import { resourcePresentation, resourcePresentationSql, resourceTypeLabels, resourceTypeLabel } from './presentation.mjs';
+import { presentResourceSources } from './source-presentation.mjs';
 import { readRuntimeConfig } from '../../infrastructure/runtime-config.mjs';
 
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const iso = value => value instanceof Date ? value.toISOString() : value;
 const safeSource = row => ({ id: row.id, platform: row.platform, accountRef: row.account_ref, scope:row.metadata?.scope||'account', createdAt: iso(row.created_at), lastSeenAt: iso(row.last_seen_at) });
-const summary = row => ({sourceId:row.source_id,platform:row.platform,key:row.request_key,scope:row.scope,kind:row.kind,path:row.request?.path||'',command:row.request?.data?.command||'',title:row.title||row.request?.data?.command||row.request?.path||'',revision:row.revision,syncedAt:iso(row.synced_at),changedAt:iso(row.changed_at),expiresAt:iso(row.expires_at)||null,expired:row.scope!=='public'||!row.expires_at||new Date(row.expires_at).getTime()<=Date.now(),mediaCount:Number(row.media_count||0),entityCount:Number(row.entity_count||0)});
+const summary = row => ({sourceId:row.source_id,platform:row.platform,key:row.request_key,scope:row.scope,kind:row.kind,path:row.request?.path||'',command:row.request?.data?.command||'',...resourcePresentation(row),revision:row.revision,syncedAt:iso(row.synced_at),changedAt:iso(row.changed_at),expiresAt:iso(row.expires_at)||null,expired:row.scope!=='public'||!row.expires_at||new Date(row.expires_at).getTime()<=Date.now(),mediaCount:Number(row.media_count||0),entityCount:Number(row.entity_count||0)});
 const expires = value => {if(value===null)return null;const date=new Date(value);if(Number.isNaN(date.getTime()))throw new ApiError('资源更新期限格式不正确',400);return date.toISOString();};
 const safeSettings = row => ({ enabled: row.enabled, revision: row.revision, updatedAt: iso(row.updated_at) });
 export async function createResourceStore(database, { publicTtlMs } = readRuntimeConfig().resources) {
   const defaultExpiry = scope => scope==='public'?new Date(Date.now()+publicTtlMs).toISOString():null;
   const resources = database.upstream('resources'), sources = database.upstream('resource_sources');
   const media = database.upstream('resource_media'), entities = database.upstream('resource_entities'), settings = database.web('resource_sync_settings');
+  const parameter=(...fields)=>`coalesce(${fields.flatMap(field=>[`nullif(r.context->>'${field}','')`,`nullif(r.request->'query'->>'${field}','')`,`nullif(r.request->'data'->>'${field}','')`]).join(',')})`;
+  const questionId=parameter('QuestionID','questionID','ID'),lessonId=parameter('lessonId','LessonID'),mediaId=parameter('mediaId');
+  const related=`LEFT JOIN LATERAL (SELECT e.payload FROM ${entities} e WHERE e.source_id=r.source_id AND e.platform=r.platform AND ((r.kind IN ('math.analysis','math.files') AND e.kind='question' AND e.entity_id=${questionId}) OR (r.kind='computer.media' AND (e.entity_id=${lessonId} OR e.payload->>'mediaId'=${mediaId}))) ORDER BY e.synced_at DESC,e.request_key LIMIT 1) rp_related ON true`;
+  const presentation=resourcePresentationSql('r','rp_related.payload');
+  const displayed=`(SELECT r.*,${presentation.fields} FROM ${resources} r ${related} ${presentation.joins})`;
+  const sourceDirectory=()=>database.query(`SELECT s.*,count(*)::integer AS count FROM ${sources} s JOIN ${resources} r ON r.source_id=s.id GROUP BY s.id ORDER BY s.platform,s.id`);
   await database.query(`CREATE TABLE IF NOT EXISTS ${sources} (id text PRIMARY KEY, platform text NOT NULL, account_ref text NOT NULL, metadata jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), last_seen_at timestamptz NOT NULL DEFAULT now())`);
   await database.query(`CREATE TABLE IF NOT EXISTS ${resources} (source_id text NOT NULL REFERENCES ${sources}(id), platform text NOT NULL, request_key text NOT NULL, scope text NOT NULL, kind text NOT NULL, request jsonb NOT NULL, response jsonb NOT NULL, content_hash text NOT NULL, revision integer NOT NULL DEFAULT 1, synced_at timestamptz NOT NULL DEFAULT now(), changed_at timestamptz NOT NULL DEFAULT now(), expires_at timestamptz, title text NOT NULL DEFAULT '', context jsonb NOT NULL DEFAULT '{}', PRIMARY KEY(source_id,platform,request_key))`);
   await database.query(`ALTER TABLE ${resources} ADD COLUMN IF NOT EXISTS expires_at timestamptz, ADD COLUMN IF NOT EXISTS title text NOT NULL DEFAULT '', ADD COLUMN IF NOT EXISTS context jsonb NOT NULL DEFAULT '{}'`);
@@ -74,10 +82,7 @@ export async function createResourceStore(database, { publicTtlMs } = readRuntim
     const urls=resourceMedia(clean);
     if(urls.length)await tx.query(`INSERT INTO ${media}(source_id,platform,request_key,url) SELECT $1,$2,$3,unnest($4::text[]) ON CONFLICT DO NOTHING`,[source.id,source.platform,key,urls]);
   }
-  function titleFor(task,response) {
-    const body=response?.data??response?.Data??response,first=resourceRows(response)[0]||{};
-    return String(body?.Title||body?.Name||body?.QuestionTitle||first.Title||first.Name||first.BookName||first.QuestionTitle||first.exerciseStems||task.request.data?.command||task.request.path).slice(0,300);
-  }
+  function titleFor(task,response) { return resourcePresentation({kind:task.kind,platform:task.kind?.split('.')[0],request:task.request,context:task.context,response}).title; }
   async function save(source,task,response,options={}) {
     const scope=options.scope||task.scope||source.scope||resourceScope(source.platform,task.request);
     if(!['public','account','volatile'].includes(scope))throw new ApiError('资源范围格式不正确',400);
@@ -101,11 +106,12 @@ export async function createResourceStore(database, { publicTtlMs } = readRuntim
   const checkRevision=(input,row)=>{if(!Number.isSafeInteger(input.revision)||input.revision<1)throw new ApiError('资源版本格式不正确',400);if(input.revision!==row.revision)throw new ApiError('资源已更新，请重新读取后再操作',409);};
   async function rowFor(input,lock=false){const row=(await database.query(`SELECT * FROM ${resources} WHERE source_id=$1 AND platform=$2 AND request_key=$3${lock?' FOR UPDATE':''}`,identity(input))).rows[0];if(!row)throw new ApiError('未找到资源',404);return row;}
   async function detail(input){
-    const row=await rowFor(input),selected=identity(input);
-    const source=await database.query(`SELECT * FROM ${sources} WHERE id=$1`,[row.source_id]);
+    const selected=identity(input),row=(await database.query(`SELECT r.* FROM ${displayed} r WHERE source_id=$1 AND platform=$2 AND request_key=$3`,selected)).rows[0];
+    if(!row)throw new ApiError('未找到资源',404);
+    const source=presentResourceSources((await sourceDirectory()).rows).find(item=>item.id===row.source_id);
     const mediaRows=await database.query(`SELECT url,observed_at FROM ${media} WHERE source_id=$1 AND platform=$2 AND request_key=$3 ORDER BY url`,selected);
     const entityCounts=await database.query(`SELECT kind,count(*)::integer AS count FROM ${entities} WHERE source_id=$1 AND platform=$2 AND request_key=$3 GROUP BY kind ORDER BY kind`,selected);
-    return {...summary(row),request:row.request,response:row.response,context:row.context,source:safeSource(source.rows[0]),media:mediaRows.rows.map(item=>({url:item.url,observedAt:iso(item.observed_at)})),entities:entityCounts.rows,mediaCount:mediaRows.rowCount,entityCount:entityCounts.rows.reduce((total,item)=>total+item.count,0)};
+    return {...summary(row),request:row.request,response:row.response,context:row.context,source,media:mediaRows.rows.map(item=>({url:item.url,observedAt:iso(item.observed_at)})),entities:entityCounts.rows,mediaCount:mediaRows.rowCount,entityCount:entityCounts.rows.reduce((total,item)=>total+item.count,0)};
   }
   async function update(input){
     if(!input?.response||typeof input.response!=='object')throw new ApiError('资源内容需要JSON对象或数组',400);
@@ -168,23 +174,23 @@ export async function createResourceStore(database, { publicTtlMs } = readRuntim
     if(typeof pageSize==='string'&&/^[1-9]\d*$/.test(pageSize))pageSize=Number(pageSize);
     if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(pageSize)||pageSize<1||pageSize>100)throw new ApiError('资源分页格式不正确',400);
     if(platform!==undefined&&(typeof platform!=='string'||platform&&!['math','computer'].includes(platform))||scope!==undefined&&(typeof scope!=='string'||scope&&!['public','account','volatile'].includes(scope))||typeof q!=='string'||q.length>160||kind!==undefined&&(typeof kind!=='string'||kind.length>160)||sourceId!==undefined&&(typeof sourceId!=='string'||sourceId.length>160)||!['','fresh','expired'].includes(validity))throw new ApiError('资源筛选格式不正确',400);
-    const orders={'synced-desc':'r.synced_at DESC','synced-asc':'r.synced_at ASC','changed-desc':'r.changed_at DESC','title-asc':'lower(r.title) ASC','expires-asc':'r.expires_at ASC NULLS FIRST'};
+    const orders={'synced-desc':'r.synced_at DESC','synced-asc':'r.synced_at ASC','changed-desc':'r.changed_at DESC','title-asc':'lower(r.display_title) ASC','expires-asc':'r.expires_at ASC NULLS FIRST'};
     if(typeof sort!=='string'||!Object.hasOwn(orders,sort))throw new ApiError('资源排序格式不正确',400);
     const args=[],clauses=[];
     for(const [field,value]of[['platform',platform],['source_id',sourceId],['scope',scope],['kind',kind]])if(value){args.push(value);clauses.push(`r.${field}=$${args.length}`);}
-    if(q.trim()){args.push(q.trim());clauses.push(`strpos(lower(r.title||' '||r.kind||' '||coalesce(r.request->>'path','')||' '||coalesce(r.request->'data'->>'command','')||' '||r.source_id||' '||r.request_key),lower($${args.length}))>0`);}
+    if(q.trim()){args.push(q.trim());clauses.push(`strpos(lower(r.display_title||' '||r.display_subtitle||' '||r.type_label||' '||r.kind||' '||coalesce(r.request->>'path','')||' '||coalesce(r.request->'data'->>'command','')||' '||r.source_id||' '||r.request_key),lower($${args.length}))>0`);}
     if(validity==='fresh')clauses.push("(r.scope='public' AND r.expires_at>now())");
     if(validity==='expired')clauses.push("(r.scope<>'public' OR r.expires_at IS NULL OR r.expires_at<=now())");
     const where=clauses.length?` WHERE ${clauses.join(' AND ')}`:'';
     const [counts,mediaCount,kinds,sourceCounts]=await Promise.all([
-      database.query(`SELECT count(*)::integer AS total,count(*) FILTER(WHERE r.scope='public' AND r.expires_at>now())::integer AS fresh,count(*) FILTER(WHERE r.scope<>'public' OR r.expires_at IS NULL OR r.expires_at<=now())::integer AS expired FROM ${resources} r${where}`,args),
-      database.query(`SELECT count(*)::integer AS count FROM ${media} m JOIN ${resources} r USING(source_id,platform,request_key)${where}`,args),
+      database.query(`SELECT count(*)::integer AS total,count(*) FILTER(WHERE r.scope='public' AND r.expires_at>now())::integer AS fresh,count(*) FILTER(WHERE r.scope<>'public' OR r.expires_at IS NULL OR r.expires_at<=now())::integer AS expired FROM ${displayed} r${where}`,args),
+      database.query(`SELECT count(*)::integer AS count FROM ${media} m JOIN ${displayed} r USING(source_id,platform,request_key)${where}`,args),
       database.query(`SELECT kind AS value,count(*)::integer AS count FROM ${resources} GROUP BY kind ORDER BY kind`),
-      database.query(`SELECT s.id,s.platform,s.account_ref,count(*)::integer AS count FROM ${sources} s JOIN ${resources} r ON r.source_id=s.id GROUP BY s.id ORDER BY s.platform,s.id`),
+      sourceDirectory(),
     ]);
     const count=counts.rows[0],total=count.total,totalPages=Math.max(1,Math.ceil(total/pageSize));page=Math.min(page,totalPages);
-    const result=await database.query(`SELECT r.*,(SELECT count(*)::integer FROM ${media} m WHERE m.source_id=r.source_id AND m.platform=r.platform AND m.request_key=r.request_key) AS media_count,(SELECT count(*)::integer FROM ${entities} e WHERE e.source_id=r.source_id AND e.platform=r.platform AND e.request_key=r.request_key) AS entity_count FROM ${resources} r${where} ORDER BY ${orders[sort]},r.platform,r.source_id,r.request_key LIMIT $${args.length+1} OFFSET $${args.length+2}`,[...args,pageSize,(page-1)*pageSize]);
-    return {resources:result.rows.map(summary),pagination:{page,pageSize,total,totalPages},summary:{...count,mediaReferences:mediaCount.rows[0].count},facets:{kinds:kinds.rows,sources:sourceCounts.rows.map(row=>({id:row.id,platform:row.platform,accountRef:row.account_ref,count:row.count}))}};
+    const result=await database.query(`SELECT r.*,(SELECT count(*)::integer FROM ${media} m WHERE m.source_id=r.source_id AND m.platform=r.platform AND m.request_key=r.request_key) AS media_count,(SELECT count(*)::integer FROM ${entities} e WHERE e.source_id=r.source_id AND e.platform=r.platform AND e.request_key=r.request_key) AS entity_count FROM ${displayed} r${where} ORDER BY ${orders[sort]},r.platform,r.source_id,r.request_key LIMIT $${args.length+1} OFFSET $${args.length+2}`,[...args,pageSize,(page-1)*pageSize]);
+    return {resources:result.rows.map(summary),pagination:{page,pageSize,total,totalPages},summary:{...count,mediaReferences:mediaCount.rows[0].count},facets:{kinds:kinds.rows.map(row=>({...row,label:row.value.startsWith('computer.')||row.value.startsWith('math.')?`${row.value.startsWith('computer.')?'计算机 408':'考研数学'} · ${resourceTypeLabels[row.value]||resourceTypeLabel({kind:row.value,platform:row.value.split('.')[0],request:{path:''}})}`:'其他学习资料'})),sources:presentResourceSources(sourceCounts.rows)}};
   }
   return { getSettings, updateSettings, rememberSource, save, lookup, findEntities, status, list,detail,update,invalidate,remove,batch };
 }
