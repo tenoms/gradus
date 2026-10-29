@@ -5,7 +5,6 @@ import {
   CircleAlert,
   Code2,
   GraduationCap,
-  Layers3,
   LoaderCircle,
   Menu,
   PanelLeftClose,
@@ -225,7 +224,7 @@ export default function LearningApp() {
         >
           <Link className="brand" to="/" aria-label="知序学习概览" title="知序学习概览">
             <span className="brand-mark">
-              <Layers3 size={24} />
+              <GraduationCap size={32} />
             </span>
             <div>
               <strong>

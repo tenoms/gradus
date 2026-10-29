@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
-import { BookOpen, Check, ChevronRight, CircleAlert, Code2, Layers3, LoaderCircle, Monitor, Moon, Palette, RefreshCw, RotateCcw, Save, Sigma, Sun } from "lucide-react";
+import { BookOpen, Check, ChevronRight, CircleAlert, Code2, GraduationCap, LoaderCircle, Monitor, Moon, Palette, RefreshCw, RotateCcw, Save, Sigma, Sun } from "lucide-react";
 import { appearanceModes, appearancePalettes } from "../../../../shared/appearance.mjs";
 import type { AppearanceTheme, ThemeMode } from "../../../../shared/appearance.mjs";
 import { themeVariables } from "../../../shared/theme/theme-tokens.mjs";
@@ -21,7 +21,7 @@ function ThemePreview({ platform, theme, systemDark }: { platform: "math" | "com
   return <section className="appearance-preview" aria-label={`${label}主题预览`} data-preview-mode={scheme} style={{ ...themeVariables(theme.palette, scheme), colorScheme: scheme } as CSSProperties}>
     <div className="appearance-preview-bar"><span><i /><i /><i /></span><small>{label} · {dark ? "深色" : "浅色"}预览</small></div>
     <div className="appearance-preview-layout">
-      <aside><span className="appearance-preview-brand"><Layers3 size={15} />知序</span><span className="is-active"><BookOpen size={12} />学习内容</span><span className="appearance-preview-nav-line" /><span className="appearance-preview-nav-line short" /></aside>
+      <aside><span className="appearance-preview-brand"><GraduationCap size={20} />知序</span><span className="is-active"><BookOpen size={12} />学习内容</span><span className="appearance-preview-nav-line" /><span className="appearance-preview-nav-line short" /></aside>
       <div className="appearance-preview-content"><div className="appearance-preview-eyebrow">接着上一次的学习</div><strong>{platform === "math" ? "高等数学 · 极限与连续" : "数据结构 · 线性表"}</strong><p>{platform === "math" ? "循序理解每一个知识点" : "构建清晰的知识框架"}</p><div className="appearance-preview-progress"><span /></div><div className="appearance-preview-card"><span><i /><span>今日学习计划<small>已完成 2 / 3 项</small></span></span><Check size={14} /></div><span className="appearance-preview-action">继续学习<ChevronRight size={13} /></span></div>
     </div>
   </section>;

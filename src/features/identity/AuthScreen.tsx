@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, BookOpen, Check, CircleAlert, Layers3, LoaderCircle, Settings2, ShieldCheck, Target, Users } from "lucide-react";
+import { ArrowRight, BookOpen, Check, CircleAlert, GraduationCap, LoaderCircle, Settings2, ShieldCheck, Target, Users } from "lucide-react";
 import { api } from "../../shared/api/client";
 import type { ApiSpace, Session } from "../../shared/api/client";
 import "./identity.css";
@@ -29,7 +29,7 @@ export default function AuthScreen({ onAuthenticated, space = "learning" }: { on
   const needsAdministrator = setup && !management;
   return <main className={`identity-screen ${management ? "management-auth" : "learning-auth"}`}>
     <section className="identity-story">
-      <a className="identity-brand" href={management ? "/admin/" : "/learn/"}>{management ? <ShieldCheck size={30} /> : <Layers3 size={30} />}<span>知序 <small>{management ? "Admin" : "Study"}</small></span></a>
+      <a className="identity-brand" href={management ? "/admin/" : "/learn/"}><GraduationCap size={36} /><span>知序 <small>{management ? "Admin" : "Study"}</small></span></a>
       <div className="identity-story-copy">
         <p className="identity-eyebrow">{management ? "YOUR LEARNING OPERATIONS" : "LEARN WITH PURPOSE"}</p>
         <h1>{management ? <>让管理清晰，<br />让学习有序。</> : <>让知识有序，<br />让进步发生。</>}</h1>
@@ -42,7 +42,7 @@ export default function AuthScreen({ onAuthenticated, space = "learning" }: { on
     </section>
     <section className="identity-form-side">
       <div className="identity-form-wrap">
-        <div className="identity-form-icon">{management ? <ShieldCheck size={25} /> : <Layers3 size={25} />}</div>
+        <div className="identity-form-icon"><GraduationCap size={32} /></div>
         {setup === undefined ? <>
           <h2>正在读取{management ? "管理" : "学习"}空间</h2>
           {error ? <><p className="error-banner" role="alert">{error}</p><button className="btn btn-primary" onClick={load}>重新读取</button></> : <LoaderCircle className="spin" aria-label="加载中" />}
