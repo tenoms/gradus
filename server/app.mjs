@@ -71,6 +71,8 @@ export async function createApp(overrides = {}) {
   app.use("/api", (req, res) => res.status(404).json({ error: "接口不存在" }));
   const dist = path.join(root, "dist");
   if (existsSync(path.join(dist, "index.html"))) {
+    // Vite includes a content hash in asset names, so returning learners can reuse them.
+    app.use("/assets", express.static(path.join(dist, "assets"), { index: false, immutable: true, maxAge: "1y" }));
     app.use(express.static(dist, { index: false }));
     app.get("/", (req, res) => res.redirect("/learn/"));
     app.get(["/admin", "/admin/{*path}"], (req, res) => res.sendFile(path.join(dist, "admin.html")));
