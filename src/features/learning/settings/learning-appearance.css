@@ -38,8 +38,6 @@
 .learning-appearance-dialog .learning-appearance-current { margin: 17px 0 0; color: var(--muted); font-size: 11px; }
 .learning-appearance-storage-error { display: flex; align-items: flex-start; gap: 8px; padding: 11px; border-radius: 8px; color: var(--warning) !important; background: var(--warning-soft); }
 .learning-appearance-storage-error > svg { margin-top: 3px; }
-.learning-appearance-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 22px; }
-.learning-appearance-actions .btn { font-size: 12px; }
 @media (max-width: 600px) {
   .modal-backdrop.learning-appearance-backdrop { padding: 12px; }
   .modal.learning-appearance-dialog { padding: 18px; max-height: calc(100dvh - 24px); }
@@ -51,6 +49,5 @@
   .learning-appearance-managed-compact > span { gap: 4px; }
   .learning-appearance-field { margin-top: 17px; }
   .learning-appearance-subject { padding-bottom: 14px; }
-  .learning-appearance-actions { align-items: stretch; }
 }
 @media (max-width: 360px) { .learning-appearance-subject-heading { align-items: flex-start; flex-direction: column; gap: 7px; } }

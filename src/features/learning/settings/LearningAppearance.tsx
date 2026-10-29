@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, CircleAlert, Code2, Monitor, Moon, Palette, RotateCcw, ShieldCheck, Sigma, Sun, X } from 'lucide-react';
+import { Check, CircleAlert, Code2, Monitor, Moon, Palette, ShieldCheck, Sigma, Sun, X } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import { appearanceModes, appearancePalettes } from '../../../../shared/appearance.mjs';
 import type { ThemeMode, ThemePalette } from '../../../../shared/appearance.mjs';
@@ -58,7 +58,6 @@ function AppearanceDialog({ theme, onClose }: { theme: ThemeState; onClose: () =
     background.forEach(({ element }) => { element.inert = true; }); document.body.style.overflow = 'hidden';
     return () => { background.forEach(({ element, inert }) => { element.inert = inert; }); document.body.style.overflow = overflow; };
   }, []);
-  const managed = theme.preferences.math.palette === 'managed' && theme.preferences.computer.palette === 'managed' && theme.preferences.mode === 'managed';
   const subjectPalette = (subject: 'math' | 'computer') => {
     const preference = theme.preferences[subject].palette;
     return preference === 'managed' ? theme.configuration[subject].palette : preference;
@@ -67,7 +66,7 @@ function AppearanceDialog({ theme, onClose }: { theme: ThemeState; onClose: () =
     <section className="modal learning-appearance-dialog" ref={ref} role="dialog" aria-modal="true" aria-labelledby="learning-appearance-title" aria-describedby="learning-appearance-description" onClick={event => event.stopPropagation()} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); event.preventDefault(); onClose(); } }}>
       <button type="button" className="icon-button modal-close" aria-label="关闭主题设置" onClick={onClose}><X size={20} /></button>
       <div className="learning-appearance-heading"><span className="learning-appearance-symbol"><Palette size={22} /></span><h2 id="learning-appearance-title">主题与外观</h2></div>
-      <p id="learning-appearance-description">两科分别配色，明暗模式共用。个人偏好仅保存在当前浏览器，不随账号同步。</p>
+      <p id="learning-appearance-description">两科分别配色，明暗模式共用。选择即时生效，仅保存在当前浏览器。</p>
       {subjects.map(subject => <SubjectPalette theme={theme} subject={subject} key={subject.value} />)}
       <fieldset className="learning-appearance-field"><legend>明暗模式</legend>
         <label className={`learning-appearance-managed ${theme.preferences.mode === 'managed' ? 'is-selected' : ''}`}><input type="radio" name="learning-mode" aria-label="明暗模式：使用管理设置" checked={theme.preferences.mode === 'managed'} onChange={() => theme.setPreference({ mode: 'managed' })} /><span><ShieldCheck size={17} /><strong>使用管理设置</strong></span><small>当前为{modeLabel(theme.configuration.mode)}</small>{theme.preferences.mode === 'managed' && <Check size={16} />}</label>
@@ -78,7 +77,6 @@ function AppearanceDialog({ theme, onClose }: { theme: ThemeState; onClose: () =
       </fieldset>
       <p className="learning-appearance-current" role="status">数学：{paletteLabel(subjectPalette('math'))} · 408：{paletteLabel(subjectPalette('computer'))} · 共用{theme.scheme === 'dark' ? '深色' : '浅色'}</p>
       {!theme.preferencePersisted && <p className="learning-appearance-storage-error" role="alert"><CircleAlert size={16} />浏览器未能保存偏好，本次修改仅在当前页面生效。</p>}
-      <div className="learning-appearance-actions"><button type="button" className="btn btn-secondary" disabled={managed} title="恢复数学、408的主题色及共用明暗模式" onClick={theme.resetPreference}><RotateCcw size={16} />恢复管理设置</button><button type="button" className="btn btn-primary" onClick={onClose}>完成</button></div>
     </section>
   </div>, document.body);
 }
