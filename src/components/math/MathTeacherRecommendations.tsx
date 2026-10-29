@@ -195,7 +195,6 @@ export default function MathTeacherRecommendations({
             )}
           </div>
           <MathQuestionReader
-            key={`teacher-recommend-${qid}`}
             row={{ ...question, Source: "课程" }}
             stuid={stuid}
             readOnly

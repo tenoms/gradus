@@ -1,3 +1,4 @@
+import { studyFetch } from "../../lib/api";
 import { useEffect, useState } from "react";
 import { Camera, LoaderCircle, Save, UserRound } from "lucide-react";
 import { useSession } from "../../lib/session";
@@ -82,7 +83,7 @@ export default function MathStudyProfile({ user }: { user: MathRow }) {
     try {
       const data = new FormData();
       data.append("file", file);
-      const response = await fetch(
+      const response = await studyFetch(
           "/api/platform/math/upload?path=/api/sys_attachment/LayuiUpImg",
           { method: "POST", credentials: "same-origin", body: data },
         ),

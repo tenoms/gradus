@@ -1,3 +1,4 @@
+import { useSession } from "../../lib/session";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -115,6 +116,7 @@ function ComputingPaper({
   context: ComputingContext;
   onClose: () => void;
 }) {
+  const { session } = useSession();
   const loaded = useComputing(JSON.stringify(context), () =>
       computingApi.paper(context),
     ),
@@ -132,7 +134,7 @@ function ComputingPaper({
     [ready, setReady] = useState(false);
   const questionAt = useRef(Date.now()),
     started = useRef(Date.now()),
-    draftKey = `study:math:computing:${context.stuid}:${context.catalogID}:${context.PaperID}:${context.mistakes ? "review" : "practice"}`,
+    draftKey = `study:math:computing:${session.user?.id || "guest"}:${context.stuid}:${context.catalogID}:${context.PaperID}:${context.mistakes ? "review" : "practice"}`,
     question = questions[current] || {},
     id = String(question.QuestionID || ""),
     answer = answers[id] || "",

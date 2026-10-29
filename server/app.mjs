@@ -5,6 +5,7 @@ import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { firstScorePayload } from "./first-score.mjs";
+import { createIdentityStore } from "./identity-store.mjs";
 import { encryptMathMaster } from "./upstream.mjs";
 import {
   ApiError,
@@ -77,6 +78,7 @@ function publicSession(session) {
   if (!session) return { authenticated: false, account: null, platforms: {} };
   return {
     authenticated: true,
+    ...(session.user ? { user: session.user } : {}),
     account: session.account,
     platforms: Object.fromEntries(
       ["math", "computer"].map((name) => {
@@ -208,6 +210,11 @@ export function createApp(overrides = {}) {
   };
   const sessions = new Map();
   const cached = new Map();
+  // Legacy sessions exist only in explicitly opted-in migration tests.
+  const legacy = overrides.allowLegacyAuth === true;
+  const identities = legacy ? null : (overrides.identityStore || createIdentityStore(
+    overrides.databasePath || process.env.STUDY_DATABASE_PATH || path.join(root, ".data/study.sqlite"),
+  ));
   const app = express();
   app.disable("x-powered-by");
   app.use(cookieParser());
@@ -215,31 +222,60 @@ export function createApp(overrides = {}) {
     if (req.path.startsWith("/api/")) {
       res.set("Cache-Control", "no-store");
       const origin = req.get("origin");
-      if (origin && new URL(origin).host !== req.get("host"))
-        return res.status(403).json({ error: "请从当前学习系统发起请求" });
+      if (origin) {
+        try {
+          if (new URL(origin).host !== req.get("host"))
+            return res.status(403).json({ error: "请从当前学习系统发起请求" });
+        } catch {
+          return res.status(403).json({ error: "请求来源格式不正确" });
+        }
+      }
     }
     next();
   });
   app.use(express.json({ limit: "3mb" }));
   const sessionFor = (req) => {
     const sid = req.cookies[cookieName];
+    if (!legacy) {
+      const user = identities.sessionUser(sid);
+      if (!user) return null;
+      const connection = cached.get(user.id);
+      if (connection && (connection.expires <= Date.now() || connection.account.ref !== user.yybRef))
+        cached.delete(user.id);
+      const current = cached.get(user.id);
+      return { user, account: current?.account || null, platforms: current?.platforms || {} };
+    }
     const s = sessions.get(sid);
     if (s && s.expires > Date.now()) return s;
     if (sid) sessions.delete(sid);
     return null;
   };
+  const matchesScope = (req, res, session) => {
+    if (!legacy && req.get("X-Study-User") !== session.user.id) {
+      res.status(403).json({ error: "当前登录账号已切换，请刷新学习空间后重试", code: "USER_SCOPE_CHANGED" });
+      return false;
+    }
+    return true;
+  };
   const authenticated = (req, res, next) => {
     req.studySession = sessionFor(req);
     if (!req.studySession)
-      return res.status(401).json({ error: "请先连接 YYB 学习账号" });
+      return res.status(401).json({ error: legacy ? "请先连接 YYB 学习账号" : "请先登录学习系统" });
+    if (matchesScope(req, res, req.studySession)) next();
+  };
+  const administrator = (req, res, next) => {
+    req.studySession = sessionFor(req);
+    if (!req.studySession?.user) return res.status(401).json({ error: "请先登录学习系统" });
+    if (!matchesScope(req, res, req.studySession)) return;
+    if (req.studySession.user.role !== "admin") return res.status(403).json({ error: "此操作需要管理员权限" });
     next();
   };
   const saveSession = (req, res, session) => {
     const previous = req.cookies[cookieName];
-    if (previous) sessions.delete(previous);
-    const sid = randomBytes(32).toString("base64url");
+    if (previous) legacy ? sessions.delete(previous) : identities.revokeSession(previous);
+    const sid = legacy ? randomBytes(32).toString("base64url") : identities.issueSession(session.user.id, sessionLifetime);
     session.expires = Date.now() + sessionLifetime;
-    sessions.set(sid, session);
+    if (legacy) sessions.set(sid, session);
     res.cookie(cookieName, sid, {
       httpOnly: true,
       sameSite: "lax",
@@ -249,6 +285,60 @@ export function createApp(overrides = {}) {
     });
     return session;
   };
+  if (!legacy) {
+    app.get("/api/system/setup", (req, res) => res.json({ setupRequired: identities.setupRequired() }));
+    app.post("/api/system/setup", (req, res) => {
+      const user = identities.setup(req.body);
+      const session = saveSession(req, res, { user, account: null, platforms: {} });
+      res.status(201).json(publicSession(session));
+    });
+    app.post("/api/auth/login", (req, res) => {
+      const user = identities.login(req.body?.username, req.body?.password);
+      const connection = cached.get(user.id);
+      const session = saveSession(req, res, {
+        user, account: connection?.expires > Date.now() && connection.account.ref === user.yybRef ? connection.account : null,
+        platforms: connection?.expires > Date.now() && connection.account.ref === user.yybRef ? connection.platforms : {},
+      });
+      res.json(publicSession(session));
+    });
+    app.post("/api/auth/password", authenticated, (req, res) => {
+      identities.changePassword(req.studySession.user.id, req.body?.currentPassword, req.body?.password, req.cookies[cookieName]);
+      res.json({ ok: true, otherSessionsRevoked: true });
+    });
+    app.get("/api/study/data", authenticated, (req, res) => res.json(identities.studyData(req.studySession.user.id)));
+    app.put("/api/study/data", authenticated, (req, res) =>
+      res.json(identities.saveStudyData(req.studySession.user.id, req.body?.data, req.body?.revision)));
+    app.get("/api/announcements", authenticated, (req, res) => res.json({ announcements: identities.listAnnouncements() }));
+    app.get("/api/admin/overview", administrator, (req, res) => res.json(identities.overview(cached)));
+    app.get("/api/admin/users", administrator, (req, res) => res.json({ users: identities.users() }));
+    app.post("/api/admin/users", administrator, (req, res) => {
+      const user = identities.createUser(req.body, req.studySession.user);
+      res.status(201).json({ user });
+    });
+    app.patch("/api/admin/users/:id", administrator, (req, res) => {
+      const user = identities.updateUser(req.params.id, req.body, req.studySession.user);
+      const connection = cached.get(user.id);
+      if (user.status !== "active" || (connection && connection.account.ref !== user.yybRef)) cached.delete(user.id);
+      res.json({ user });
+    });
+    app.post("/api/admin/users/:id/password", administrator, (req, res) => {
+      identities.resetPassword(req.params.id, req.body?.password, req.studySession.user);
+      cached.delete(req.params.id);
+      res.json({ ok: true });
+    });
+    app.get("/api/admin/audit", administrator, (req, res) => res.json({ entries: identities.auditEntries() }));
+    app.get("/api/admin/accounts", administrator, async (req, res) => {
+      const accounts = await service.yybRequest("/accounts");
+      res.json({ accounts: (Array.isArray(accounts) ? accounts : []).map(cleanAccount) });
+    });
+    app.get("/api/admin/announcements", administrator, (req, res) => res.json({ announcements: identities.listAnnouncements() }));
+    app.post("/api/admin/announcements", administrator, (req, res) =>
+      res.status(201).json({ announcement: identities.announce(req.body, req.studySession.user) }));
+    app.delete("/api/admin/announcements/:id", administrator, (req, res) => {
+      identities.deleteAnnouncement(req.params.id, req.studySession.user);
+      res.json({ ok: true });
+    });
+  }
   app.get("/api/health", (req, res) =>
     res.json({
       ok: true,
@@ -257,14 +347,22 @@ export function createApp(overrides = {}) {
     }),
   );
   app.get("/api/auth/accounts", async (req, res) => {
+    const session = sessionFor(req);
+    if (!legacy && !session) throw new ApiError("请先登录学习系统", 401);
+    if (session && !matchesScope(req, res, session)) return;
     const accounts = await service.yybRequest("/accounts");
     res.json({
-      accounts: (Array.isArray(accounts) ? accounts : []).map(cleanAccount),
+      accounts: (Array.isArray(accounts) ? accounts : []).map(cleanAccount)
+        .filter((account) => legacy || session.user.role === "admin" || account.ref === session.user.yybRef),
     });
   });
   app.get("/api/auth/avatar/:ref", async (req, res) => {
+    const session = sessionFor(req);
+    if (!legacy && !session) throw new ApiError("请先登录学习系统", 401);
+    if (!legacy && session.user.role !== "admin" && session.user.yybRef !== req.params.ref)
+      throw new ApiError("此学习账号未分配给当前用户", 403);
     const accounts = await service.yybRequest("/accounts");
-    if (!accounts.some((a) => String(a.id) === req.params.ref))
+    if (!accounts.some((a) => String(a.id ?? a.ref) === req.params.ref))
       throw new ApiError("未找到该 YYB 账号", 404);
     let response;
     try {
@@ -293,18 +391,28 @@ export function createApp(overrides = {}) {
     res.json(publicSession(sessionFor(req))),
   );
   app.post("/api/auth/connect", async (req, res) => {
-    const accounts = await service.yybRequest("/accounts");
+    const current = sessionFor(req);
+    if (!legacy && !current) throw new ApiError("请先登录学习系统", 401);
+    if (current && !matchesScope(req, res, current)) return;
     const ref = String(req.body?.ref || "");
+    if (!legacy && current.user.role !== "admin" && ref !== current.user.yybRef)
+      throw new ApiError("请连接管理员分配给你的学习账号", 403);
+    const accounts = await service.yybRequest("/accounts");
     const source = accounts.find(
-      (a) => String(a.id) === ref || a.openid === ref || String(a.uin) === ref,
+      (a) => String(a.id ?? a.ref) === ref || (legacy && (a.openid === ref || String(a.uin) === ref)),
     );
     if (!source) throw new ApiError("未找到该 YYB 账号，请刷新账号列表", 404);
     const account = cleanAccount(source);
-    const remembered = cached.get(account.ref);
+    // Connecting as an administrator binds only an unassigned account to that administrator.
+    const user = legacy ? null : current.user.yybRef === account.ref ? current.user :
+      identities.updateUser(current.user.id, { yybRef: account.ref }, current.user);
+    const cacheKey = user?.id || account.ref;
+    const remembered = cached.get(cacheKey);
     const session = {
+      ...(user ? { user } : {}),
       account,
       platforms:
-        remembered?.expires > Date.now() ? { ...remembered.platforms } : {},
+        remembered?.expires > Date.now() && remembered.account.ref === account.ref ? { ...remembered.platforms } : {},
     };
     await Promise.all(
       ["math", "computer"].map(async (name) => {
@@ -325,12 +433,19 @@ export function createApp(overrides = {}) {
         502,
         publicSession(session).platforms,
       );
-    saveSession(req, res, session);
-    cached.set(account.ref, session);
+    if (legacy) saveSession(req, res, session);
+    else session.expires = Date.now() + sessionLifetime;
+    cached.set(cacheKey, session);
+    if (!legacy) identities.audit(user, "platform.connected", user, "连接学习平台");
     res.json(publicSession(session));
   });
-  app.post("/api/auth/logout", (req, res) => {
-    sessions.delete(req.cookies[cookieName]);
+  app.post("/api/auth/logout", authenticated, (req, res) => {
+    if (legacy) sessions.delete(req.cookies[cookieName]);
+    else {
+      const user = sessionFor(req)?.user;
+      identities.revokeSession(req.cookies[cookieName]);
+      if (user) identities.audit(user, "auth.logout", user);
+    }
     res.clearCookie(cookieName, { path: "/" });
     res.json({ ok: true });
   });
@@ -631,5 +746,7 @@ export function createApp(overrides = {}) {
     });
   });
   app.locals.sessions = sessions;
+  app.locals.identityStore = identities;
+  app.locals.close = () => identities?.close();
   return app;
 }

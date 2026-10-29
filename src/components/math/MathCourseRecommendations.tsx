@@ -1,3 +1,4 @@
+import { useSession } from "../../lib/session";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -197,6 +198,7 @@ export default function MathCourseRecommendations({
   isSuper?: boolean;
   onClose?: () => void;
 }) {
+  const { session } = useSession();
   const context: RecommendationContext = {
       stuid,
       PaperID,
@@ -206,7 +208,7 @@ export default function MathCourseRecommendations({
       isSuper,
     },
     key = JSON.stringify(context),
-    draftKey = `study:math:recommendations:${stuid}:${PaperID}:${CalendarID}:${ProductID}`;
+    draftKey = `study:math:recommendations:${session.user?.id || "guest"}:${stuid}:${PaperID}:${CalendarID}:${ProductID}`;
   const [meta, setMeta] = useState<R>({}),
     [rows, setRows] = useState<R[]>([]),
     [details, setDetails] = useState<{ info: any; original: R[] }>({
@@ -664,7 +666,7 @@ export default function MathCourseRecommendations({
             {encore && <span className="mcr-muted">本轮重做</span>}
           </div>
           <MathQuestionReader
-            key={`recommend-reader-${qid}-${attempt.current}`}
+            key={`recommend-reader-${attempt.current}`}
             row={{
               ...question,
               MyAnswer:

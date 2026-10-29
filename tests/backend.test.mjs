@@ -10,7 +10,7 @@ import { encryptMath, decodeMath, ApiError } from "../server/upstream.mjs";
 import { createCipheriv, createHash } from "node:crypto";
 
 async function serve(overrides, run) {
-  const server = createApp(overrides).listen(0, "127.0.0.1");
+  const server = createApp({ ...overrides, allowLegacyAuth: true }).listen(0, "127.0.0.1");
   await once(server, "listening");
   const base = `http://127.0.0.1:${server.address().port}`;
   const request = (p, options = {}) =>

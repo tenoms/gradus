@@ -10,6 +10,7 @@ import {
   Star,
 } from "lucide-react";
 import RichContent from "../RichContent";
+import LearningWorkbench from "../learning/LearningWorkbench";
 import { useSession } from "../../lib/session";
 import { recordActivity } from "../../lib/store";
 import {
@@ -79,6 +80,7 @@ export default function ExerciseSession({
   onClose: () => void;
 }) {
   const { session } = useSession();
+  const sessionElement = useRef<HTMLElement>(null);
   const [related, setRelated] = useState<ExerciseLaunch | null>(null),
     [finalReport, setFinalReport] = useState<R | null>(null);
   const initial = extractExercises(launch.data),
@@ -102,7 +104,7 @@ export default function ExerciseSession({
     [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
-    [showSheet, setShowSheet] = useState(false),
+    [showSheet, setShowSheet] = useState(true),
     [finished, setFinished] = useState(false),
     [note, setNote] = useState(""),
     [noteVisible, setNoteVisible] = useState(false),
@@ -127,7 +129,7 @@ export default function ExerciseSession({
   const isSequential =
       !!launch.redo || [3, 10, 18, 19].includes(launch.examType),
     category = launch.examCategory || 1;
-  const storageKey = `study:computer:draft:${session.account?.ref || "guest"}:${launch.majorId}:${category}:${examId || launch.chapterId || "random"}:${launch.examType}:${launch.examGroupId || ""}:${launch.redo ? `${launch.redo.kind}:${launch.redo.dateFlag}:${launch.redo.sort}` : ""}`;
+  const storageKey = `study:computer:draft:${session.user?.id || session.account?.ref || "guest"}:${launch.majorId}:${category}:${examId || launch.chapterId || "random"}:${launch.examType}:${launch.examGroupId || ""}:${launch.redo ? `${launch.redo.kind}:${launch.redo.dateFlag}:${launch.redo.sort}` : ""}`;
   useEffect(() => {
     async function restore() {
       let index = Number(launch.data.initialIndex || 0);
@@ -328,7 +330,8 @@ export default function ExerciseSession({
         setLoading(false);
       }
     } else setCurrent(index);
-    setShowSheet(false);
+    if (sessionElement.current && sessionElement.current.getBoundingClientRect().width < 1000)
+      setShowSheet(false);
     if(!isReadOnly&&!launch.redo&&isSequential&&progressRecord.current) {
       try {await computerLearningApi.saveSheetIndex(progressRecord.current,index+1);}
       catch(error:any){setNotice(`题目已切换，云端续学位置尚未同步：${error.message}`);}
@@ -420,7 +423,13 @@ export default function ExerciseSession({
       </div>
     );
   return (
-    <section className="computer-session panel">
+    <LearningWorkbench
+      title={launch.title}
+      previous={current > 0 ? () => void move(current - 1) : undefined}
+      next={current + 1 < total ? () => void move(current + 1) : undefined}
+      disabled={loading || !!related}
+    >
+    <section ref={sessionElement} className="computer-session panel">
       <div className="computer-session-top">
         <button className="computer-back" onClick={onClose}>
           <ArrowLeft size={18} />
@@ -429,27 +438,52 @@ export default function ExerciseSession({
         <span>{launch.title}</span>
         <button
           className="btn btn-secondary"
+          aria-expanded={showSheet}
+          aria-controls="computer-answer-sheet"
           onClick={() => setShowSheet(!showSheet)}
         >
-          答题卡 {current + 1}/{total}
+          {showSheet ? "收起答题卡" : "展开答题卡"} {current + 1}/{total}
         </button>
       </div>
       <div className="computer-progress">
         <span style={{ width: `${((current + 1) / total) * 100}%` }} />
       </div>
+      <div className={`computer-session-layout ${showSheet ? "with-sheet" : ""}`}>
       {showSheet && (
-        <div className="computer-sheet">
-          {Array.from({ length: total }, (_, i) => (
-            <button
-              className={`${i === current ? "active" : ""} ${submitted[String(questions[i]?.exerciseId || launch.data.examExerciseIdList?.[i])] || skipped.includes(String(questions[i]?.exerciseId || launch.data.examExerciseIdList?.[i])) ? "answered" : ""}`}
-              key={i}
-              onClick={() => void move(i)}
-            >
-              {i + 1}
-            </button>
-          ))}
-        </div>
+        <aside className="computer-sheet-sidebar" id="computer-answer-sheet" aria-label="题号导航">
+          <div className="computer-sheet-heading">
+            <h3>答题进度</h3>
+            <strong>{Math.min(total, new Set([...Object.keys(submitted), ...skipped]).size)} / {total}</strong>
+          </div>
+          <p className="computer-sheet-help">点击题号跳转，答案草稿会保留。</p>
+          <div className="computer-sheet-legend">
+            <span><i className="saved" /> 已保存</span>
+            <span><i className="draft" /> 有草稿</span>
+            <span><i /> 未作答</span>
+          </div>
+          <div className="computer-sheet">
+            {Array.from({ length: total }, (_, i) => {
+              const questionId = String(questions[i]?.exerciseId || questions[i]?.id || launch.data.examExerciseIdList?.[i] || "");
+              const isSkipped = skipped.includes(questionId);
+              const saved = !!submitted[questionId] || isSkipped;
+              const drafted = !!answers[questionId];
+              return (
+                <button
+                  className={`${i === current ? "active" : ""} ${saved ? "answered" : drafted ? "drafted" : ""} ${isSkipped ? "skipped" : ""}`}
+                  aria-label={`第 ${i + 1} 题，${isSkipped ? "已跳过" : saved ? "已保存" : drafted ? "有草稿" : "未作答"}`}
+                  aria-current={i === current ? "step" : undefined}
+                  disabled={loading}
+                  key={i}
+                  onClick={() => void move(i)}
+                >
+                  {i + 1}
+                </button>
+              );
+            })}
+          </div>
+        </aside>
       )}
+      <div className="computer-question-area">
       <div className="computer-question-heading">
         <span className="computer-pill">{typeNames[type] || "综合题"}</span>
         <span>{score} 分</span>
@@ -475,6 +509,8 @@ export default function ExerciseSession({
           onOpen={setRelated}
         />
       )}
+      <div className={`computer-question-columns ${hasSubmitted || finished ? "with-analysis" : ""}`}>
+      <div className="computer-question-answer">
       <RichContent
         content={String(
           question.exerciseStems || question.stem || question.title || "",
@@ -507,6 +543,7 @@ export default function ExerciseSession({
                 key={index}
                 className={`computer-option ${selected ? "active" : ""} ${hasSubmitted && String(question.exerciseAnswer).split(",").includes(key) ? "correct" : ""}`}
                 disabled={hasSubmitted || loading}
+                aria-pressed={selected}
                 onClick={() =>
                   setAnswer(
                     type === 2
@@ -625,8 +662,9 @@ export default function ExerciseSession({
           )}
         </div>
       )}
+      </div>
       {(hasSubmitted || finished) && (
-        <div className="computer-analysis">
+        <div className="computer-analysis" aria-label="答案与解析">
           <h3>答案与解析</h3>
           {skipped.includes(id) && <p className="computer-dim">本题已跳过，未计为实际作答。</p>}
           {launch.voice && safeLink(answer.split("$-$")[0]) && (
@@ -684,6 +722,7 @@ export default function ExerciseSession({
           )}
         </div>
       )}
+      </div>
       {noteVisible && (
         <div className="computer-note">
           <label>
@@ -787,6 +826,9 @@ export default function ExerciseSession({
           })
         }
       />
+      </div>
+      </div>
     </section>
+    </LearningWorkbench>
   );
 }

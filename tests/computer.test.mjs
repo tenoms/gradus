@@ -15,8 +15,8 @@ const compiled = ts
     },
   })
   .outputText.replace(
-    /import \{ platformRequest \} from ['"]\.\.\/lib\/api['"];?/,
-    "const platformRequest=(...args)=>globalThis.__computerTestRequest(...args);",
+    /import \{ platformRequest, studyFetch \} from ['"]\.\.\/lib\/api['"];?/,
+    "const platformRequest=(...args)=>globalThis.__computerTestRequest(...args); const studyFetch=(...args)=>globalThis.__computerTestFetch(...args);",
   );
 const adapter = await import(
   `data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`
@@ -311,4 +311,20 @@ test("question source metadata renders readable text for both real object and le
   );
   assert.equal(adapter.exerciseSource("教材习题"), "教材习题");
   assert.equal(adapter.exerciseSource(null), "");
+});
+
+
+test("computer uploads use the scoped transport while retaining multipart form data", async () => {
+  let seen;
+  globalThis.__computerTestFetch = async (...args) => {
+    seen = args;
+    return { ok: true, json: async () => ({ code: 200, data: { url: "https://fixture.invalid/upload.png" } }) };
+  };
+  const file = new File(["fixture"], "answer.png", { type: "image/png" });
+  assert.deepEqual(await adapter.computerUpload(file), { url: "https://fixture.invalid/upload.png" });
+  assert.equal(seen[0], "/api/platform/computer/upload?path=%2Fapi%2Fuser%2Fv1%2Fattachment%2Fupload%2F");
+  assert.equal(seen[1].method, "POST");
+  assert.equal(seen[1].credentials, "same-origin");
+  assert.equal(seen[1].body.get("file").name, "answer.png");
+  assert.equal(seen[1].headers, undefined);
 });

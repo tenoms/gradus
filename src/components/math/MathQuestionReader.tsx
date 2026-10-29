@@ -15,6 +15,7 @@ import {
   Star,
 } from "lucide-react";
 import RichContent from "../RichContent";
+import LearningWorkbench, { LearningWorkbenchScope } from "../learning/LearningWorkbench";
 import MathNoteEditor from "./MathNoteEditor";
 import MathDiscussion from "./MathDiscussion";
 import { MathFeedbackButton } from "./MathQuestionTools";
@@ -111,10 +112,12 @@ export default function MathQuestionReader(
   props: Parameters<typeof QuestionReader>[0],
 ) {
   return (
-    <QuestionReader
-      key={`${props.stuid}-${mathQuestionId(props.row)}`}
-      {...props}
-    />
+    <LearningWorkbenchScope>
+      <QuestionReader
+        key={`${props.stuid}-${mathQuestionId(props.row)}`}
+        {...props}
+      />
+    </LearningWorkbenchScope>
   );
 }
 function QuestionReader({
@@ -174,6 +177,7 @@ function QuestionReader({
     };
   });
   const [tab, setTab] = useState("题目");
+  const [compareAnalysis, setCompareAnalysis] = useState(false);
   const [analysis, setAnalysis] = useState<MathRow[]>();
   const [analysisError, setAnalysisError] = useState("");
   const [analysisLoading, setAnalysisLoading] = useState(false);
@@ -302,6 +306,25 @@ function QuestionReader({
     }
   };
   return (
+    <LearningWorkbench
+      title={`第 ${row.QuestionSort || q.QuestionID || qid} 题`}
+      previous={prev}
+      next={next}
+      disabled={saving || remote.loading || !!noteKind || newQa}
+      tools={!lockAnalysis && (
+        <button
+          type="button"
+          className="learning-tool-button"
+          aria-pressed={compareAnalysis}
+          onClick={() => {
+            setCompareAnalysis(!compareAnalysis);
+            if (!compareAnalysis) void loadAnalysis();
+          }}
+        >
+          题解对照
+        </button>
+      )}
+    >
     <div className="panel math-question">
       <div className="math-question-top">
         <span className="math-tag">
@@ -368,8 +391,9 @@ function QuestionReader({
         error={remote.error}
         reload={remote.reload}
       />
-      {!remote.loading && !remote.error && tab === "题目" && (
-        <div className="math-question-body">
+      <div className={`math-reader-panes ${compareAnalysis && tab === "解析" ? "is-split" : ""}`}>
+      {!remote.loading && !remote.error && (tab === "题目" || (compareAnalysis && tab === "解析")) && (
+        <div className="math-question-body math-question-prompt">
           {stem.length ? (
             stem.map((r, i) => <RichContent key={i} content={r.Content} />)
           ) : (
@@ -394,6 +418,7 @@ function QuestionReader({
                   key={o.ID || i}
                   className={selected.includes(String(o.ID)) ? "selected" : ""}
                   disabled={readOnly}
+                  aria-pressed={selected.includes(String(o.ID))}
                   onClick={() => {
                     setSelected((v) =>
                       multiple
@@ -481,8 +506,8 @@ function QuestionReader({
           )}
         </div>
       )}
-      {tab === "解析" && (
-        <div className="math-question-body">
+      {tab === "解析" && !lockAnalysis && (
+        <div className="math-question-body math-question-analysis" aria-label="题目解析">
           <State
             loading={analysisLoading}
             error={analysisError}
@@ -559,6 +584,7 @@ function QuestionReader({
           ) : null}
         </div>
       )}
+      </div>
       {tab === "举一反三" && (
         <MathExtrapolation
           sourceQuestionId={qid}
@@ -655,6 +681,7 @@ function QuestionReader({
         />
       )}
     </div>
+    </LearningWorkbench>
   );
 }
 function QuestionImage({ value }: { value: unknown }) {

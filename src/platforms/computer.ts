@@ -1,4 +1,4 @@
-import { platformRequest } from "../lib/api";
+import { platformRequest, studyFetch } from "../lib/api";
 
 export type ComputerRecord = Record<string, any>;
 export const computerSubjects = [
@@ -162,7 +162,7 @@ export async function computerUpload(
 ) {
   const form = new FormData();
   form.append("file", file);
-  const response = await fetch(
+  const response = await studyFetch(
     `/api/platform/computer/upload?path=${encodeURIComponent(path)}`,
     { method: "POST", body: form, credentials: "same-origin" },
   );

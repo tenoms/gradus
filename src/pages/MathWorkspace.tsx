@@ -586,7 +586,6 @@ function BookWorkspace({
         <main className="math-reader-area">
           {current ? (
             <QuestionReader
-              key={mathQuestionId(current)}
               row={current}
               book={book}
               stuid={stuid}
@@ -1089,7 +1088,7 @@ function PracticePaper({
               ))}
             </div>
             <QuestionReader
-              key={`${mathQuestionId(row)}-${readerVersion}`}
+              key={readerVersion}
               row={{
                 ...row,
                 MyAnswer: answers[row.ID]?.answer ?? row.MyAnswer,

@@ -1,3 +1,4 @@
+import { studyFetch } from "../../lib/api";
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -159,7 +160,7 @@ function Files({ value, audio }: { value: unknown; audio?: boolean }) {
 export async function uploadMathAttachment(file: File) {
   const form = new FormData();
   form.append("file", file);
-  const response = await fetch(
+  const response = await studyFetch(
     "/api/platform/math/upload?path=/api/sys_attachment/LayuiUpImg",
     { method: "POST", credentials: "same-origin", body: form },
   );

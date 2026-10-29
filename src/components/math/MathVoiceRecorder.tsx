@@ -1,3 +1,4 @@
+import { studyFetch } from "../../lib/api";
 import { useEffect, useRef, useState } from "react";
 import { Mic, Pause, Send, Trash2, Upload } from "lucide-react";
 import { mathData } from "../../platforms/math";
@@ -121,7 +122,7 @@ export default function MathVoiceRecorder({
       if (!url) {
         const form = new FormData();
         form.append("file", file);
-        const response = await fetch(
+        const response = await studyFetch(
           "/api/platform/math/upload?path=/api/sys_attachment/UpFile",
           { method: "POST", credentials: "same-origin", body: form },
         );

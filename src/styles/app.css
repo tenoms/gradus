@@ -387,7 +387,7 @@ svg {
 }
 .main-content {
   padding: 35px 38px 0;
-  max-width: 1610px;
+  max-width: 2048px;
   margin: auto;
 }
 .page-heading {
@@ -2485,4 +2485,50 @@ svg {
 .learning-video video {
   width: 100%;
   display: block;
+}
+
+.app-starting { min-height: 100dvh; display: grid; place-items: center; }
+.study-sync-indicator { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: #648777; white-space: nowrap; }
+.study-sync-indicator.sync-error { color: #aa683e; }
+.study-sync-notice { margin-bottom: 20px; }
+.study-sync-notice > div { flex: 1; min-width: 0; }
+.study-sync-notice p { font-size: 12px; font-weight: 400; }
+.admin-nav { color: var(--accent); margin-bottom: 10px; }
+.workspace-label { overflow-wrap: anywhere; gap: 8px; }
+.password-settings-form { display: flex; align-items: end; flex-wrap: wrap; gap: 18px; margin-top: 18px; }
+.password-settings-form .field-label { flex: 1; min-width: 180px; margin: 0; }
+.password-settings-form > p { flex-basis: 100%; }
+.space-announcements { display: grid; grid-template-columns: 145px 1fr; gap: 24px; padding: 20px 25px; margin-bottom: 24px; }
+.announcement-label { display: flex; align-items: start; gap: 9px; color: var(--accent); padding-top: 3px; }
+.announcement-label h2 { font-size: 14px; }
+.space-announcements details + details { border-top: 1px solid var(--border); padding-top: 12px; margin-top: 12px; }
+.space-announcements summary { cursor: pointer; font-size: 13px; }
+.space-announcements summary time { float: right; font-size: 11px; color: var(--muted); margin-left: 12px; }
+.space-announcements details p { font-size: 12px; color: #6d677c; white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 8px; }
+.announcement-error { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
+@media (min-width: 1600px) {
+  .dashboard-grid { grid-template-columns: minmax(0, 1fr) minmax(310px, 24%); }
+  .page-heading p:not(.eyebrow), .nav-item { font-size: 13px; }
+  .eyebrow { font-size: 10px; }
+}
+@media (min-width: 801px) {
+  .nav-collapsed .sidebar { width: 78px; padding: 28px 10px 0; }
+  .nav-collapsed .app-body { margin-left: 78px; }
+  .nav-collapsed .sidebar .brand { padding: 0 8px; }
+  .nav-collapsed .brand > div, .nav-collapsed .nav-item > span, .nav-collapsed .workspace-label, .nav-collapsed .nav-group-label, .nav-collapsed .study-quote, .nav-collapsed .sidebar-footer, .nav-collapsed .nav-new { display: none; }
+  .nav-collapsed .nav-item { justify-content: center; padding: 13px; margin-bottom: 3px; }
+  .nav-collapsed .nav-group + .nav-group-label + .nav-group { margin-top: 20px; }
+  .nav-collapsed .sidebar-bottom { padding-bottom: 20px; }
+}
+@media (max-width: 800px) {
+  .desktop-sidebar-toggle { display: none; }
+  .study-sync-indicator > span { display: none; }
+  .topbar-right { gap: 14px; }
+}
+@media (max-width: 560px) {
+  .space-announcements { grid-template-columns: 1fr; gap: 14px; padding: 18px; }
+  .study-sync-notice { flex-wrap: wrap; }
+  .study-sync-notice .btn { margin-left: 26px; }
+  .password-settings-form { align-items: stretch; flex-direction: column; }
+  .password-settings-form .field-label { width: 100%; }
 }

@@ -1,5 +1,9 @@
 import { useSyncExternalStore } from "react";
+import { api } from "./api";
 import type { Platform } from "./api";
+import { applyStudyChange, createStudySync, emptyStudyData } from "./study-sync.mjs";
+import type { StudyChange, SyncStatus } from "./study-sync.mjs";
+import { validateStudyData } from "../../shared/study-data.mjs";
 export interface StudyTask {
   id: string;
   title: string;
@@ -19,96 +23,73 @@ export interface Activity {
   durationSeconds?: number;
   path?: string;
 }
-interface StudyData {
+export interface StudyData {
   tasks: StudyTask[];
   activities: Activity[];
   goalMinutes: number;
 }
-const defaultData: StudyData = { tasks: [], activities: [], goalMinutes: 60 };
+const defaultData = emptyStudyData();
 let scope = "guest";
 let current: StudyData = defaultData;
-let currentRaw = "";
+let syncStatus: SyncStatus = { state: "local", pending: 0 };
+let synchronizer: ReturnType<typeof createStudySync> | undefined;
 const listeners = new Set<() => void>();
-function key() {
-  return `study-space:v1:${scope}`;
-}
-function read() {
-  try {
-    const raw = localStorage.getItem(key()) || "";
-    if (raw !== currentRaw) {
-      currentRaw = raw;
-      current = raw
-        ? { ...defaultData, ...JSON.parse(raw) }
-        : { ...defaultData, tasks: [], activities: [] };
-    }
-  } catch {
-    current = { ...defaultData, tasks: [], activities: [] };
+function emit() { listeners.forEach(listener => listener()); }
+function key() { return `study-space:v2:${scope}`; }
+type WithoutChangeId<T> = T extends { id: string } ? Omit<T, "id"> : never;
+function change(value: WithoutChangeId<StudyChange>) {
+  const operation = { ...value, id: crypto.randomUUID() } as StudyChange;
+  if (synchronizer) synchronizer.change(operation);
+  else {
+    current = applyStudyChange(current, operation);
+    try { localStorage.setItem(key(), JSON.stringify({ data: current, pending: [] })); }
+    catch { syncStatus = { state: "error", pending: 0, message: "浏览器缓存不可用，请导出备份。" }; }
+    emit();
   }
-  return current;
 }
-function emit() {
-  listeners.forEach((l) => l());
-}
-function save(data: StudyData) {
-  current = data;
-  currentRaw = JSON.stringify(data);
-  localStorage.setItem(key(), currentRaw);
-  emit();
-}
-export function setUserScope(ref?: string) {
-  scope = ref || "guest";
-  currentRaw = "__reload";
-  read();
-  emit();
-}
-export function useStudyData() {
-  return useSyncExternalStore(
-    (callback) => {
-      listeners.add(callback);
-      return () => listeners.delete(callback);
-    },
-    read,
-    () => defaultData,
-  );
-}
-export function addTask(task: Omit<StudyTask, "id" | "done" | "createdAt">) {
-  save({
-    ...read(),
-    tasks: [
-      ...read().tasks,
-      {
-        ...task,
-        id: crypto.randomUUID(),
-        done: false,
-        createdAt: new Date().toISOString(),
+export function setUserScope(userId?: string) {
+  const nextScope = userId ? `user:${userId}` : "guest";
+  if (scope === nextScope && (synchronizer || !userId)) return;
+  synchronizer?.stop();
+  synchronizer = undefined;
+  scope = nextScope;
+  current = emptyStudyData();
+  syncStatus = { state: userId ? "loading" : "local", pending: 0 };
+  if (userId) {
+    const cacheKey = key();
+    synchronizer = createStudySync({
+      transport: {
+        get: () => api("/api/study/data", { headers: { "X-Study-User": userId } }),
+        put: value => api("/api/study/data", { method: "PUT", headers: { "X-Study-User": userId }, body: JSON.stringify(value) }),
       },
-    ],
-  });
+      readCache: () => JSON.parse(localStorage.getItem(cacheKey) || "null"),
+      writeCache: value => localStorage.setItem(cacheKey, JSON.stringify(value)),
+      onChange(data, status) { current = data; syncStatus = status; emit(); },
+    });
+    current = synchronizer.data;
+    void synchronizer.sync();
+  }
+  emit();
+}
+const subscribe = (callback: () => void) => { listeners.add(callback); return () => { listeners.delete(callback); }; };
+export function useStudyData() { return useSyncExternalStore(subscribe, () => current, () => defaultData); }
+export function useStudySync() { return useSyncExternalStore(subscribe, () => syncStatus, () => syncStatus); }
+export function retryStudySync() { return synchronizer?.sync(true); }
+export function addTask(task: Omit<StudyTask, "id" | "done" | "createdAt">) {
+  change({ kind: "task.add", task: { ...task, id: crypto.randomUUID(), done: false, createdAt: new Date().toISOString() } });
 }
 export function toggleTask(id: string) {
-  save({
-    ...read(),
-    tasks: read().tasks.map((t) => (t.id === id ? { ...t, done: !t.done } : t)),
-  });
+  const task = current.tasks.find(task => task.id === id);
+  if (task) change({ kind: "task.done", taskId: id, done: !task.done });
 }
-export function deleteTask(id: string) {
-  save({ ...read(), tasks: read().tasks.filter((t) => t.id !== id) });
-}
-export function setGoal(goalMinutes: number) {
-  save({ ...read(), goalMinutes });
-}
+export function deleteTask(id: string) { change({ kind: "task.delete", taskId: id }); }
+export function setGoal(goalMinutes: number) { change({ kind: "goal.set", goalMinutes }); }
 export function recordActivity(activity: Omit<Activity, "id" | "at">) {
-  save({
-    ...read(),
-    activities: [
-      { ...activity, id: crypto.randomUUID(), at: new Date().toISOString() },
-      ...read().activities,
-    ].slice(0, 2000),
-  });
+  change({ kind: "activity.add", activity: { ...activity, id: crypto.randomUUID(), at: new Date().toISOString() } });
 }
 export const recordStudy = recordActivity;
 export function exportStudyData() {
-  const blob = new Blob([JSON.stringify(read(), null, 2)], {
+  const blob = new Blob([JSON.stringify(current, null, 2)], {
     type: "application/json",
   });
   const url = URL.createObjectURL(blob);
@@ -119,35 +100,13 @@ export function exportStudyData() {
   URL.revokeObjectURL(url);
 }
 export function importStudyData(value: unknown) {
-  const d = value as StudyData;
-  if (!d || !Array.isArray(d.tasks) || !Array.isArray(d.activities))
-    throw new Error("文件格式不正确，请使用知序导出的学习记录");
-  for (const t of d.tasks) {
-    if (
-      typeof t.id !== "string" ||
-      typeof t.title !== "string" ||
-      !["math", "computer"].includes(t.platform) ||
-      typeof t.date !== "string"
-    )
-      throw new Error("学习计划内容无效");
-  }
-  for (const a of d.activities) {
-    if (
-      typeof a.id !== "string" ||
-      typeof a.at !== "string" ||
-      typeof a.title !== "string" ||
-      !["math", "computer"].includes(a.platform)
-    )
-      throw new Error("学习记录内容无效");
-  }
-  save({
-    tasks: d.tasks,
-    activities: d.activities,
-    goalMinutes: Math.max(5, Math.min(480, Number(d.goalMinutes) || 60)),
-  });
+  const data = validateStudyData(value);
+  change({ kind: "replace", data });
 }
-window.addEventListener("storage", () => {
-  currentRaw = "__reload";
-  read();
-  emit();
-});
+export function mergeStudyData(value: unknown) {
+  const data = validateStudyData(value);
+  validateStudyData(applyStudyChange(current, { kind: "merge", id: "validate", data }));
+  change({ kind: "merge", data });
+}
+window.addEventListener("online", () => { void retryStudySync(); });
+window.addEventListener("focus", () => { void retryStudySync(); });

@@ -1,4 +1,4 @@
-import { platformRequest } from "../lib/api";
+import { platformRequest, studyFetch } from "../lib/api";
 import { mathVisibleBooks } from "./math-book-visibility";
 import { mergeMathLibraryCatalog } from "./math-library";
 import { mathResponseData, mathResponseError } from "./math-response";
@@ -312,7 +312,7 @@ export const mathApi = {
   async photoSearch(image: File) {
     const form = new FormData();
     form.append("image", image);
-    const response = await fetch("/api/platform/math/photo", {
+    const response = await studyFetch("/api/platform/math/photo", {
       method: "POST",
       body: form,
       credentials: "same-origin",

@@ -1,3 +1,4 @@
+import { useSession } from "../../lib/session";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -168,6 +169,7 @@ function PaperRunner({
   context: MathPaperContext;
   onClose: () => void;
 }) {
+  const { session } = useSession();
   const [followup, setFollowup] = useState<MathPaperContext | null>(null),
     [teacherRecommendations, setTeacherRecommendations] = useState(false);
   const loaded = useAsync(
@@ -193,7 +195,7 @@ function PaperRunner({
     questionAt = useRef(Date.now()),
     timerExpired = useRef(false),
     recorded = useRef(false),
-    draftKey = `study:math:exam:${context.stuid}:${context.kind}:${context.DryID || 0}:${context.PaperID}:${context.CalendarID || 0}`;
+    draftKey = `study:math:exam:${session.user?.id || "guest"}:${context.stuid}:${context.kind}:${context.DryID || 0}:${context.PaperID}:${context.CalendarID || 0}`;
   const teacherMark = loaded.data?.teacherMark || false,
     room = loaded.data?.room || {},
     question = questions[current] || {},

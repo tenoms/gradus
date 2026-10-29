@@ -1,3 +1,4 @@
+import { studyFetch } from "../../lib/api";
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -24,7 +25,7 @@ import "./math-photo.css";
 async function recognize(file: File) {
   const form = new FormData();
   form.append("image", file);
-  const response = await fetch("/api/platform/math/photo", {
+  const response = await studyFetch("/api/platform/math/photo", {
     method: "POST",
     credentials: "same-origin",
     body: form,
@@ -41,7 +42,7 @@ async function recognize(file: File) {
 async function uploadIndexImage(file: File) {
   const form = new FormData();
   form.append("file", file);
-  const response = await fetch(
+  const response = await studyFetch(
     "/api/platform/math/upload?path=/api/sys_attachment/SearchUploadImg",
     { method: "POST", credentials: "same-origin", body: form },
   );

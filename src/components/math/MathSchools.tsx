@@ -1,3 +1,4 @@
+import { useSession } from "../../lib/session";
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -98,6 +99,8 @@ function subjectScores(rows: MathRow[], index: number) {
   ].join(" / ");
 }
 export default function MathSchools({ stuid }: { stuid: string }) {
+  const { session } = useSession();
+  const comparisonKey = `study:school-compare:${session.user?.id || "guest"}:${stuid}`;
   const all = useDirectory("GetSchoolList_cscj", {});
   const [search, setSearch] = useState(""),
     [province, setProvince] = useState(""),
@@ -106,7 +109,7 @@ export default function MathSchools({ stuid }: { stuid: string }) {
     [comparisons, setComparisons] = useState<Comparison[]>(() => {
       try {
         return JSON.parse(
-          localStorage.getItem(`study:school-compare:${stuid}`) || "[]",
+          localStorage.getItem(comparisonKey) || "[]",
         );
       } catch {
         return [];
@@ -115,10 +118,10 @@ export default function MathSchools({ stuid }: { stuid: string }) {
   useEffect(
     () =>
       localStorage.setItem(
-        `study:school-compare:${stuid}`,
+        comparisonKey,
         JSON.stringify(comparisons),
       ),
-    [comparisons, stuid],
+    [comparisons, comparisonKey],
   );
   const provinces = [
     ...new Set(all.rows.map((s) => String(s.Province || "")).filter(Boolean)),
