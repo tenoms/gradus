@@ -7,8 +7,8 @@
 使用 Node.js 24（最低 22.13）及 PostgreSQL 14+。运行时版本记录在 `.node-version`，依赖由 `package-lock.json` 锁定。
 
 ```sh
-cp config/local.example.json config/local.json
-# 填写 runtime.database.url、YYB 地址及所需平台秘密
+cp .env.example .env
+# 填写 DATABASE_URL
 npm ci
 npm run dev
 ```
@@ -16,14 +16,14 @@ npm run dev
 - [学习空间](http://127.0.0.1:5173/learn/)
 - [管理空间](http://127.0.0.1:5173/admin/)
 
-首次进入管理空间创建管理员，再配置 YYB 服务和系统账号池，并创建学习账号；也可在管理端开启访客注册。管理与学习会话独立，管理员进入学习空间时单独登录。
+首次进入管理空间创建管理员，确认两科平台配置并填写所需密钥，再配置 YYB 服务和系统账号池、创建学习账号；也可在管理端开启访客注册。管理与学习会话独立，管理员进入学习空间时单独登录。
 
 ```sh
 npm run build
 npm start
 ```
 
-生产构建由同源 Express 服务提供，默认地址为 [http://127.0.0.1:3001/learn/](http://127.0.0.1:3001/learn/)。监听、数据库池、会话、缓存与超时从配置文件读取；`HOST`、`PORT` 等环境覆盖继续有效。HTTPS 部署设置安全 cookie，反向代理保留原 Host。文件用途、优先级和更新方式见[系统配置](config/README.md)。
+生产构建由同源 Express 服务提供，默认地址为 [http://127.0.0.1:3001/learn/](http://127.0.0.1:3001/learn/)。运维默认值统一放在 `config/system.json`；`.env` 保存数据库连接及可选的监听、schema、安全 cookie 覆盖项。HTTPS 部署设置安全 cookie，反向代理保留原 Host。各配置入口和更新方式见[系统配置](config/README.md)。
 
 ## 主要能力
 
@@ -46,7 +46,7 @@ PostgreSQL 分为两个数据域：默认 `study_web` 保存 Web 用户、会话
 
 个人中心可关联本人微信账号，明确选择同步范围后导入已有记录。个人同步与公共资源同步使用独立开关，均从小程序接口向 Web 读取；Web 答案、笔记和进度不回写小程序。
 
-平台初值从 `config/defaults.json`、本机 `config/local.json`（或 `STUDY_CONFIG_FILE` 指定的文件）及环境变量读取，随后以数据库中的管理配置为准。公开地址与默认学科等集中在 `config/public.json`，秘密只在服务端保存。原小程序目录与 `yyb.txt` 属于开发资产，启动、构建和真实验收均无需这些文件。
+`config/system.json` 是唯一受版本管理的配置文件，包含运维默认值、公开参数和非秘密首次安装模板。实际平台地址、YYB 服务与 OCR、OAuth、录播密钥统一由管理端保存到 PostgreSQL；`.env` 仅处理数据库连接与少量部署参数。原小程序目录与 `yyb.txt` 属于开发资产，启动、构建和真实验收均无需这些文件。
 
 ## 源码组织
 
@@ -59,7 +59,7 @@ server/modules/      身份、账号池、资源、学习、个人同步与管�
 server/integrations/ YYB 与两科平台协议、配置和策略
 server/infrastructure/ PostgreSQL、错误类型及运行诊断
 shared/              两端共用的领域校验
-config/              默认配置、公开配置与本机部署模板
+config/              唯一系统配置与配置说明
 tests/unit/          按业务分类的单元与交互契约测试
 tests/integration/   使用独立 PostgreSQL schema 的集成测试
 tests/support/       测试数据库与 HTTP 应用夹具
@@ -82,6 +82,6 @@ npm run clean             # 清理 dist 与 TypeScript 增量产物
 npm run clean:reports     # 同时清理 artifacts 内本机验收产物
 ```
 
-自动化测试在各自独立的 PostgreSQL schema 中运行并清理，CI 提供临时数据库。真实接口验收使用本机配置和现有账号，应按[开发指南](CONTRIBUTING.md)选择对应入口。
+自动化测试在各自独立的 PostgreSQL schema 中运行并清理，CI 提供临时数据库。真实接口验收读取管理端数据库已有的平台配置，再在独立临时库中使用真实账号验证，应按[开发指南](CONTRIBUTING.md)选择对应入口。
 
 当前说明以源码和现行文档为准；旧测试数量、迁移清单及阶段实测集中在[文档索引](docs/README.md)下的历史档案中。
