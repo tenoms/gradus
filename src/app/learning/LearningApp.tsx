@@ -46,6 +46,7 @@ import type { Platform, Session } from "../../shared/api/client";
 import { emptySession, getSession, setApiIdentity } from "../../shared/api/client";
 import { SessionContext, useSession } from "../../shared/auth/session";
 import { configureBrowserConfig } from "../../shared/config/public.mjs";
+import { useSpaceTheme } from "../../shared/theme/use-space-theme";
 import { extraItems, libraryItems, navItems, sectionTitles } from "./navigation";
 const PersonalCenter = lazy(() => import("../../features/identity/PersonalCenter"));
 const MathWorkspace = lazy(() => import("../../features/math/MathWorkspace"));
@@ -121,6 +122,7 @@ export default function LearningApp() {
   const [platform, setPlatform] = useState<Platform>(() =>
     localStorage.getItem("study-platform") === "computer" ? "computer" : "math",
   );
+  useSpaceTheme(platform);
   const [session, setSession] = useState<Session>(emptySession);
   const activeIdentity = useRef<string | undefined>(undefined);
   const [booting, setBooting] = useState(true);
@@ -183,7 +185,7 @@ export default function LearningApp() {
   useEffect(() => {
     setMobileOpen(false);
     window.scrollTo(0, 0);
-  }, [location.pathname]);
+  }, [location.pathname, session.user?.id]);
   function changePlatform(p: Platform) {
     setPlatform(p);
     localStorage.setItem("study-platform", p);

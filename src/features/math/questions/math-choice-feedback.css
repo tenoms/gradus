@@ -6,30 +6,30 @@
 .math-workspace .math-options > button.math-choice-incorrect,
 .math-workspace button.computing-option.math-choice-incorrect,
 .math-workspace button.math-exam-option.math-choice-incorrect {
-  color: #bd334b;
-  border-color: #d96378;
-  background: #fff1f3;
+  color: var(--danger);
+  border-color: var(--danger-border);
+  background: var(--danger-soft);
   opacity: 1;
 }
 .math-workspace .math-options > button.math-choice-correct,
 .math-workspace button.computing-option.math-choice-correct,
 .math-workspace button.math-exam-option.math-choice-correct {
-  color: #24765a;
-  border-color: #4ba98d;
-  background: #f0faf5;
+  color: var(--success);
+  border-color: var(--success-border);
+  background: var(--success-soft);
   opacity: 1;
 }
 .math-workspace .math-options > button.math-choice-incorrect > span,
 .math-workspace button.computing-option.math-choice-incorrect > span,
 .math-workspace button.math-exam-option.math-choice-incorrect > span {
-  color: #fff;
-  border-color: #c84057;
-  background: #c84057;
+  color: var(--on-accent);
+  border-color: var(--danger-border);
+  background: var(--danger-solid);
 }
 .math-workspace .math-options > button.math-choice-correct > span,
 .math-workspace button.computing-option.math-choice-correct > span,
 .math-workspace button.math-exam-option.math-choice-correct > span {
-  color: #fff;
-  border-color: #348665;
-  background: #348665;
+  color: var(--on-accent);
+  border-color: var(--success-border);
+  background: var(--success-solid);
 }

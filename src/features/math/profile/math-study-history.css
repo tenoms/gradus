@@ -19,7 +19,7 @@
   display: grid;
   gap: 7px;
   text-align: left;
-  background: #faf8fd;
+  background: var(--surface-soft);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 15px;
@@ -28,8 +28,8 @@
   font: inherit;
 }
 .msh-capacity > button.active {
-  background: #f1ebfa;
-  border-color: #c5b5e3;
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
   color: var(--accent);
 }
 .msh-capacity span {
@@ -42,7 +42,7 @@
   color: var(--ink);
 }
 .msh-capacity small {
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.6;
 }
 .msh-toolbar {
@@ -50,7 +50,7 @@
   gap: 10px;
   align-items: center;
   margin: 18px 0;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
 }
 .msh-toolbar > span {
@@ -66,7 +66,7 @@
   background: transparent;
   color: var(--muted);
   font: inherit;
-  font-size: 10px;
+  font-size: 11px;
 }
 .msh-records > button {
   display: flex;
@@ -93,7 +93,7 @@
 }
 .msh-records small {
   display: block;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
   line-height: 1.8;
   margin-top: 5px;
@@ -111,7 +111,7 @@
 }
 .msh-end {
   text-align: center;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
   padding: 20px;
   margin: 0;

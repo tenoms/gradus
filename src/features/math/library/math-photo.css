@@ -18,7 +18,7 @@
   touch-action: none;
   cursor: crosshair;
   justify-self: center;
-  background: #211b2c;
+  background: var(--media-bg);
 }
 .math-crop-frame > img {
   display: block;
@@ -30,15 +30,15 @@
 }
 .math-crop-selection {
   position: absolute;
-  border: 2px solid #8c72d7;
-  box-shadow: 0 0 0 9999px #17102166;
+  border: 2px solid var(--accent-border);
+  box-shadow: 0 0 0 9999px var(--media-bg);
   pointer-events: none;
 }
 .math-crop-selection:after {
   content: "";
   position: absolute;
   inset: 33.333%;
-  border: 1px solid #ffffff77;
+  border: 1px solid color-mix(in srgb, var(--on-media) 47%, transparent);
 }
 .math-crop-controls {
   display: flex;

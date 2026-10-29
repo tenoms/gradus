@@ -20,7 +20,7 @@
   margin: 0;
 }
 .computing-count {
-  background: #f5f1fb;
+  background: var(--accent-soft);
   padding: 14px 18px;
   color: var(--accent);
   font-size: 13px;
@@ -31,13 +31,13 @@
   display: inline-flex;
   padding: 4px 9px;
   border-radius: 6px;
-  background: #f2eefb;
+  background: var(--accent-soft);
   color: var(--accent);
   font-size: 11px;
 }
 .computing-tag.muted {
   color: var(--muted);
-  background: #f4f3f6;
+  background: var(--surface-soft);
 }
 .computing-toolbar {
   display: flex;
@@ -60,8 +60,8 @@
 }
 .computing-error {
   padding: 18px;
-  background: #fff3f1;
-  color: #b24f50;
+  background: var(--danger-soft);
+  color: var(--danger);
   font-size: 13px;
   border-radius: 12px;
   display: flex;
@@ -101,7 +101,7 @@
   height: 42px;
   width: 42px;
   border-radius: 11px;
-  background: #f5f2fc;
+  background: var(--accent-soft);
   color: var(--accent);
   display: grid;
   place-items: center;
@@ -205,7 +205,7 @@
   margin-left: auto;
 }
 .computing-correct {
-  color: #41927c;
+  color: var(--success);
 }
 .computing-muted {
   color: var(--muted);
@@ -225,7 +225,7 @@
   padding: 16px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--surface);
   cursor: pointer;
   text-align: left;
   color: var(--ink);
@@ -245,15 +245,15 @@
 }
 .computing-option.active {
   border-color: var(--accent);
-  background: #f6f3fd;
+  background: var(--accent-soft);
 }
 .computing-option.active > span {
   border-color: var(--accent);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 .computing-hints {
-  background: #f8f6fc;
+  background: var(--surface-soft);
   padding: 22px;
   border-radius: 14px;
   margin: 23px 0;
@@ -290,7 +290,7 @@
 .computing-step .btn.selected {
   color: var(--accent);
   border-color: var(--accent);
-  background: #f1ebfd;
+  background: var(--accent-soft);
 }
 .computing-analysis {
   font-size: 14px;
@@ -308,27 +308,27 @@
 .computing-sheet button {
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   color: var(--muted);
   height: 38px;
   cursor: pointer;
 }
 .computing-sheet button.correct {
-  border-color: #57ad91;
-  color: #3e957b;
+  border-color: var(--success-border);
+  color: var(--success);
 }
 .computing-sheet button.incorrect {
-  border-color: #d8a398;
-  color: #bc7567;
+  border-color: var(--danger-border);
+  color: var(--danger);
 }
 .computing-sheet button.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 .computing-report {
   padding: 24px;
-  background: #f5f0fc;
+  background: var(--accent-soft);
   border-radius: 14px;
   margin: 25px 0;
 }
@@ -372,8 +372,8 @@
 }
 .computing-notice {
   padding: 14px 18px;
-  color: #408e77;
-  background: #f0f9f4;
+  color: var(--success);
+  background: var(--success-soft);
   font-size: 13px;
   border-radius: 10px;
 }

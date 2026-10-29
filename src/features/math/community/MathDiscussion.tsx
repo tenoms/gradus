@@ -1,3 +1,4 @@
+import { confirmAction } from "../../../shared/ui/dialogs/InteractionProvider";
 import { loadDiscussionPage } from "./discussion-data.mjs";
 import { useEffect, useState } from "react";
 import {
@@ -198,8 +199,8 @@ export default function MathDiscussion({
                   ),
                 )
               }
-              onDelete={() => {
-                if (window.confirm("删除自己的这条讨论？"))
+              onDelete={async () => {
+                if ((await confirmAction({ title: "删除这条讨论？", description: "这条讨论将从你的学习动态中移除。", confirmLabel: "删除讨论", cancelLabel: "保留讨论", danger: true })))
                   void act(
                     () => mathPost("/api/sys_comment/Del", { ID: r.ID }),
                     "讨论已删除",
@@ -436,8 +437,8 @@ function DiscussionThread({
               ),
             )
           }
-          onDelete={() => {
-            if (window.confirm("删除自己的这条回复？"))
+          onDelete={async () => {
+            if ((await confirmAction({ title: "删除这条回复？", description: "删除后，这条回复将不再显示。", confirmLabel: "删除回复", cancelLabel: "保留回复", danger: true })))
               void act(
                 () => mathPost("/api/sys_comment/Del", { ID: row.ID }),
                 "回复已删除",

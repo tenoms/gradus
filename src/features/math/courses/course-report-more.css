@@ -11,7 +11,7 @@
   flex-wrap: wrap;
 }
 .mcrm-own {
-  background: #f3effd;
+  background: var(--accent-soft);
   padding: 14px 18px;
   border-radius: 12px;
 }
@@ -25,15 +25,15 @@
   align-items: center;
   gap: 12px;
   padding: 14px 10px;
-  border-bottom: 1px solid #eeeaf6;
+  border-bottom: 1px solid var(--accent-border);
 }
 .mcrm-ranking li.mine {
-  background: #f8f5fe;
+  background: var(--surface-soft);
 }
 .mcrm-rank {
   width: 28px;
   text-align: center;
-  color: #62517f;
+  color: var(--text-secondary);
   font-weight: 700;
 }
 .mcrm-ranking img,
@@ -42,7 +42,7 @@
   height: 36px;
   border-radius: 50%;
   object-fit: cover;
-  background: #eae5f7;
+  background: var(--accent-soft);
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -53,18 +53,18 @@
   overflow-wrap: anywhere;
 }
 .mcrm-ranking button {
-  border: 1px solid #ded8ee;
+  border: 1px solid var(--accent-border);
   border-radius: 9px;
   padding: 7px 10px;
   display: flex;
   align-items: center;
   gap: 5px;
-  background: white;
-  color: #65537d;
+  background: var(--surface);
+  color: var(--text-secondary);
 }
 .mcrm-ranking .liked {
-  color: #a32c58;
-  background: #fff1f6;
+  color: var(--danger);
+  background: var(--danger-soft);
 }
 .mcrm-ranking strong {
   white-space: nowrap;
@@ -77,7 +77,7 @@
 }
 .mcrm-last > div {
   padding: 18px 24px;
-  background: #f4f0fc;
+  background: var(--accent-soft);
   border-radius: 12px;
   flex: 1;
 }
@@ -100,14 +100,14 @@
 }
 .mcrm-bins > div > div {
   height: 9px;
-  background: #f0ecf9;
+  background: var(--accent-soft);
   border-radius: 6px;
   overflow: hidden;
 }
 .mcrm-bins i {
   display: block;
   height: 100%;
-  background: #7a5fd0;
+  background: var(--accent);
   border-radius: 6px;
 }
 .mcrm-accuracy {

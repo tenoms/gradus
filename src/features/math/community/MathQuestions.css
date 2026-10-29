@@ -45,7 +45,7 @@
   display: flex;
   align-items: center;
   gap: 13px;
-  background: #f5f1fb;
+  background: var(--accent-soft);
   color: var(--accent);
   border-radius: 10px;
   padding: 17px;
@@ -88,7 +88,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #f9f7fc;
+  background: var(--surface-soft);
   border: 0;
   border-radius: 6px;
   padding: 11px 12px;
@@ -98,7 +98,7 @@
   cursor: pointer;
 }
 .math-qa-search-results button:hover {
-  background: #efe9f8;
+  background: var(--accent-soft);
   color: var(--accent);
 }
 .math-qa-search-results p {
@@ -108,7 +108,7 @@
 .math-qa-character-count {
   display: block;
   text-align: right;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
   margin-top: -14px;
   margin-bottom: 18px;
@@ -135,8 +135,8 @@
   right: -4px;
   top: -4px;
   border: 0;
-  background: #746b84;
-  color: white;
+  background: var(--text-secondary);
+  color: var(--on-accent);
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -148,7 +148,7 @@
   position: relative;
   width: 78px;
   height: 78px;
-  border: 1px dashed #cdc1df;
+  border: 1px dashed var(--accent-border);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -156,9 +156,9 @@
   gap: 7px;
   border-radius: 8px;
   color: var(--accent);
-  background: #faf8fd;
+  background: var(--surface-soft);
   cursor: pointer;
-  font-size: 10px;
+  font-size: 11px;
 }
 .math-qa-attach-button input {
   position: absolute;
@@ -170,7 +170,7 @@
 }
 .math-qa-footnote {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   text-align: center;
   line-height: 1.8;
   margin: 20px 0 0;
@@ -181,13 +181,13 @@
 .math-qa-bubble {
   padding: 20px;
   border-radius: 12px;
-  background: #f7f7fa;
+  background: var(--surface-soft);
   margin-bottom: 18px;
   line-height: 1.8;
   font-size: 13px;
 }
 .math-qa-bubble.teacher {
-  background: #f4effb;
+  background: var(--accent-soft);
   margin-left: 30px;
 }
 .math-qa-bubble-person {
@@ -201,7 +201,7 @@
   font-size: 12px;
 }
 .math-qa-bubble-person time {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
   margin-left: auto;
 }
@@ -215,7 +215,7 @@
   width: 29px;
   height: 29px;
   border-radius: 50%;
-  background: #e8e1f3;
+  background: var(--accent-soft);
   color: var(--accent);
   display: grid;
   place-items: center;
@@ -244,11 +244,11 @@
   display: flex;
   align-items: start;
   gap: 10px;
-  border: 1px solid #eaddb9;
-  background: #fffaf0;
+  border: 1px solid var(--warning-border);
+  background: var(--warning-soft);
   border-radius: 8px;
   padding: 18px;
-  color: #af8b46;
+  color: var(--warning);
   font-size: 12px;
 }
 .math-qa-evaluation .rich-content {
@@ -265,7 +265,7 @@
   flex-wrap: wrap;
 }
 .math-qa-confirm {
-  background: #fff8ed;
+  background: var(--warning-soft);
   padding: 18px;
   margin-top: 22px;
   border-radius: 8px;
@@ -343,7 +343,7 @@
     flex-wrap: wrap;
   }
   .math-qa-bubble-person time {
-    font-size: 9px;
+    font-size: 11px;
   }
   .math-qa-files img {
     max-width: 180px;
@@ -377,7 +377,7 @@
 }
 .math-qa-teacher-reviews small,
 .math-qa-teacher-reviews p {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
 }
 .math-qa-teacher-reviews h4 {
@@ -407,10 +407,10 @@
   position: sticky;
   bottom: 0;
   z-index: 3;
-  background: #fff;
+  background: var(--surface);
   padding: 16px 22px;
   border-top: 1px solid var(--border);
-  box-shadow: 0 -5px 18px #30223f05;
+  box-shadow: var(--shadow);
 }
 .learning-workbench .math-question-top { gap: 12px; flex-wrap: wrap; }
 .learning-workbench .math-options > button { min-height: 54px; }
@@ -429,7 +429,7 @@
   }
   .math-reader-panes.is-split > .math-question-analysis {
     border-left: 1px solid var(--border);
-    background: #fcfbfe;
+    background: var(--surface-soft);
   }
 }
 @media (max-width: 700px) {

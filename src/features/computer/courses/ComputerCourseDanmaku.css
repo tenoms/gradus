@@ -1,9 +1,9 @@
 .ccd-danmaku {
   margin: 16px 0 24px;
-  border: 1px solid #e4ebf4;
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 18px;
-  background: #fbfcfe;
+  background: var(--surface-soft);
 }
 .ccd-heading {
   display: flex;
@@ -19,12 +19,12 @@
   margin: 0;
   font-size: 13px;
   font-weight: 500;
-  color: #8093af;
+  color: var(--muted);
 }
 .ccd-heading h4 > span {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 400;
-  color: #a0adbf;
+  color: var(--muted);
 }
 .ccd-toggle {
   display: flex;
@@ -32,8 +32,8 @@
   gap: 6px;
   border: 0;
   background: transparent;
-  color: #99a9be;
-  font-size: 10px;
+  color: var(--muted);
+  font-size: 11px;
   cursor: pointer;
 }
 .ccd-form {
@@ -56,24 +56,24 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
-  color: #9cacc1;
+  font-size: 11px;
+  color: var(--muted);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 .ccd-list {
-  border-top: 1px solid #e8eef6;
+  border-top: 1px solid var(--border);
   padding-top: 14px;
 }
 .ccd-list summary {
   font-size: 11px;
-  color: #95a6be;
+  color: var(--muted);
   cursor: pointer;
   line-height: 1.9;
 }
 .ccd-list summary small {
-  font-size: 9px;
-  color: #abb6c6;
+  font-size: 11px;
+  color: var(--muted);
   margin-left: 10px;
 }
 .ccd-list ol {
@@ -84,7 +84,7 @@
   overflow: auto;
 }
 .ccd-list li + li {
-  border-top: 1px solid #eff3f8;
+  border-top: 1px solid var(--border);
 }
 .ccd-list button {
   display: flex;
@@ -96,7 +96,7 @@
   width: 100%;
   text-align: left;
   cursor: pointer;
-  color: #8f9fb5;
+  color: var(--muted);
   font-size: 11px;
   line-height: 1.7;
   border-radius: 5px;
@@ -105,13 +105,13 @@
   cursor: default;
 }
 .ccd-list li.active button {
-  background: #edf3fb;
-  color: #728db5;
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 .ccd-list time {
-  font-size: 10px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
-  color: #a2b0c4;
+  color: var(--muted);
   white-space: nowrap;
 }
 .ccd-list button > span {
@@ -119,18 +119,18 @@
 }
 .ccd-empty {
   font-size: 11px;
-  color: #a8b4c5;
+  color: var(--muted);
   line-height: 1.9;
   margin: 15px 0 3px;
 }
 .ccd-notice {
   font-size: 11px;
-  color: #7e9e8f;
+  color: var(--text-secondary);
   line-height: 1.8;
 }
 .ccd-error {
   font-size: 11px;
-  color: #bf8c81;
+  color: var(--danger);
   line-height: 1.8;
 }
 .ccd-video-host {
@@ -153,7 +153,7 @@
   white-space: nowrap;
   font-size: 15px;
   font-weight: 500;
-  color: #fff;
+  color: var(--on-media);
   text-shadow:
     0 1px 3px #000,
     1px 0 3px #000,
@@ -192,7 +192,7 @@
     flex-basis: 100%;
   }
   .ccd-form .input {
-    font-size: 10px;
+    font-size: 11px;
   }
   .ccd-overlay > span {
     font-size: 12px;

@@ -1,3 +1,4 @@
+import { confirmAction } from "../../../shared/ui/dialogs/InteractionProvider";
 import { useSession } from "../../../shared/auth/session";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -559,8 +560,8 @@ function ComputingPaper({
               <button
                 className="btn btn-primary"
                 disabled={loading}
-                onClick={() => {
-                  if (window.confirm("确认提交本卷？未作答题目会记录为未答。"))
+                onClick={async () => {
+                  if ((await confirmAction({ title: "提交计算卷？", description: "未作答题目会记录为未答，提交后可查看本卷报告。", confirmLabel: "提交计算卷", cancelLabel: "继续作答" })))
                     void finish();
                 }}
               >
@@ -675,8 +676,8 @@ function ComputingInfo({
           <button
             className="btn btn-secondary"
             disabled={loading}
-            onClick={() => {
-              if (window.confirm("重新练习会重置本卷已有作答，确认继续？"))
+            onClick={async () => {
+              if ((await confirmAction({ title: "重新练习本卷？", description: "本卷已有作答将被重置。", confirmLabel: "重置并重新练习", cancelLabel: "保留作答", danger: true })))
                 void begin(true);
             }}
           >
@@ -867,11 +868,9 @@ export default function MathComputing({ stuid }: { stuid: string }) {
                   <button
                     className="btn btn-secondary"
                     disabled={loading}
-                    onClick={() => {
+                    onClick={async () => {
                       if (
-                        window.confirm(
-                          "确认已掌握这道题，并从待复习错题中移除？",
-                        )
+                        (await confirmAction({ title: "将这道题标为已掌握？", description: "确认后将从待复习错题中移除。", confirmLabel: "标为已掌握", cancelLabel: "继续复习" }))
                       )
                         void remove(item);
                     }}

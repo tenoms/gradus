@@ -57,13 +57,13 @@
   font-weight: 500;
 }
 .mqr-book-distribution span {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
   flex-shrink: 0;
 }
 .mqr-progress {
   height: 7px;
-  background: #f2eff7;
+  background: var(--accent-soft);
   border-radius: 5px;
   overflow: hidden;
 }
@@ -109,7 +109,7 @@
   font-size: 11px;
 }
 .mqr-month-chart button > small {
-  font-size: 10px;
+  font-size: 11px;
   white-space: nowrap;
 }
 .mqr-details {
@@ -126,7 +126,7 @@
   gap: 10px;
 }
 .mqr-detail-header time {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
 }
 .mqr-details h3 {

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {startHttpApp} from '../support/http-app.mjs';
+import {appearanceDefaults} from '../../shared/appearance.mjs';
 
 test('Web sign-in and session read report the same local learning identity after relogin',async()=>{
   let sourceCalls=0;
@@ -32,6 +33,7 @@ test('anonymous and authenticated session responses expose only browser deployme
   t.after(() => app.close());
   const expected = {
     math: { externalUrl: 'https://print.example.test/External/', printStationId: 9 },
+    appearance: appearanceDefaults(),
   };
   for (const space of ['admin', 'learning']) {
     const response = await app.request(`/api/${space}/auth/session`);

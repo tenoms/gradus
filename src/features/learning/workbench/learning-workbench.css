@@ -11,12 +11,12 @@
   gap: 12px;
   padding: 13px 16px;
   border: 1px solid var(--border);
-  background: #fbfaff;
+  background: var(--surface-soft);
   border-radius: 12px 12px 0 0;
 }
 .learning-workbench-caption { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; min-width: 0; }
 .learning-workbench-caption strong { font-size: 12px; font-weight: 600; }
-.learning-workbench-caption span { color: #777186; font-size: 11px; }
+.learning-workbench-caption span { color: var(--text-secondary); font-size: 11px; }
 .learning-workbench-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .learning-tool-button,
 .learning-font-control {
@@ -25,14 +25,14 @@
   justify-content: center;
   gap: 6px;
   min-height: 34px;
-  border: 1px solid #e6e1f0;
+  border: 1px solid var(--border);
   border-radius: 7px;
-  background: white;
+  background: var(--surface);
   padding: 6px 10px;
   font-size: 11px;
-  color: #625576;
+  color: var(--text-secondary);
 }
-.learning-tool-button[aria-pressed=true] { background: var(--accent-soft); color: var(--accent); border-color: #cdbfea; }
+.learning-tool-button[aria-pressed=true] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-border); }
 .learning-font-control select { border: 0; background: transparent; color: inherit; max-width: 110px; cursor: pointer; }
 .learning-workbench > .panel { border-radius: 0 0 14px 14px; }
 .learning-workbench.is-focused {
@@ -42,16 +42,16 @@
   padding: 0 16px 20px;
   overflow: auto;
   overscroll-behavior: contain;
-  background: #f7f7fb;
-  border: 1px solid #ddd7ec;
+  background: var(--surface-soft);
+  border: 1px solid var(--accent-border);
   border-radius: 16px;
-  box-shadow: 0 0 0 18px #292239a8;
+  box-shadow: 0 0 0 18px var(--overlay);
 }
 .learning-workbench.is-focused > .learning-workbench-toolbar {
   position: sticky;
   top: 0;
   z-index: 5;
-  background: #fbfaff;
+  background: var(--surface-soft);
   margin: 0 -16px;
   border-radius: 14px 14px 0 0;
 }

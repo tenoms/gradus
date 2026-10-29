@@ -1,10 +1,11 @@
 import { Suspense, lazy, useEffect, useState } from "react";
 import { Link, NavLink, Route, Routes, useLocation } from "react-router-dom";
-import { Activity, ArrowUpRight, Bell, CircleAlert, Database, FolderOpen, LayoutDashboard, Layers3, LoaderCircle, LogOut, Menu, Settings2, ShieldCheck, Users, X } from "lucide-react";
+import { Activity, ArrowUpRight, Bell, CircleAlert, Database, FolderOpen, LayoutDashboard, Layers3, LoaderCircle, LogOut, Menu, Palette, Settings2, ShieldCheck, Users, X } from "lucide-react";
 import { api, emptySession, getSession, setApiIdentity } from "../../shared/api/client";
 import type { Session } from "../../shared/api/client";
 import { SessionContext } from "../../shared/auth/session";
 import { configureBrowserConfig } from "../../shared/config/public.mjs";
+import { useSpaceTheme } from "../../shared/theme/use-space-theme";
 import AuthScreen from "../../features/identity/AuthScreen";
 import PasswordSettings from "../../features/identity/PasswordSettings";
 import "../../features/admin/admin.css";
@@ -14,6 +15,7 @@ const navigation = [
   { to: "/users", label: "用户与账号", icon: Users },
   { to: "/data", label: "账号与服务", icon: Database },
   { to: "/resources", label: "资源中心", icon: FolderOpen },
+  { to: "/appearance", label: "主题与外观", icon: Palette },
   { to: "/configuration", label: "平台集成配置", icon: Settings2 },
   { to: "/announcements", label: "学习公告", icon: Bell },
   { to: "/audit", label: "操作审计", icon: Activity },
@@ -22,6 +24,7 @@ const navigation = [
 function Loading() { return <div className="management-loading" role="status"><LoaderCircle size={23} className="spin" /><span>正在打开管理空间…</span></div>; }
 
 export default function AdminApp() {
+  useSpaceTheme("admin");
   const [session, setSession] = useState<Session>(emptySession);
   const [booting, setBooting] = useState(true);
   const [error, setError] = useState("");
@@ -59,7 +62,7 @@ export default function AdminApp() {
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
   }, []);
-  useEffect(() => { setMobileOpen(false); window.scrollTo(0, 0); }, [location.pathname]);
+  useEffect(() => { setMobileOpen(false); window.scrollTo(0, 0); }, [location.pathname, session.user?.id]);
   if (booting) return <Loading />;
   if (!session.authenticated) return <AuthScreen space="admin" onAuthenticated={accept} />;
   if (session.user?.role !== "admin") return <div className="management-loading"><ShieldCheck size={30} /><h1>当前账号没有管理权限</h1><p>请使用管理员身份登录管理空间。</p><button className="btn btn-primary" disabled={loggingOut} onClick={() => void logout()}>返回管理登录</button></div>;

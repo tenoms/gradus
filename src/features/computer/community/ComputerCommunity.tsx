@@ -3,6 +3,7 @@ import { ArrowLeft, Check, ImagePlus, LoaderCircle, X } from "lucide-react";
 import RichContent from "../../../shared/content/RichContent";
 import { useSession } from "../../../shared/auth/session";
 import { recordActivity } from "../../learning/state/store";
+import { confirmAction } from "../../../shared/ui/dialogs/InteractionProvider";
 import {
   computerRequest as request,
   computerUpload,
@@ -527,8 +528,8 @@ export default function ComputerCommunity() {
                           <button
                             className="btn btn-secondary"
                             disabled={loading}
-                            onClick={() => {
-                              if (window.confirm("删除这条打卡动态？"))
+                            onClick={async () => {
+                              if (await confirmAction({ title: "删除这条打卡动态？", description: "删除后，这条动态将不再出现在打卡记录中。", confirmLabel: "删除动态", cancelLabel: "保留动态", danger: true }))
                                 void act(
                                   () =>
                                     request(

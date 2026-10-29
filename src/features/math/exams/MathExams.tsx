@@ -1,3 +1,4 @@
+import { confirmAction, promptAction, showMessage } from "../../../shared/ui/dialogs/InteractionProvider";
 import { useMathLearningPlan } from "../preparation/MathLearningPlan";
 import { weeklySubjectCode, weeklyStageCode } from "../preparation/learning-plan-model.mjs";
 import { useSession } from "../../../shared/auth/session";
@@ -916,8 +917,8 @@ function PaperRunner({
               <button
                 className="btn btn-primary"
                 disabled={loading}
-                onClick={() => {
-                  if (window.confirm("确认提交测评？提交后将生成学习报告。"))
+                onClick={async () => {
+                  if ((await confirmAction({ title: "提交本次测评？", description: "提交后将生成本次测评的学习报告。", confirmLabel: "提交测评", cancelLabel: "继续作答" })))
                     void finish();
                 }}
               >
@@ -1727,8 +1728,8 @@ export default function MathExams({ stuid }: { stuid: string }) {
               <>
                 <button
                   className="btn btn-secondary"
-                  onClick={() => {
-                    const next = window.prompt("试卷名称", examName(exam));
+                  onClick={async () => {
+                    const next = (await promptAction({ title: "重命名试卷", description: "设置便于查找的试卷名称。", defaultValue: examName(exam), placeholder: "输入试卷名称", confirmLabel: "保存名称", cancelLabel: "取消" }));
                     if (next?.trim())
                       void mathPost("/api/ks_paper/Inner_ks_paper", {
                         ID: exam.ID,
@@ -1736,7 +1737,7 @@ export default function MathExams({ stuid }: { stuid: string }) {
                         UpdateColumns: "ID,Name",
                       })
                         .then(list.reload)
-                        .catch((e) => window.alert(e.message));
+                        .catch(async (e) => (await showMessage({ title: "试卷名称未保存", description: e.message })));
                   }}
                 >
                   重命名

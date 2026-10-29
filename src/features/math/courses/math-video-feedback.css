@@ -22,7 +22,7 @@
   margin: 14px 0;
 }
 .mvf-stars {
-  color: #bd914a;
+  color: var(--warning);
   margin: 16px 0;
 }
 .mvf-stars button {
@@ -48,7 +48,7 @@
   color: var(--ink);
 }
 .mvf-comments span {
-  color: #bd914a;
+  color: var(--warning);
 }
 .mvf-comments time {
   margin-left: auto;
@@ -67,6 +67,6 @@
 .math-video-feedback > form {
   margin: 14px 0;
   padding: 15px;
-  background: #faf8fd;
+  background: var(--surface-soft);
   border-radius: 8px;
 }

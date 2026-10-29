@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { confirmAction } from "../../../shared/ui/dialogs/InteractionProvider";
 import {
   ArrowRight,
   ChevronRight,
@@ -615,13 +616,9 @@ export default function ComputerReview({
                           <button
                             className="computer-text-link"
                             disabled={busy}
-                            onClick={() => {
+                            onClick={async () => {
                               if (
-                                window.confirm(
-                                  tab === "mistakes"
-                                    ? "从错题本移除这道题？"
-                                    : "取消收藏这道题？",
-                                )
+                                await confirmAction({ title: tab === "mistakes" ? "从错题本移除这道题？" : "取消收藏这道题？", description: "已有作答和学习记录会保留。", confirmLabel: tab === "mistakes" ? "移出错题本" : "取消收藏", cancelLabel: "保留题目", danger: true })
                               )
                                 void remove(item);
                             }}

@@ -4,6 +4,7 @@ export const adminActions = {
   "platform.connected": "连接学习账号", "auth.password_changed": "修改个人密码", "announcement.created": "发布公告",
   "announcement.deleted": "删除公告", "configuration.updated": "更新平台配置", "configuration.probed": "检查平台连接",
   "account_pool.updated": "更新共享账号池", "resource_sync.updated": "更新资源同步",
+  "appearance.updated": "更新学习空间主题",
   "resource.updated": "编辑资源", "resource.invalidated": "标记资源需更新", "resource.deleted": "删除资源缓存",
   "yyb.updated": "更新个人 YYB 配置",
   "user.profile_updated": "更新个人资料",

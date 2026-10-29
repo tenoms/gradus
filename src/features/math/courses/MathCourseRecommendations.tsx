@@ -1,3 +1,4 @@
+import { confirmAction } from "../../../shared/ui/dialogs/InteractionProvider";
 import { useSession } from "../../../shared/auth/session";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -427,7 +428,7 @@ export default function MathCourseRecommendations({
     }
   }
   async function append(Links: string | number) {
-    if (!window.confirm("高质量完成已推题目即可。确认继续追加这一专题的题目？"))
+    if (!(await confirmAction({ title: "继续追加专题题目？", description: "高质量完成已推题目即可。确认继续追加这一专题的题目？", confirmLabel: "追加题目", cancelLabel: "暂不追加" })))
       return;
     setBusy(true);
     setError("");

@@ -33,8 +33,8 @@
   text-align: center;
 }
 .computer-error {
-  background: #fff3f1;
-  color: #b84f4f;
+  background: var(--danger-soft);
+  color: var(--danger);
   border-radius: 12px;
   margin: 8px 0;
 }
@@ -96,7 +96,7 @@
 .computer-file-icon {
   width: 48px;
   height: 54px;
-  background: #f2effb;
+  background: var(--accent-soft);
   color: var(--accent);
   display: grid;
   place-items: center;
@@ -109,7 +109,7 @@
   font-size: 11px;
   line-height: 1.5;
   padding: 4px 9px;
-  background: #f1edf9;
+  background: var(--accent-soft);
   color: var(--accent);
   border-radius: 6px;
   white-space: nowrap;
@@ -172,7 +172,7 @@
   cursor: pointer;
 }
 .computer-chapter:hover {
-  background: #faf9fd;
+  background: var(--surface-soft);
 }
 .computer-chapter > div {
   flex: 1;
@@ -194,7 +194,7 @@
   flex: none;
   width: 38px;
   height: 38px;
-  background: #f5f3fa;
+  background: var(--accent-soft);
   color: var(--accent);
   border-radius: 10px;
   font-size: 13px;
@@ -225,7 +225,7 @@
   display: grid;
   place-items: center;
   border-radius: 22px;
-  background: #f0ecfa;
+  background: var(--accent-soft);
   color: var(--accent);
   margin-bottom: 8px;
 }
@@ -265,7 +265,7 @@
 }
 .computer-progress {
   height: 4px;
-  background: #f1eff7;
+  background: var(--accent-soft);
   border-radius: 4px;
   overflow: hidden;
   margin: 22px 0 30px;
@@ -295,7 +295,7 @@
   display: inline-flex;
 }
 .computer-icon.selected {
-  color: #e4ad3f;
+  color: var(--warning);
 }
 .computer-question-stem {
   font-size: 16px;
@@ -310,7 +310,7 @@
 }
 .computer-option {
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface);
   border-radius: 12px;
   padding: 15px;
   display: flex;
@@ -326,11 +326,11 @@
 }
 .computer-option.active {
   border-color: var(--accent);
-  background: #f5f2fc;
+  background: var(--accent-soft);
 }
 .computer-option.correct {
-  border-color: #4ba98d;
-  background: #f0faf5;
+  border-color: var(--success-border);
+  background: var(--success-soft);
 }
 .computer-option-key {
   display: grid;
@@ -342,7 +342,7 @@
   font-size: 13px;
 }
 .computer-option.active .computer-option-key {
-  color: #fff;
+  color: var(--on-accent);
   background: var(--accent);
   border-color: var(--accent);
 }
@@ -359,7 +359,7 @@
   resize: vertical;
 }
 .computer-feedback {
-  background: #f6f4fb;
+  background: var(--accent-soft);
   border-radius: 12px;
   padding: 18px;
   width: 100%;
@@ -369,7 +369,7 @@
   color: var(--accent);
 }
 .computer-analysis {
-  background: #f7f6fa;
+  background: var(--surface-soft);
   border-radius: 14px;
   padding: 22px;
   margin: 24px 0;
@@ -403,20 +403,20 @@
   height: 36px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   color: var(--muted);
   cursor: pointer;
 }
 .computer-sheet .active {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 .computer-sheet .answered {
-  border-color: #62b49d;
+  border-color: var(--success-border);
 }
 .computer-note {
   padding: 20px;
-  background: #f8f7fb;
+  background: var(--surface-soft);
   border-radius: 12px;
   margin-top: 20px;
   display: flex;
@@ -430,17 +430,17 @@
   font-size: 13px;
 }
 .computer-note-preview {
-  background: #f6f3fb;
+  background: var(--accent-soft);
   padding: 12px;
-  border-left: 3px solid #b2a0e7;
+  border-left: 3px solid var(--accent-border);
   margin: 14px 0;
   font-size: 13px;
 }
 .computer-notice {
   font-size: 13px;
-  color: #368971;
+  color: var(--success);
   padding: 12px 16px;
-  background: #f1faf6;
+  background: var(--success-soft);
   border-radius: 10px;
 }
 .computer-fields {
@@ -500,7 +500,7 @@
 }
 .computer-course-art {
   height: 155px;
-  background: linear-gradient(125deg, #eeebfb, #f7f5fc);
+  background: linear-gradient(125deg, var(--accent-soft), var(--accent-soft));
   color: var(--accent);
   display: grid;
   place-items: center;
@@ -524,7 +524,7 @@
 .computer-player video {
   width: 100%;
   max-height: 520px;
-  background: #181523;
+  background: var(--media-bg);
   border-radius: 12px;
   margin: 12px 0;
 }
@@ -559,7 +559,7 @@
   font-size: 11px;
 }
 .computer-lesson.active {
-  background: #f6f3fd;
+  background: var(--accent-soft);
   color: var(--accent);
 }
 .computer-file-link {
@@ -627,8 +627,8 @@
   position: absolute;
   right: 3px;
   top: 3px;
-  color: #fff;
-  background: #423a62;
+  color: var(--on-accent);
+  background: var(--accent);
   border-radius: 50%;
 }
 .computer-post {
@@ -639,7 +639,7 @@
   border-bottom: 0;
 }
 .computer-comments {
-  background: #f8f7fb;
+  background: var(--surface-soft);
   padding: 10px 16px;
   border-radius: 10px;
   font-size: 13px;
@@ -824,7 +824,7 @@
 .computer-report-stats > div {
   padding: 14px;
   border-radius: 12px;
-  background: #f7f5fd;
+  background: var(--surface-soft);
   display: grid;
   gap: 9px;
 }
@@ -847,22 +847,22 @@
   min-width: 38px;
   border: 1px solid var(--border);
   border-radius: 9px;
-  background: #f6f5fa;
+  background: var(--accent-soft);
   color: var(--muted);
 }
 .computer-report-sheet .correct {
-  background: #e5f5ec;
-  color: #218457;
-  border-color: #c5e7d5;
+  background: var(--success-soft);
+  color: var(--success);
+  border-color: var(--success-border);
 }
 .computer-report-sheet .incorrect {
-  background: #feeeed;
-  color: #ba5653;
-  border-color: #f0d4d2;
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: var(--danger-border);
 }
 .computer-report-sheet .self-check {
-  background: #f8f0d9;
-  color: #8d7436;
+  background: var(--warning-soft);
+  color: var(--warning);
 }
 .computer-stages .tabs,
 .computer-special-practice > .tabs {
@@ -876,7 +876,7 @@
 }
 .computer-audio-answer {
   padding: 20px;
-  background: #f7f5fd;
+  background: var(--surface-soft);
   border-radius: 13px;
   margin: 20px 0;
 }
@@ -906,7 +906,7 @@
 .computer-question-area,
 .computer-question-answer { min-width: 0; }
 .computer-sheet-sidebar {
-  background: #faf9fd;
+  background: var(--surface-soft);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 16px;
@@ -915,27 +915,27 @@
 .computer-sheet-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .computer-sheet-heading h3 { font-weight: 600; }
 .computer-sheet-heading strong { color: var(--accent); font-size: 12px; }
-.computer-sheet-help { color: #777184; font-size: 11px; margin: 8px 0; }
-.computer-sheet-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 10px; color: #777184; margin: 12px 0; }
+.computer-sheet-help { color: var(--text-secondary); font-size: 11px; margin: 8px 0; }
+.computer-sheet-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 11px; color: var(--text-secondary); margin: 12px 0; }
 .computer-sheet-legend span { display: inline-flex; align-items: center; gap: 4px; }
-.computer-sheet-legend i { width: 9px; height: 9px; border: 1px solid #d8d2e4; border-radius: 2px; background: white; }
-.computer-sheet-legend i.saved { border-color: #62b49d; background: #ecf8f3; }
-.computer-sheet-legend i.draft { border-color: #b5a0df; background: #f2edfb; }
+.computer-sheet-legend i { width: 9px; height: 9px; border: 1px solid var(--accent-border); border-radius: 2px; background: var(--surface); }
+.computer-sheet-legend i.saved { border-color: var(--success-border); background: var(--success-soft); }
+.computer-sheet-legend i.draft { border-color: var(--accent-border); background: var(--accent-soft); }
 .computer-sheet-sidebar .computer-sheet { margin-bottom: 0; max-height: 220px; grid-template-columns: repeat(auto-fill, minmax(35px, 1fr)); gap: 7px; }
-.computer-sheet button.drafted { border-color: #b5a0df; color: #7753aa; background: #f2edfb; }
-.computer-sheet button.answered { color: #2c8068; background: #ecf8f3; }
+.computer-sheet button.drafted { border-color: var(--accent-border); color: var(--accent); background: var(--accent-soft); }
+.computer-sheet button.answered { color: var(--success); background: var(--success-soft); }
 .computer-sheet button.skipped { border-style: dashed; }
-.computer-sheet button.active { color: #fff; background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 2px #dfd5f5; }
+.computer-sheet button.active { color: var(--on-accent); background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ink) 8%, transparent); }
 .learning-workbench .computer-question-stem,
 .learning-workbench .computer-question-answer .rich-content,
 .learning-workbench .computer-analysis .rich-content { font-size: var(--reading-size, 16px); line-height: 1.95; }
 .learning-workbench .computer-session-actions {
   position: sticky;
   bottom: 0;
-  background: #fff;
+  background: var(--surface);
   padding: 16px 0;
   z-index: 3;
-  box-shadow: 0 -5px 18px #30223f05;
+  box-shadow: var(--shadow);
 }
 @container learning-workbench (min-width: 1000px) {
   .computer-session-layout.with-sheet { display: grid; grid-template-columns: 194px minmax(0, 1fr); gap: 26px; align-items: start; }

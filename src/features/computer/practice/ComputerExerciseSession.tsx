@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { confirmAction } from "../../../shared/ui/dialogs/InteractionProvider";
 import {
   ArrowLeft,
   ArrowRight,
@@ -203,7 +204,7 @@ export default function ExerciseSession({
           !currentAnswers[String(q.exerciseId || q.id)] &&
           !ai[String(q.exerciseId || q.id)],
       ) &&
-      !window.confirm("还有未作答的题目，确认交卷？")
+      !(await confirmAction({ title: "交卷并生成报告？", description: "还有未作答的题目，交卷后会按当前作答生成学习报告。", confirmLabel: "确认交卷", cancelLabel: "继续作答" }))
     )
       return;
     if (!skip && !all && !currentAnswer.trim() && !ai[id]) {

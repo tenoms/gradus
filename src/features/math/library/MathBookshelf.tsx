@@ -1,3 +1,4 @@
+import { confirmAction } from "../../../shared/ui/dialogs/InteractionProvider";
 import { useMathLearningPlan } from "../preparation/MathLearningPlan";
 import { matchesMathSubject } from "../preparation/learning-plan-model.mjs";
 import { useEffect, useRef, useState } from "react";
@@ -431,11 +432,9 @@ export default function MathBookshelf({
             <button
               className="btn btn-primary"
               disabled={!selected.length || busy}
-              onClick={() => {
+              onClick={async () => {
                 if (
-                  window.confirm(
-                    `从书架移除已选择的 ${selected.length} 本资料？`,
-                  )
+                  (await confirmAction({ title: `移出所选 ${selected.length} 本资料？`, description: "将从书架移除所选资料，之后可以重新加入。", confirmLabel: "移出书架", cancelLabel: "保留资料", danger: true }))
                 )
                   void remove();
               }}

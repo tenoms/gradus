@@ -12,17 +12,17 @@
 }
 .cc-course-title h2 {
   font-size: 22px;
-  color: #654c77;
+  color: var(--ink);
   margin: 9px 0 12px;
 }
 .cc-course-title p:not(.eyebrow) {
-  color: #80698f;
+  color: var(--text-secondary);
   font-size: 11px;
   max-width: 750px;
   line-height: 1.9;
 }
 .cc-details-tabs {
-  border-top: 1px solid #ece5f4;
+  border-top: 1px solid var(--accent-border);
   margin-top: 27px;
   padding-top: 23px;
   margin-bottom: 20px;
@@ -45,7 +45,7 @@
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  color: #9782a6;
+  color: var(--muted);
   padding: 35px 15px;
   gap: 14px;
 }
@@ -54,7 +54,7 @@
 }
 .cc-review {
   padding: 20px 0;
-  border-bottom: 1px solid #eee6f5;
+  border-bottom: 1px solid var(--accent-border);
 }
 .cc-review-head {
   display: flex;
@@ -74,25 +74,25 @@
 }
 .cc-review-head strong {
   font-size: 11px;
-  color: #7b5c8b;
+  color: var(--ink);
   font-weight: 500;
 }
 .cc-review-head small {
   display: block;
-  font-size: 9px;
-  color: #8c739c;
+  font-size: 11px;
+  color: var(--text-secondary);
   margin-top: 6px;
 }
 .cc-review-head > span {
-  font-size: 9px;
-  background: #f2edf9;
-  color: #806298;
+  font-size: 11px;
+  background: var(--accent-soft);
+  color: var(--text-secondary);
   padding: 5px 8px;
   border-radius: 5px;
 }
 .cc-review .rich-content {
   font-size: 12px;
-  color: #785f87;
+  color: var(--text-secondary);
 }
 .cc-review-images {
   display: flex;
@@ -112,11 +112,11 @@
   justify-content: space-between;
   gap: 9px;
   margin-top: 20px;
-  color: #81678f;
-  font-size: 9px;
+  color: var(--text-secondary);
+  font-size: 11px;
 }
 .cc-pagination .btn {
-  font-size: 9px;
+  font-size: 11px;
   padding: 6px 10px;
   min-height: 29px;
 }
@@ -125,8 +125,8 @@
 }
 .cc-lesson-files summary {
   cursor: pointer;
-  font-size: 10px;
-  color: #89649d;
+  font-size: 11px;
+  color: var(--text-secondary);
   padding: 3px 0 8px;
 }
 .cc-lesson-files a,
@@ -134,8 +134,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #8c7499;
-  font-size: 9px;
+  color: var(--text-secondary);
+  font-size: 11px;
   line-height: 1.8;
   margin: 6px 0;
   overflow-wrap: anywhere;
@@ -144,7 +144,7 @@
   color: var(--accent);
 }
 .cc-lesson-row {
-  border-bottom: 1px solid #f1eaf6;
+  border-bottom: 1px solid var(--accent-border);
 }
 .cc-courses .computer-lesson-list .computer-lesson {
   border: 0;
@@ -157,7 +157,7 @@
   align-items: center;
   gap: 8px;
   font-size: 11px;
-  color: #846b96;
+  color: var(--text-secondary);
 }
 @media (max-width: 600px) {
   .cc-course-title {
@@ -168,13 +168,13 @@
     font-size: 18px;
   }
   .cc-course-title p:not(.eyebrow) {
-    font-size: 10px;
+    font-size: 11px;
   }
   .cc-introduction .rich-content {
     font-size: 12px;
   }
   .cc-review-head > span {
-    font-size: 8px;
+    font-size: 11px;
     white-space: nowrap;
   }
   .cc-review .rich-content {

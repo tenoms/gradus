@@ -23,7 +23,7 @@
 .cs-heading h3 > span {
   font-size: 12px;
   font-weight: 400;
-  color: #8e99aa;
+  color: var(--muted);
   margin-left: 6px;
 }
 .cs-top {
@@ -32,17 +32,17 @@
 .cs-top h2 {
   font-size: 25px;
   margin: 12px 0;
-  color: #415473;
+  color: var(--ink);
 }
 .cs-top .eyebrow {
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 2px;
-  color: #8c9bb0;
+  color: var(--muted);
 }
 .cs-muted {
   font-size: 12px;
   line-height: 1.9;
-  color: #8a97a9;
+  color: var(--muted);
   margin: 8px 0;
 }
 .cs-search-bar {
@@ -69,11 +69,11 @@
   grid-template-columns: 90px 1fr;
   gap: 15px;
   padding: 15px 0;
-  border-bottom: 1px solid #eef1f6;
+  border-bottom: 1px solid var(--border);
 }
 .cs-filter-row h4 {
   font-size: 12px;
-  color: #8090a6;
+  color: var(--text-secondary);
   font-weight: 500;
   margin: 8px 0;
 }
@@ -89,15 +89,15 @@
   padding: 7px 13px;
   border-radius: 6px;
   border: 1px solid transparent;
-  background: #f5f7fa;
+  background: var(--accent-soft);
   font-size: 12px;
-  color: #8794a8;
+  color: var(--muted);
   cursor: pointer;
 }
 .cs-chips button.active {
-  color: #637fa6;
-  border-color: #cddbed;
-  background: #eff4fa;
+  color: var(--text-secondary);
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
 }
 .cs-filter-actions {
   display: flex;
@@ -106,8 +106,8 @@
   padding-top: 22px;
 }
 .cs-major-picker {
-  background: #f8fafc;
-  border: 1px solid #dce5f1;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
   padding: 22px;
   border-radius: 10px;
   margin: 18px 0;
@@ -130,20 +130,20 @@
   margin-bottom: 20px;
 }
 .cs-major-options > button {
-  border: 1px solid #e0e7f0;
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #fff;
+  background: var(--surface);
   text-align: left;
-  color: #73849e;
+  color: var(--text-secondary);
   cursor: pointer;
 }
 .cs-major-options > button.active {
-  border-color: #9fb6d4;
-  background: #edf3fa;
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
 }
 .cs-major-options strong {
   display: block;
@@ -153,8 +153,8 @@
 }
 .cs-major-options small {
   display: block;
-  font-size: 10px;
-  color: #9aa5b5;
+  font-size: 11px;
+  color: var(--muted);
   margin-top: 6px;
 }
 .cs-add {
@@ -167,11 +167,11 @@
   align-items: center;
   gap: 14px;
   padding: 45px 15px;
-  color: #94a0b2;
+  color: var(--muted);
   font-size: 13px;
 }
 .cs-error {
-  color: #bc8377;
+  color: var(--danger);
   font-size: 12px;
   line-height: 1.8;
 }
@@ -186,7 +186,7 @@
 }
 .cs-school-card {
   padding: 24px 0;
-  border-top: 1px solid #e9eef5;
+  border-top: 1px solid var(--border);
 }
 .cs-card-top {
   display: flex;
@@ -212,19 +212,19 @@
 .cs-school-placeholder {
   display: grid;
   place-items: center;
-  background: #eff3f9;
-  color: #9aacc5;
+  background: var(--accent-soft);
+  color: var(--muted);
 }
 .cs-school-heading h3 {
   font-size: 17px;
   margin: 0;
   font-weight: 550;
   line-height: 1.6;
-  color: #536885;
+  color: var(--ink);
 }
 .cs-school-heading p {
   font-size: 11px;
-  color: #97a3b5;
+  color: var(--muted);
   margin: 6px 0;
   display: flex;
   align-items: center;
@@ -236,9 +236,9 @@
   flex-wrap: wrap;
 }
 .cs-tags span {
-  font-size: 9px;
-  color: #8298b8;
-  background: #f0f4fa;
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--accent-soft);
   padding: 3px 7px;
   border-radius: 4px;
 }
@@ -247,8 +247,8 @@
   gap: 10px;
 }
 .cs-card-actions .active {
-  color: #6e8fb8;
-  background: #ecf2fa;
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 .cs-program {
   display: flex;
@@ -257,25 +257,25 @@
   gap: 20px;
   margin: 22px 0 18px;
   padding: 14px 17px;
-  background: #f7f9fc;
+  background: var(--surface-soft);
   border-radius: 9px;
   flex-wrap: wrap;
 }
 .cs-program strong {
   font-size: 13px;
-  color: #6e819c;
+  color: var(--ink);
   font-weight: 500;
 }
 .cs-program small {
   display: block;
-  font-size: 10px;
-  color: #9ca8b8;
+  font-size: 11px;
+  color: var(--muted);
   margin-top: 6px;
 }
 .cs-program p {
   max-width: 55%;
   font-size: 11px;
-  color: #8a9bb1;
+  color: var(--muted);
   line-height: 1.8;
   margin: 0;
 }
@@ -291,13 +291,13 @@
   gap: 8px;
 }
 .cs-metrics span {
-  font-size: 10px;
-  color: #9eabba;
+  font-size: 11px;
+  color: var(--muted);
 }
 .cs-metrics strong {
   font-size: 21px;
   font-weight: 450;
-  color: #6f85a4;
+  color: var(--ink);
 }
 .cs-load {
   margin: 25px auto 0;
@@ -310,7 +310,7 @@
   text-align: center;
   margin: 30px 0 5px;
   font-size: 11px;
-  color: #a7b1c0;
+  color: var(--muted);
 }
 .cs-compare-tray {
   display: flex;
@@ -320,7 +320,7 @@
   position: sticky;
   top: 12px;
   z-index: 5;
-  box-shadow: 0 5px 16px #64789712;
+  box-shadow: var(--shadow);
   flex-wrap: wrap;
 }
 .cs-compare-tray > div:first-child {
@@ -328,7 +328,7 @@
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  color: #8397b2;
+  color: var(--muted);
 }
 .cs-compare-tray strong {
   font-size: 13px;
@@ -343,12 +343,12 @@
   flex-wrap: wrap;
 }
 .cs-selected button {
-  border: 1px solid #d9e3f0;
-  color: #7d93b1;
+  border: 1px solid var(--accent-border);
+  color: var(--muted);
   border-radius: 6px;
-  background: #f6f9fc;
+  background: var(--accent-soft);
   padding: 7px 10px;
-  font-size: 10px;
+  font-size: 11px;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -369,20 +369,20 @@
   gap: 10px;
   text-align: left;
   padding: 14px;
-  border: 1px solid #e1e8f1;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fbfcfe;
-  color: #8b99ae;
+  background: var(--surface-soft);
+  color: var(--muted);
   font-size: 12px;
   cursor: pointer;
 }
 .cs-target-options button.active {
-  color: #718fb6;
-  border-color: #b9cde5;
-  background: #edf3fa;
+  color: var(--accent);
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
 }
 .cs-target-options button small {
-  font-size: 9px;
+  font-size: 11px;
   margin-left: auto;
   white-space: nowrap;
 }
@@ -391,8 +391,8 @@
   cursor: default;
 }
 .cs-confirm {
-  background: #f3f7fc;
-  border: 1px solid #d5e1ef;
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
   padding: 20px;
   border-radius: 9px;
   margin-top: 22px;
@@ -400,14 +400,14 @@
 .cs-confirm p {
   font-size: 13px;
   line-height: 1.9;
-  color: #7f91ab;
+  color: var(--muted);
 }
 .cs-confirm .btn + .btn {
   margin-left: 12px;
 }
 .cs-unknown-target {
   font-size: 12px;
-  color: #9b8c7d;
+  color: var(--text-secondary);
   margin-bottom: 15px;
 }
 .cs-unknown-target button {
@@ -421,14 +421,14 @@
 }
 .cs-detail h4 {
   font-size: 16px;
-  color: #6a7f9e;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 .cs-intro {
   font-size: 13px;
   line-height: 1.9;
-  color: #8898ae;
-  border-top: 1px solid #e8edf4;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
   margin-top: 25px;
   padding-top: 12px;
 }
@@ -447,10 +447,10 @@
   min-width: 0;
 }
 .cs-fields dt {
-  color: #9ca8b8;
+  color: var(--muted);
 }
 .cs-fields dd {
-  color: #7589a5;
+  color: var(--ink);
   margin: 0;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
@@ -459,14 +459,14 @@
   padding: 20px 0;
 }
 .cs-plan-heading {
-  border-top: 1px solid #e9eef5;
+  border-top: 1px solid var(--border);
   padding-top: 26px;
 }
 .cs-plan-heading select {
   max-width: 150px;
 }
 .cs-plan-list details {
-  border: 1px solid #e2e9f3;
+  border: 1px solid var(--border);
   border-radius: 9px;
   margin: 16px 0;
   overflow: hidden;
@@ -478,19 +478,19 @@
   justify-content: space-between;
   gap: 20px;
   padding: 19px;
-  background: #f8fafd;
+  background: var(--surface-soft);
   cursor: pointer;
 }
 .cs-plan-list summary strong {
   display: block;
   font-size: 14px;
   font-weight: 500;
-  color: #6e83a2;
+  color: var(--ink);
 }
 .cs-plan-list summary small {
   display: block;
-  font-size: 10px;
-  color: #9ba9bc;
+  font-size: 11px;
+  color: var(--muted);
   margin-top: 7px;
 }
 .cs-plan-list summary strong small {
@@ -502,7 +502,7 @@
   align-items: center;
   gap: 9px;
   font-size: 12px;
-  color: #8b9eb7;
+  color: var(--muted);
   white-space: nowrap;
 }
 .cs-plan-list .cs-fields {
@@ -529,27 +529,27 @@
 }
 .cs-compare th,
 .cs-compare td {
-  border: 1px solid #e4ebf3;
+  border: 1px solid var(--border);
   padding: 16px;
   text-align: left;
   vertical-align: top;
   line-height: 1.9;
   min-width: 220px;
-  color: #7e91ac;
+  color: var(--muted);
   white-space: pre-wrap;
 }
 .cs-compare th:first-child {
   min-width: 100px;
   width: 115px;
-  background: #f6f9fc;
+  background: var(--surface-soft);
   position: sticky;
   left: 0;
   z-index: 1;
   font-weight: 500;
-  color: #8597b0;
+  color: var(--muted);
 }
 .cs-compare thead th {
-  background: #fbfcfe;
+  background: var(--surface-soft);
   position: relative;
   padding-top: 32px;
 }
@@ -632,7 +632,7 @@
     padding: 15px;
   }
   .cs-plan-score {
-    font-size: 10px;
+    font-size: 11px;
   }
   .cs-plan-list summary {
     padding: 15px;

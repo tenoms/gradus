@@ -9,7 +9,7 @@
 }
 .md-heading h3 {
   font-size: 13px;
-  color: #745d85;
+  color: var(--ink);
   margin-right: auto;
 }
 .md-heading .tabs {
@@ -17,7 +17,7 @@
 }
 .md-heading .tabs button {
   padding: 7px 10px;
-  font-size: 10px;
+  font-size: 11px;
 }
 .md-comment {
   display: flex;
@@ -30,8 +30,8 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: #f0e8f9;
-  color: #9e7dc2;
+  background: var(--accent-soft);
+  color: var(--accent);
   font-size: 12px;
   flex-shrink: 0;
   overflow: hidden;
@@ -53,21 +53,21 @@
 }
 .md-author strong {
   font-size: 12px;
-  color: #755780;
+  color: var(--ink);
   font-weight: 550;
 }
 .md-author small {
-  font-size: 9px;
-  color: #8c789b;
+  font-size: 11px;
+  color: var(--text-secondary);
 }
 .md-comment-body .rich-content {
   font-size: 13px;
   line-height: 1.9;
-  color: #6d5c78;
+  color: var(--text-secondary);
 }
 .md-to {
-  font-size: 10px;
-  color: #8c6fa3;
+  font-size: 11px;
+  color: var(--text-secondary);
   margin-bottom: 8px;
 }
 .md-actions {
@@ -79,12 +79,12 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
-  color: #8f7c9f;
+  font-size: 11px;
+  color: var(--text-secondary);
   padding: 0;
 }
 .md-actions button.liked {
-  color: #9e65aa;
+  color: var(--accent);
 }
 .md-images {
   display: flex;
@@ -99,25 +99,25 @@
   border-radius: 7px;
 }
 .md-root {
-  border-bottom: 1px solid #efe8f5;
+  border-bottom: 1px solid var(--accent-border);
   padding-bottom: 18px;
 }
 .md-preview-replies {
   margin-left: 45px;
-  background: #faf7fd;
+  background: var(--surface-soft);
   border-radius: 7px;
 }
 .md-preview-replies > div {
   padding: 12px 14px;
-  border-bottom: 1px solid #f0e9f7;
+  border-bottom: 1px solid var(--accent-border);
 }
 .md-preview-replies strong {
-  font-size: 10px;
-  color: #856497;
+  font-size: 11px;
+  color: var(--ink);
 }
 .md-preview-replies .rich-content {
   font-size: 11px;
-  color: #796886;
+  color: var(--text-secondary);
   margin-top: 5px;
 }
 .md-open-thread {
@@ -130,11 +130,11 @@
   justify-content: center;
   gap: 12px;
   padding: 33px;
-  color: #9e8caf;
+  color: var(--muted);
 }
 .md-empty p {
   font-size: 11px;
-  color: #93809f;
+  color: var(--text-secondary);
 }
 .md-pager {
   display: flex;
@@ -142,16 +142,16 @@
   justify-content: center;
   gap: 17px;
   margin: 22px 0;
-  color: #8f7d9d;
-  font-size: 10px;
+  color: var(--text-secondary);
+  font-size: 11px;
 }
 .md-pager .btn {
-  font-size: 10px;
+  font-size: 11px;
   padding: 7px 12px;
   min-height: 30px;
 }
 .md-composer {
-  border-top: 1px solid #eee6f4;
+  border-top: 1px solid var(--accent-border);
   padding-top: 23px;
   margin-top: 15px;
 }
@@ -166,19 +166,19 @@
   align-items: center;
   justify-content: space-between;
   font-size: 11px;
-  color: #8a6a9b;
-  background: #f8f2fc;
+  color: var(--text-secondary);
+  background: var(--accent-soft);
   padding: 8px 12px;
   margin-bottom: 15px;
   border-radius: 6px;
 }
 .md-thread-node {
-  border-bottom: 1px solid #f2eaf7;
+  border-bottom: 1px solid var(--accent-border);
 }
 .md-nested {
   margin-left: 45px;
   padding-left: 16px;
-  border-left: 2px solid #eee3f5;
+  border-left: 2px solid var(--accent-border);
 }
 .md-thread-replies {
   margin-left: 20px;
@@ -190,7 +190,7 @@
   gap: 13px;
   text-align: left;
   padding: 20px 0;
-  border-bottom: 1px solid #f0e9f5;
+  border-bottom: 1px solid var(--accent-border);
 }
 .md-inbox-item > div {
   flex: 1;
@@ -198,17 +198,17 @@
 }
 .md-inbox-item strong {
   font-size: 12px;
-  color: #80608f;
+  color: var(--ink);
 }
 .md-inbox-item small {
-  font-size: 9px;
-  color: #947fa2;
+  font-size: 11px;
+  color: var(--text-secondary);
   margin-top: 12px;
   display: block;
 }
 .md-inbox-item .rich-content {
   font-size: 12px;
-  color: #796387;
+  color: var(--text-secondary);
   margin-top: 9px;
 }
 .mqt-tools {
@@ -221,7 +221,7 @@
   flex-wrap: wrap;
 }
 .mqt-actions > .btn {
-  font-size: 10px;
+  font-size: 11px;
   padding: 8px 12px;
   min-height: 33px;
 }
@@ -245,7 +245,7 @@
   .md-avatar {
     width: 28px;
     height: 28px;
-    font-size: 10px;
+    font-size: 11px;
   }
   .md-author {
     flex-wrap: wrap;
@@ -255,7 +255,7 @@
     font-size: 11px;
   }
   .md-author small {
-    font-size: 8px;
+    font-size: 11px;
   }
   .md-comment-body .rich-content {
     font-size: 12px;
@@ -284,7 +284,7 @@
     gap: 7px;
   }
   .mqt-actions > .btn {
-    font-size: 9px;
+    font-size: 11px;
     padding: 7px 10px;
   }
 }

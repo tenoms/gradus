@@ -22,7 +22,7 @@
   display: block;
   color: var(--accent);
   letter-spacing: 0.15em;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   margin-top: 13px;
 }
@@ -47,8 +47,8 @@
   font-size: 13px;
 }
 .mcr-error {
-  color: #a75356;
-  background: #fff0ef;
+  color: var(--danger);
+  background: var(--danger-soft);
   padding: 13px 17px;
   border-radius: 10px;
   display: flex;
@@ -60,8 +60,8 @@
 .mcr-notice {
   padding: 12px 17px;
   border-radius: 10px;
-  color: #4c7664;
-  background: #eaf6ef;
+  color: var(--success);
+  background: var(--success-soft);
   font-size: 13px;
 }
 .mcr-groups {
@@ -95,25 +95,25 @@
 .mcr-topic-icon {
   color: var(--accent);
   padding: 10px;
-  background: #f0ecfc;
+  background: var(--accent-soft);
   border-radius: 10px;
 }
 .mcr-pill {
   padding: 5px 9px;
   border-radius: 20px;
-  color: #84779a;
-  background: #f0edf6;
-  font-size: 10px;
+  color: var(--text-secondary);
+  background: var(--accent-soft);
+  font-size: 11px;
   white-space: nowrap;
 }
 .mcr-pill.complete {
-  color: #438969;
-  background: #e9f5ed;
+  color: var(--success);
+  background: var(--success-soft);
 }
 .mcr-progress {
   height: 5px;
   border-radius: 3px;
-  background: #efedf5;
+  background: var(--surface-soft);
   overflow: hidden;
 }
 .mcr-progress i {
@@ -184,7 +184,7 @@
   color: var(--muted);
 }
 .mcr-saved {
-  color: #448467;
+  color: var(--success);
   display: inline-flex;
   gap: 4px;
   align-items: center;
@@ -209,7 +209,7 @@
   gap: 14px;
   width: 100%;
   text-align: left;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 13px;
   padding: 15px 18px;
@@ -217,8 +217,8 @@
   color: var(--ink);
 }
 .mcr-option.active {
-  border-color: #a18fdf;
-  background: #f5f1ff;
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
 }
 .mcr-option > span {
   border: 1px solid var(--border);
@@ -239,7 +239,7 @@
   cursor: default;
 }
 .mcr-solutions {
-  background: #faf9fd;
+  background: var(--surface-soft);
   border: 1px solid var(--border);
   padding: 20px;
   border-radius: 13px;
@@ -272,20 +272,20 @@
   width: 39px;
   height: 39px;
   border: 1px solid var(--border);
-  background: #f7f6fb;
+  background: var(--accent-soft);
   color: var(--muted);
   border-radius: 9px;
   cursor: pointer;
 }
 .mcr-sheet .correct {
-  background: #e7f5ec;
-  border-color: #cbe7d5;
-  color: #39845b;
+  background: var(--success-soft);
+  border-color: var(--success-border);
+  color: var(--success);
 }
 .mcr-sheet .incorrect {
-  background: #feefed;
-  border-color: #f1d4cf;
-  color: #b7645a;
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
+  color: var(--danger);
 }
 .mcr-sheet .active {
   outline: 2px solid var(--accent);
@@ -304,7 +304,7 @@
 .mcr-report-stats > div {
   padding: 18px;
   border-radius: 12px;
-  background: #f7f5fc;
+  background: var(--accent-soft);
   display: grid;
   gap: 12px;
 }
@@ -343,7 +343,7 @@
   text-align: left;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface);
   cursor: pointer;
   padding: 13px 16px;
 }
@@ -356,7 +356,7 @@
 }
 .mcr-topic-option.active {
   border-color: var(--accent);
-  background: #f2edfe;
+  background: var(--accent-soft);
 }
 .mcr-topic-option:disabled {
   opacity: 0.55;

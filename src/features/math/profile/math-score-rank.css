@@ -14,7 +14,7 @@
   flex: none;
 }
 .score-rank-eyebrow {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--accent);
   letter-spacing: 0.13em;
 }
@@ -69,14 +69,14 @@
   gap: 16px;
   padding: 18px;
   border-radius: 12px;
-  background: #fff3f1;
-  color: #b75952;
+  background: var(--danger-soft);
+  color: var(--danger);
   font-size: 13px;
 }
 .score-rank-notice {
   padding: 15px 18px;
-  background: #f1faf5;
-  color: #39896f;
+  background: var(--success-soft);
+  color: var(--success);
   border-radius: 10px;
   font-size: 13px;
   margin: 0;
@@ -91,7 +91,7 @@
   display: flex;
   gap: 14px;
   align-items: flex-start;
-  background: #f8f6fc;
+  background: var(--surface-soft);
   padding: 18px;
   border-radius: 12px;
 }
@@ -128,9 +128,9 @@
   align-items: center;
   gap: 10px;
   padding: 17px 20px;
-  background: #f6f3fc;
+  background: var(--accent-soft);
   color: var(--accent);
-  border: 1px dashed #d8ceee;
+  border: 1px dashed var(--accent-border);
   border-radius: 12px;
   font-size: 13px;
   cursor: pointer;
@@ -210,7 +210,7 @@
   color: var(--muted);
   font-weight: 400;
   padding: 17px 12px;
-  background: #f7f5fa;
+  background: var(--accent-soft);
 }
 .score-rank-table td {
   padding: 18px 12px;
@@ -219,11 +219,11 @@
 .score-rank-table td small {
   display: block;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   margin-top: 7px;
 }
 .score-rank-table tr.mine {
-  background: #f3eefa;
+  background: var(--accent-soft);
 }
 .score-rank-me {
   display: flex;
@@ -255,7 +255,7 @@
 .score-rank-bars > div > div {
   flex: 1;
   height: 8px;
-  background: #f1edf7;
+  background: var(--accent-soft);
   border-radius: 5px;
   overflow: hidden;
 }

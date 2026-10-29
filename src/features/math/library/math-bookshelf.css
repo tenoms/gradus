@@ -71,8 +71,8 @@
   color: var(--muted);
 }
 .bookshelf-error {
-  background: #fff3f1;
-  color: #b45c57;
+  background: var(--danger-soft);
+  color: var(--danger);
   padding: 16px;
   font-size: 13px;
   border-radius: 12px;
@@ -81,8 +81,8 @@
   align-items: center;
 }
 .bookshelf-notice {
-  background: #f1faf5;
-  color: #3c8b75;
+  background: var(--success-soft);
+  color: var(--success);
   padding: 13px 16px;
   border-radius: 10px;
   font-size: 13px;
@@ -99,12 +99,12 @@
   transition: background 0.15s;
 }
 .bookshelf-card.selected {
-  background: #f4effc;
+  background: var(--accent-soft);
 }
 .bookshelf-cover {
   height: 210px;
   width: 100%;
-  background: #f5f2fa;
+  background: var(--accent-soft);
   border: 0;
   border-radius: 10px;
   overflow: hidden;
@@ -126,7 +126,7 @@
   width: 100%;
   padding: 18px;
   color: var(--accent);
-  background: linear-gradient(150deg, #ebe3fa, #f9f7fd);
+  background: linear-gradient(150deg, var(--accent-soft), var(--surface-soft));
 }
 .bookshelf-cover > div > span {
   font-size: 11px;
@@ -150,7 +150,7 @@
 }
 .bookshelf-progress {
   height: 4px;
-  background: #eeeaf5;
+  background: var(--accent-soft);
   border-radius: 3px;
   overflow: hidden;
   margin-top: 16px;
@@ -164,7 +164,7 @@
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
   margin-top: 8px;
 }
@@ -172,7 +172,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px !important;
+  font-size: 11px !important;
 }
 .bookshelf-card-actions {
   display: flex;
@@ -200,8 +200,8 @@
   display: flex;
   gap: 5px;
   align-items: center;
-  color: #4c9a80;
-  font-size: 10px;
+  color: var(--success);
+  font-size: 11px;
 }
 .bookshelf-check {
   width: 24px;
@@ -209,7 +209,7 @@
   position: absolute;
   right: 10px;
   top: 10px;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 50%;
   display: grid;
@@ -218,7 +218,7 @@
 .bookshelf-check.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 .bookshelf-more {
   display: flex;
@@ -287,3 +287,5 @@
     flex-wrap: wrap;
   }
 }
+
+.bookshelf-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 18%, transparent); }

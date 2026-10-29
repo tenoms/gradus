@@ -19,7 +19,7 @@
 }
 .math-school-intro p:not(.eyebrow) {
   font-size: 11px;
-  color: #81748e;
+  color: var(--text-secondary);
 }
 .math-school-intro > .pill {
   margin-left: auto;
@@ -41,7 +41,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  color: #9d8bb5;
+  color: var(--muted);
   flex: 1;
   max-width: 390px;
 }
@@ -59,11 +59,11 @@
   border: 1px solid var(--border);
   border-radius: 9px;
   transition: border-color 0.2s;
-  background: #fff;
+  background: var(--surface);
 }
 .math-school-card:hover {
-  border-color: #bea9db;
-  background: #fcfaff;
+  border-color: var(--accent-border);
+  background: var(--surface-soft);
 }
 .math-school-symbol {
   width: 43px;
@@ -72,22 +72,22 @@
   place-items: center;
   flex-shrink: 0;
   border-radius: 10px;
-  background: #f1ecfa;
-  color: #9278bb;
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 .math-school-card h3 {
   font-size: 12px;
   line-height: 1.6;
-  color: #6d5c7e;
+  color: var(--ink);
 }
 .math-school-card p {
-  font-size: 9px;
-  color: #887694;
+  font-size: 11px;
+  color: var(--text-secondary);
   margin-top: 6px;
 }
 .math-school-card > svg {
   margin-left: auto;
-  color: #b4a2c9;
+  color: var(--muted);
   width: 14px;
 }
 .math-school-more {
@@ -99,7 +99,7 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  color: #9381a5;
+  color: var(--text-secondary);
   padding: 36px 12px;
   font-size: 11px;
 }
@@ -115,11 +115,11 @@
 }
 .math-school-detail-head h2 {
   font-size: 21px;
-  color: #665276;
+  color: var(--ink);
 }
 .math-school-detail-head p {
   font-size: 11px;
-  color: #8f7d9e;
+  color: var(--text-secondary);
   margin-top: 7px;
 }
 .math-school-detail-head > .btn {
@@ -141,24 +141,24 @@
   gap: 13px;
 }
 .math-school-subject-grid article {
-  background: #faf8fe;
-  border: 1px solid #eee7f6;
+  background: var(--surface-soft);
+  border: 1px solid var(--accent-border);
   border-radius: 8px;
   padding: 20px;
 }
 .math-school-subject-grid article > span {
-  font-size: 10px;
-  color: #8e79a2;
+  font-size: 11px;
+  color: var(--text-secondary);
 }
 .math-school-subject-grid article h3 {
   font-size: 12px;
   line-height: 1.9;
   margin: 12px 0 8px;
-  color: #655274;
+  color: var(--ink);
 }
 .math-school-subject-grid article p {
-  font-size: 10px;
-  color: #857092;
+  font-size: 11px;
+  color: var(--text-secondary);
 }
 .math-school-compare th:not(:first-child),
 .math-school-compare td:not(:first-child) {
@@ -193,7 +193,7 @@
     font-size: 15px;
   }
   .math-school-intro p:not(.eyebrow) {
-    font-size: 10px;
+    font-size: 11px;
   }
   .math-school-intro > .pill {
     display: none;

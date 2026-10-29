@@ -14,6 +14,7 @@ import { adminActions } from "../../../shared/admin-actions.mjs";
 import UserLearningProfile from "./users/UserLearningProfile";
 import "./admin.css";
 const OperationsConsole = lazy(() => import("./operations/OperationsConsole"));
+const AppearanceSettings = lazy(() => import("./appearance/AppearanceSettings"));
 const ResourceCenter = lazy(() => import("./resources/ResourceCenter"));
 const DataManagement = lazy(() => import("./data/DataManagement"));
 const IntegrationSettings = lazy(() => import("./integrations/IntegrationSettings"));
@@ -253,14 +254,14 @@ export default function AdminWorkspace() {
   const [version, setVersion] = useState(0);
   const [notice, setNotice] = useState("");
   const section = location.pathname.split("/")[1] || "overview";
-  useEffect(() => { if (!["overview", "users", "configuration", "data", "resources", "announcements", "audit", "operations"].includes(section)) navigate("/", { replace: true }); }, [section, navigate]);
+  useEffect(() => { if (!["overview", "users", "configuration", "data", "resources", "appearance", "announcements", "audit", "operations"].includes(section)) navigate("/", { replace: true }); }, [section, navigate]);
   if (!session.authenticated || user?.role !== "admin") return <section className="panel admin-access-state"><span className="admin-access-icon"><ShieldCheck size={30} /></span><h1>管理工作台</h1><p>{session.authenticated ? "当前账号没有管理权限。请联系系统管理员。" : "请使用管理员账号登录，管理用户与学习空间。"}</p>{session.authenticated ? <a className="btn btn-primary" href="/learn/">返回学习空间<ArrowRight size={15} /></a> : <button className="btn btn-primary" onClick={openLogin}>登录管理账号<ArrowRight size={15} /></button>}</section>;
-  const headings: Record<string, string> = { overview: "管理总览", users: "用户与学习账号", configuration: "平台集成配置", data: "账号与服务", resources: "资源中心", announcements: "学习公告", audit: "操作审计", operations: "运行诊断" };
+  const headings: Record<string, string> = { overview: "管理总览", users: "用户与学习账号", configuration: "平台集成配置", data: "账号与服务", resources: "资源中心", appearance: "主题与外观", announcements: "学习公告", audit: "操作审计", operations: "运行诊断" };
   const heading = headings[section] || headings.overview;
   return <div className="admin-workspace">
     <h1 className="sr-only">{heading}</h1>
-    {!["configuration", "operations", "data", "resources"].includes(section) && <div className="admin-page-tools"><button className="btn btn-secondary" onClick={() => { setVersion((value) => value + 1); setNotice(""); }}><RefreshCw size={15} />刷新数据</button></div>}
+    {!["configuration", "operations", "data", "resources", "appearance"].includes(section) && <div className="admin-page-tools"><button className="btn btn-secondary" onClick={() => { setVersion((value) => value + 1); setNotice(""); }}><RefreshCw size={15} />刷新数据</button></div>}
     {notice && <div className="admin-feedback" role="status"><Check size={17} /><span>{notice}</span><button className="icon-button" aria-label="关闭操作提示" onClick={() => setNotice("")}><X size={16} /></button></div>}
-    {section === "resources" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><ResourceCenter /></Suspense> : section === "data" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><DataManagement /></Suspense> : section === "operations" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><OperationsConsole /></Suspense> : section === "configuration" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><IntegrationSettings /></Suspense> : section === "users" ? <UsersPanel version={version} notify={setNotice} /> : section === "announcements" ? <AnnouncementsPanel version={version} notify={setNotice} /> : section === "audit" ? <AuditPanel version={version} /> : <Overview version={version} />}
+    {section === "appearance" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><AppearanceSettings /></Suspense> : section === "resources" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><ResourceCenter /></Suspense> : section === "data" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><DataManagement /></Suspense> : section === "operations" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><OperationsConsole /></Suspense> : section === "configuration" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><IntegrationSettings /></Suspense> : section === "users" ? <UsersPanel version={version} notify={setNotice} /> : section === "announcements" ? <AnnouncementsPanel version={version} notify={setNotice} /> : section === "audit" ? <AuditPanel version={version} /> : <Overview version={version} />}
   </div>;
 }

@@ -20,11 +20,11 @@ export function createSessionSpace({ space, identities, connections, learningPro
     return {user:{...user,avatar:platforms.math.user?.HeadImg || ''},account:yyb.ref?{ref:yyb.ref}:null,platforms,identityMode:'web',webOwned:true,yybMode:yyb.mode,yybRevision:yyb.revision,yybBaseUrl:yyb.mode==='custom'?yyb.baseUrl:''};
   }
   async function read(req) { return stateFor(await identities.sessionUser(req.cookies[cookieName], space)); }
-  function publicValue(session) {
+  async function publicValue(session) {
     const value = space === "admin"
       ? { authenticated: !!session, space, ...(session ? { user: session.user } : {}) }
       : { ...publicSession(session), space };
-    return { ...value, browserConfig };
+    return { ...value, browserConfig: typeof browserConfig === 'function' ? await browserConfig() : browserConfig };
   }
   async function save(req, res, user) {
     await identities.revokeSession(req.cookies[cookieName]);
@@ -40,7 +40,7 @@ export function createSessionSpace({ space, identities, connections, learningPro
     next();
   }
   const router = express.Router();
-  router.get("/session", async (req, res) => res.json(publicValue(await read(req))));
+  router.get("/session", async (req, res) => res.json(await publicValue(await read(req))));
   router.post("/login", async (req, res) => {
     const user = await identities.login(req.body?.username, req.body?.password, space);
     res.json(await save(req, res, user));

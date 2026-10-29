@@ -27,7 +27,7 @@ const deferred = () => {
   return { promise, resolve, reject };
 };
 
-function session({ data = {}, launch = {}, cache = new Map(), load, save = async () => true, report = { examRecord: { id: "own-record" }, answerList: [] }, buildAnswer } = {}) {
+function session({ data = {}, launch = {}, cache = new Map(), load, save = async () => true, report = { examRecord: { id: "own-record" }, answerList: [] }, buildAnswer, confirm = async () => true } = {}) {
   const hooks = [], loads = [], saves = [], studyTimers = [], activities = [];
   let cursor = 0, dirty = true, pending = [], tree;
   const scope = {
@@ -39,7 +39,7 @@ function session({ data = {}, launch = {}, cache = new Map(), load, save = async
     buildComputerAnswer: buildAnswer || (({ question, answer, skip }) => ({ exerciseId: question.exerciseId, answer, answerType: skip ? 4 : 1 })),
     buildComputerSubmission: ({ answers }) => ({ answers }),
     recordActivity: activity => activities.push(activity),
-    window: { confirm: () => true },
+    confirmAction: confirm,
     useState(initial) {
       const index = cursor++;
       if (!hooks[index]) hooks[index] = { value: typeof initial === "function" ? initial() : initial };
@@ -297,5 +297,22 @@ test("a mixed paper counts only real answers and grades only confirmed right or 
   assert.equal(view.activities[0].total, 3);
   assert.equal(view.activities[0].graded, 2);
   assert.equal(view.activities[0].correct, 1);
+  view.unmount();
+});
+
+test("an incomplete paper waits for the application confirmation and cancellation does not submit", async () => {
+  const decision = deferred(), prompts = [];
+  const view = session({
+    launch: { examType: 2 },
+    data: { exercises: [question(1), question(2)], exerciseTotalNumber: 2, answerList: [{ exerciseId: "q1", answer: "A" }] },
+    confirm: async options => { prompts.push(options); return decision.promise; },
+  });
+  await view.settle(); view.button("交卷").onClick(); await view.settle();
+  assert.equal(prompts.length, 1); assert.equal(prompts[0].cancelLabel, "继续作答");
+  assert.equal(view.loads.filter(call => call[0].endsWith("/submitExam")).length, 0);
+  decision.resolve(false); await view.settle();
+  assert.ok(view.button("交卷"), "cancel returns to the current paper");
+  assert.equal(view.loads.filter(call => call[0].endsWith("/submitExam")).length, 0);
+  assert.equal(view.activities.length, 0);
   view.unmount();
 });

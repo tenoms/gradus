@@ -43,7 +43,7 @@
 }
 .mqi-frequencies dt {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 .mqi-frequencies dd {
   margin: 0;
@@ -61,7 +61,7 @@
   padding: 10px 0;
 }
 .mqi-years > span {
-  background: #f7f5fb;
+  background: var(--accent-soft);
   border-radius: 5px;
   padding: 5px 8px;
 }

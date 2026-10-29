@@ -1,3 +1,4 @@
+import { confirmAction } from "../../../shared/ui/dialogs/InteractionProvider";
 import { useMathLearningPlan } from "../preparation/MathLearningPlan";
 import { loadBookNotes } from "./notebook-data.mjs";
 import { useEffect, useState } from "react";
@@ -410,8 +411,8 @@ export default function MathNotebook({
                       title={
                         Number(c.counts) !== 0 ? "先移走或删除分类中的题目" : ""
                       }
-                      onClick={() => {
-                        if (window.confirm(`删除空分类“${c.Name}”？`))
+                      onClick={async () => {
+                        if ((await confirmAction({ title: `删除空分类“${c.Name}”？`, description: "该分类目前没有题目，删除后将从分类目录移除。", confirmLabel: "删除分类", cancelLabel: "保留分类", danger: true })))
                           void act(
                             () =>
                               mathPost(

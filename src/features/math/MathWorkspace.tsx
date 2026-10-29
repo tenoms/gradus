@@ -1,3 +1,4 @@
+import { confirmAction } from "../../shared/ui/dialogs/InteractionProvider";
 import { answerProgress } from "../learning/workbench/answer-progress.mjs";
 import "../learning/workbench/answer-progress.css";
 import Pagination from "../../shared/ui/pagination/Pagination";
@@ -951,9 +952,7 @@ function Practice({ stuid }: { stuid: string }) {
                 );
                 if (
                   !selected ||
-                  !window.confirm(
-                    `重新练习“${mathTitle(selected)}”？该章节的原刷题记录将清除。`,
-                  )
+                  !(await confirmAction({ title: `重新练习“${mathTitle(selected)}”？`, description: "该章节原有刷题记录将清除。", confirmLabel: "清除并重新练习", cancelLabel: "保留记录", danger: true }))
                 )
                   return;
                 setCreating(true);
@@ -1125,9 +1124,7 @@ function PracticePaper({
             disabled={saving}
             onClick={async () => {
               if (
-                !window.confirm(
-                  "重新练习本试卷？将重置当前账号的本次练习状态。",
-                )
+                !(await confirmAction({ title: "重新练习本试卷？", description: "将重置当前账号的本次练习状态。", confirmLabel: "重置并重新练习", cancelLabel: "保留练习", danger: true }))
               )
                 return;
               setSaving(true);

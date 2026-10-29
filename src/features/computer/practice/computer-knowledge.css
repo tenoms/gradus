@@ -1,6 +1,6 @@
 .computer-knowledge { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
 .computer-knowledge h4 { margin: 0 0 10px; font-size: 13px; }
 .computer-knowledge-tags { display: flex; flex-wrap: wrap; gap: 7px; padding: 0; margin: 0; list-style: none; }
-.computer-knowledge-tags li { padding: 5px 10px; border-radius: 6px; background: var(--accent-soft); color: #67538b; font-size: 12px; line-height: 1.5; }
-.computer-knowledge-note { margin: 9px 0 0; color: #81768f; font-size: 12px; line-height: 1.7; }
+.computer-knowledge-tags li { padding: 5px 10px; border-radius: 6px; background: var(--accent-soft); color: var(--text-secondary); font-size: 12px; line-height: 1.5; }
+.computer-knowledge-note { margin: 9px 0 0; color: var(--text-secondary); font-size: 12px; line-height: 1.7; }
 .computer-knowledge-note button { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; color: var(--accent); font-size: inherit; }

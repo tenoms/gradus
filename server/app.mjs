@@ -23,6 +23,9 @@ import { createLearningRouter } from "./modules/learning/routes.mjs";
 import { createAccountProfileStore } from "./modules/identity/account-profile.mjs";
 import { createRuntimeInsights } from "./infrastructure/runtime-insights.mjs";
 import { readRuntimeConfig } from "./infrastructure/runtime-config.mjs";
+import { readBrowserConfig } from "./infrastructure/browser-config.mjs";
+import { createAppearanceStore } from "./modules/appearance/store.mjs";
+import { createAppearanceRouter } from "./modules/appearance/routes.mjs";
 export { injectMathUser, validatePlatformRequest, publicPlatformResponse } from "./integrations/platform-policy.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -42,8 +45,11 @@ export async function createApp(overrides = {}) {
   const personalSync = await createPersonalSync({ database, service, identities, tokenLifecycle });
   const privatePlatform = await createPrivatePlatformStore({ database, resourceStore, personalSync });
   const accountProfile = createAccountProfileStore({ database, identities, privatePlatform });
-  const adminAuth = createSessionSpace({ space: "admin", identities, connections, settings: runtimeConfig.session });
-  const learningAuth = createSessionSpace({ space: "learning", identities, connections, settings: runtimeConfig.session, learningProfile: (user,name) => privatePlatform.profile(user.id,name,name === "math" ? { ID:user.id,StuID:user.id } : { userId:user.id },user.displayName) });
+  const appearance = await createAppearanceStore({ database, identities });
+  const deploymentBrowserConfig = readBrowserConfig();
+  const browserConfig = async () => ({ ...deploymentBrowserConfig, appearance: (await appearance.settings()).config });
+  const adminAuth = createSessionSpace({ space: "admin", identities, connections, settings: runtimeConfig.session, browserConfig });
+  const learningAuth = createSessionSpace({ space: "learning", identities, connections, settings: runtimeConfig.session, browserConfig, learningProfile: (user,name) => privatePlatform.profile(user.id,name,name === "math" ? { ID:user.id,StuID:user.id } : { userId:user.id },user.displayName) });
   const registration = await createRegistrationStore({ database, identities });
   const app = express();
   app.disable("x-powered-by");
@@ -67,6 +73,7 @@ export async function createApp(overrides = {}) {
     const user = await identities.setup(req.body);
     res.status(201).json(await adminAuth.save(req, res, user));
   });
+  app.use(createAppearanceRouter({ appearance, adminAuth }));
   app.use("/api/admin", createResourceRouter({ resourceStore, resourceSync, identities, service, connections, auth: adminAuth }));
   app.use("/api/admin", createAdminRouter({ service, identities, connections, configuration, operations, accountPool, resourceSync, accountProfile, auth: adminAuth }));
   app.use(createRegistrationRouter({ registration, adminAuth, learningAuth }));
@@ -93,6 +100,7 @@ export async function createApp(overrides = {}) {
   app.locals.resourceSync = resourceSync;
   app.locals.personalSync = personalSync;
   app.locals.registration = registration;
+  app.locals.appearance = appearance;
   app.locals.tokenLifecycle = tokenLifecycle;
   app.locals.privatePlatform = privatePlatform;
   app.locals.accountProfile = accountProfile;

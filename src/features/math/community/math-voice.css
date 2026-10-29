@@ -1,7 +1,7 @@
 .math-voice-recorder {
   padding: 22px;
-  background: #f8f5fc;
-  border: 1px solid #e8def4;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
   border-radius: 12px;
   margin-top: 22px;
   display: grid;
@@ -19,7 +19,7 @@
   font-weight: 500;
 }
 .math-voice-heading span {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--muted);
   margin-left: auto;
 }

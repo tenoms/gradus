@@ -41,7 +41,7 @@
   gap: 10px;
   padding: 16px 18px;
   color: var(--accent);
-  background: #f8f5fc;
+  background: var(--accent-soft);
   flex-wrap: wrap;
 }
 .mmt-group-header strong {
@@ -59,7 +59,7 @@
   padding: 18px;
   border: 0;
   border-top: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface);
   text-align: left;
   font: inherit;
   cursor: pointer;
@@ -71,7 +71,7 @@
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  background: #f5f0fb;
+  background: var(--accent-soft);
   border-radius: 6px;
   color: var(--accent);
   font-size: 11px;

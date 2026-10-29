@@ -20,12 +20,12 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  border: 1px solid #e4ecf6;
+  border: 1px solid var(--border);
   border-radius: 9px;
-  background: #fafcfe;
+  background: var(--surface-soft);
   padding: 18px;
   text-align: left;
-  color: #8a9db7;
+  color: var(--muted);
   cursor: pointer;
 }
 .mca-catalogs > button > span {
@@ -37,8 +37,8 @@
 }
 .mca-catalogs small {
   display: block;
-  font-size: 10px;
-  color: #a6b5c8;
+  font-size: 11px;
+  color: var(--muted);
   margin-top: 7px;
 }
 .mca-catalogs > button:disabled {
@@ -47,9 +47,9 @@
 }
 .mca-content {
   padding: 18px 10px;
-  border-top: 1px solid #e8eef6;
+  border-top: 1px solid var(--border);
   margin: 10px 0;
-  color: #8d9eb6;
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.9;
 }
@@ -57,7 +57,7 @@
   padding-left: 18px;
 }
 .mca-content.last {
-  border-left: 3px solid #cbdced;
+  border-left: 3px solid var(--accent-border);
   padding-left: 15px;
 }
 .mca-content-heading {
@@ -70,7 +70,7 @@
 .mca-content-heading h4 {
   font-size: 14px;
   font-weight: 500;
-  color: #8095b2;
+  color: var(--muted);
   margin: 8px 0 15px;
 }
 .mca-position {
@@ -79,8 +79,8 @@
   gap: 5px;
   background: transparent;
   border: 0;
-  font-size: 10px;
-  color: #a4b4ca;
+  font-size: 11px;
+  color: var(--muted);
   cursor: pointer;
   padding: 6px;
 }
@@ -89,12 +89,12 @@
   align-items: center;
   gap: 20px;
   justify-content: space-between;
-  background: #f3f7fc;
+  background: var(--accent-soft);
   padding: 16px;
   border-radius: 8px;
   margin: 15px 0;
   font-size: 11px;
-  color: #99abc3;
+  color: var(--muted);
   flex-wrap: wrap;
 }
 .mca-files {
@@ -107,7 +107,7 @@
   display: none;
 }
 .mca-files .btn {
-  font-size: 10px;
+  font-size: 11px;
 }
 .mca-intro-images {
   display: grid;

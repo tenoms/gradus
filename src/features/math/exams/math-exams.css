@@ -16,10 +16,10 @@
   display: flex;
   align-items: center;
   gap: 15px;
-  background: #fff3f1;
+  background: var(--danger-soft);
   border-radius: 12px;
   padding: 18px;
-  color: #b35353;
+  color: var(--danger);
   font-size: 13px;
   margin: 15px 0;
 }
@@ -74,7 +74,7 @@
 .math-exam-badge {
   display: inline-flex;
   padding: 4px 9px;
-  background: #f3effb;
+  background: var(--accent-soft);
   border-radius: 6px;
   color: var(--accent);
   font-size: 11px;
@@ -108,7 +108,7 @@
   display: grid;
   place-items: center;
   border-radius: 12px;
-  background: #f4f1fa;
+  background: var(--accent-soft);
   color: var(--accent);
   flex: none;
 }
@@ -196,8 +196,8 @@
   text-decoration: none;
 }
 .math-exam-notice {
-  background: #f1faf6;
-  color: #398871;
+  background: var(--success-soft);
+  color: var(--success);
   font-size: 13px;
   padding: 14px 18px;
   border-radius: 10px;
@@ -224,11 +224,11 @@
   color: var(--muted);
 }
 .math-exam-timer.warning {
-  color: #c8873d;
+  color: var(--warning);
 }
 .math-exam-progress {
   height: 4px;
-  background: #f0edf6;
+  background: var(--accent-soft);
   border-radius: 4px;
   overflow: hidden;
   margin: 24px 0;
@@ -249,7 +249,7 @@
 .math-exam-sheet > button {
   height: 40px;
   border: 1px solid var(--border);
-  background: #fff;
+  background: var(--surface);
   border-radius: 8px;
   color: var(--muted);
   display: flex;
@@ -260,11 +260,11 @@
 }
 .math-exam-sheet > button.active {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-color: var(--accent);
 }
 .math-exam-sheet > button.saved {
-  border-color: #65b49d;
+  border-color: var(--success-border);
 }
 .math-exam-question-title {
   display: flex;
@@ -278,7 +278,7 @@
   display: flex;
   gap: 5px;
   align-items: center;
-  color: #41947e;
+  color: var(--success);
   margin-left: auto;
 }
 .math-exam-question {
@@ -298,7 +298,7 @@
   gap: 15px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--surface);
   text-align: left;
   cursor: pointer;
   color: var(--ink);
@@ -318,11 +318,11 @@
   flex: none;
 }
 .math-exam-option.active {
-  background: #f7f4fc;
+  background: var(--accent-soft);
   border-color: var(--accent);
 }
 .math-exam-option.active > span {
-  color: #fff;
+  color: var(--on-accent);
   background: var(--accent);
   border-color: var(--accent);
 }
@@ -338,7 +338,7 @@
 }
 .math-exam-analysis {
   border-radius: 14px;
-  background: #f7f6fa;
+  background: var(--surface-soft);
   padding: 22px;
   margin: 24px 0;
   font-size: 14px;
@@ -373,7 +373,7 @@
 }
 .math-exam-report {
   padding: 22px;
-  background: #f7f4fc;
+  background: var(--accent-soft);
   border-radius: 14px;
 }
 .math-exam-report h3 {
@@ -407,7 +407,7 @@
   display: grid;
   place-items: center;
   border-radius: 8px;
-  background: #f3effb;
+  background: var(--accent-soft);
   color: var(--accent);
   font-size: 13px;
 }
