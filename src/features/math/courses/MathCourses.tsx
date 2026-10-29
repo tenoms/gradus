@@ -1391,7 +1391,6 @@ function LeakReport({
             ...context,
             PaperID: task.BusID,
             AddPerson: context.StuID,
-            System_Station_ID: 1,
             Type: "模块",
             ContentID: row.BusID,
             Title: row.Title,

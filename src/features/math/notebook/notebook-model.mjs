@@ -1,3 +1,5 @@
+import { mathExternalUrl, publicConfig } from "../../../shared/config/public.mjs";
+
 export function noteRecordId(row, origin = "book") {
   return String(origin === "bank" ? (row.RelD ?? row.RelID ?? row.ID) : row.ID);
 }
@@ -50,7 +52,7 @@ export function noteExportLinks(
       const batch = items.slice(offset, offset + 30),
         params = new URLSearchParams({
           bustype: kind,
-          saasid: "1",
+          saasid: String(publicConfig.math.printStationId),
           stuid,
           busindex: origin === "bank" ? "2" : "1",
           issort: "0",
@@ -59,12 +61,14 @@ export function noteExportLinks(
             .join(","),
         });
       if (origin === "book") params.set("buskey", catalog);
+      const url = mathExternalUrl("UserRecordLatex.html");
+      url.search = params.toString();
       result.push({
         name:
           origin === "bank" ? "题库记录" : batch[0].CatalogName || "笔记分类",
         count: batch.length,
         recordIds: batch.map((row) => noteRecordId(row, origin)),
-        url: `https://web.math-upstream.invalid/External/UserRecordLatex.html?${params}`,
+        url: url.href,
       });
     }
   }

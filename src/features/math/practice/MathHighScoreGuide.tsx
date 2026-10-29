@@ -19,15 +19,15 @@ function useGuideData(key: string, load: () => Promise<any>) {
 }
 
 export default function MathHighScoreGuide({ stuid }: { stuid: string }) {
-  const list = useGuideData("high-score-guides", () => mathCommand("GetBookHighscorealbumList", { System_Station_ID: 1, IsValid: 1, BusType: "直播模块", SortDesc: "Sort" }, true));
-  const progress = useGuideData(`guide-progress-${stuid}`, () => mathGet("/api/book_highscorealbum_studylog/GetListByPage", { StuID: stuid, System_Station_ID: 1, Type: "直播模块", limit: 1, page: 1, SortDesc: "AddTime Desc" }));
+  const list = useGuideData("high-score-guides", () => mathCommand("GetBookHighscorealbumList", { IsValid: 1, BusType: "直播模块", SortDesc: "Sort" }, true));
+  const progress = useGuideData(`guide-progress-${stuid}`, () => mathGet("/api/book_highscorealbum_studylog/GetListByPage", { StuID: stuid, Type: "直播模块", limit: 1, page: 1, SortDesc: "AddTime Desc" }));
   const [lesson, setLesson] = useState<MathRow>(), [query, setQuery] = useState(""), [notice, setNotice] = useState("");
   const rows = mathRows(list.data);
   const latest = rows.find(row => String(row.ID) === String(mathRows(progress.data)[0]?.BusID));
   const openLesson = (row: MathRow) => {
     setLesson(row); setNotice("");
     void (async () => {
-      const current = await mathGet("/api/book_highscorealbum_studylog/GetListByPage", { StuID: stuid, System_Station_ID: 1, Type: "直播模块", AlbumID: row.BusID, limit: 1, page: 1, SortDesc: "AddTime Desc" });
+      const current = await mathGet("/api/book_highscorealbum_studylog/GetListByPage", { StuID: stuid, Type: "直播模块", AlbumID: row.BusID, limit: 1, page: 1, SortDesc: "AddTime Desc" });
       await mathPost("/api/book_highscorealbum_studylog/Inner_book_highscorealbum_studylog", guideStudyPayload(stuid, row, mathRows(current)[0]));
       progress.reload();
     })().catch(error => setNotice(`学习位置未保存：${error.message}`));

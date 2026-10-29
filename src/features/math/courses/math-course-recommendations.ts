@@ -62,7 +62,6 @@ export const recommendationApi = {
   analysis: (QuestionID: string | number) =>
     mathGet("/api/question_list/GetQuestionByIDSoleDes", {
       ID: QuestionID,
-      System_Station_ID: 1,
       SortDesc: "Sort",
     }),
   files: (QuestionID: string | number) =>
@@ -70,7 +69,6 @@ export const recommendationApi = {
   videos: (SpecialID: string | number) =>
     mathCommand("GetSpecialVideoListBySpecialID", {
       SpecialID,
-      System_Station_ID: 1,
     }),
   async save(payload: RecommendationRow) {
     const result = await mathPost(

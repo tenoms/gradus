@@ -70,7 +70,6 @@ export function courseAlbumLog(
         CatalogID,
         AlbumID,
         StuID: context.stuid,
-        System_Station_ID: 1,
         BusID,
         ProductID: context.ProductID || 0,
         CourseID: context.CourseID || 0,

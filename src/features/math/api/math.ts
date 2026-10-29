@@ -1,10 +1,10 @@
 import { catalogResource, platformRequest, studyFetch } from "../../../shared/api/client";
+import { publicConfig } from "../../../shared/config/public.mjs";
 import { mergeMathLibraryCatalog } from "../library/math-library";
 import { mathResponseData, mathResponseError } from "./math-response";
 
 export type MathRow = Record<string, any>;
 export type NoteKind = "错题" | "收藏" | "笔记";
-const station = 1;
 const stableCatalogCommands = new Set([
   "GetBookPaperListOfVip", "GetBookListCountAndLookCount_New", "GetQuestionNexts2",
   "GetBookHighscorealbumList", "GetCoursePacketList",
@@ -38,7 +38,7 @@ export async function mathCommand(
     }),
   );
   return /^Get/.test(command)
-    ? catalogResource(JSON.stringify(["math-command", command, model, params]), load, stableCatalogCommands.has(command) ? 60_000 : 0)
+    ? catalogResource(JSON.stringify(["math-command", command, model, params]), load, stableCatalogCommands.has(command) ? publicConfig.catalogCache.maxAgeMs : 0)
     : load();
 }
 // AutoModel also caches personalized reports by command parameters. Reads that
@@ -49,7 +49,7 @@ export function mathFreshCommand(command: string, params: MathRow = {}) {
 export async function mathGet(path: string, query: MathRow = {}) {
   return catalogResource(JSON.stringify(["math-get", path, query]),
     async () => checked(await platformRequest("math", { path, method: "GET", query })),
-    stableCatalogPaths.has(path) ? 60_000 : 0);
+    stableCatalogPaths.has(path) ? publicConfig.catalogCache.maxAgeMs : 0);
 }
 export async function mathPost(path: string, data: MathRow = {}) {
   return checked(await platformRequest("math", { path, method: "POST", data }));
@@ -93,7 +93,6 @@ export const mathApi = {
       "GetBookPaperListOfVip",
       {
         IsValid: 1,
-        System_Station_ID: station,
         IsBook: 1,
         IsBeta: 0,
         IsRecommend: "",
@@ -105,7 +104,6 @@ export const mathApi = {
       "GetBookListCountAndLookCount_New",
       {
         IsValid: 1,
-        System_Station_ID: station,
         BusType: "试卷",
         IsBook: 1,
         IsBeta: 0,
@@ -132,7 +130,6 @@ export const mathApi = {
   analysis: (ID: string | number) =>
     mathGet("/api/question_list/GetQuestionByIDSoleDes", {
       ID,
-      System_Station_ID: station,
       SortDesc: "Sort",
     }),
   resolve: (QuestionID: string | number) =>
@@ -148,7 +145,6 @@ export const mathApi = {
     mathCommand(
       "GetBookHighscorealbumList",
       {
-        System_Station_ID: station,
         IsValid: 1,
         BusType: "会员专辑",
         SortDesc: "Sort",
@@ -180,7 +176,6 @@ export const mathApi = {
       CataCode,
       BusType,
       ExamType,
-      System_Station_ID: station,
     }),
   createPractice: (
     StuID: string,
@@ -195,7 +190,6 @@ export const mathApi = {
       CatalogID,
       ExanType,
       Type,
-      System_Station_ID: station,
     }),
   practiceQuestions: (ID: string | number, StuID: string) =>
     mathGet("/api/choice_question_exercise/GetPaper", { ID, StuID }),
@@ -224,7 +218,6 @@ export const mathApi = {
       Type,
       CatalogCode: 0,
       CodeLength: 1,
-      System_Station_ID: station,
     }),
   noteCatalogs: (StuID: string, BusType: NoteKind, BusValue = "数一") =>
     mathCommand("GetSysUserBookCatalog", {
@@ -232,7 +225,6 @@ export const mathApi = {
       BusType,
       BusValue,
       Type: "用户笔记本",
-      System_Station_ID: station,
     }),
   createNoteCatalog: (StuID: string, BusType: NoteKind, Name: string) =>
     mathPost("/api/sys_user_book_catalog/Inner_sys_user_book_catalog", {
@@ -240,7 +232,6 @@ export const mathApi = {
       BusType,
       Name,
       Type: "用户笔记本",
-      System_Station_ID: station,
     }),
   notes: (StuID: string, Type: NoteKind) =>
     mathCommand("GetRelQuestionLogMistakesOrFavoriteList", { StuID, Type }),
@@ -255,7 +246,6 @@ export const mathApi = {
   saveNote: (data: MathRow) =>
     mathPost("/api/sys_user_book_question/Inner_sys_user_book_question", {
       IsCourse: "1",
-      System_Station_ID: station,
       Source: "电子书",
       ...data,
     }),
@@ -274,11 +264,10 @@ export const mathApi = {
   discussionReplies: (QuestionID: number | string, PID: number | string) =>
     mathCommand("GetDiscussListByPID", { QuestionID, PID }),
   addComment: (data: MathRow) =>
-    mathPost("/api/sys_comment/Add", { ...data, System_Station_ID: station }),
+    mathPost("/api/sys_comment/Add", { ...data }),
   messages: (StuID: string) =>
     mathGet("/api/sys_msg_push/GetListByPagev2", {
       StuID,
-      System_Station_ID: station,
       page: 1,
       limit: 100,
       SortDesc: "AddTime desc",
@@ -294,16 +283,14 @@ export const mathApi = {
   courses: (StuID: string) =>
     mathGet("/api/c_course_packet/GetPacketList", {
       StuID,
-      System_Station_ID: station,
     }),
   courseChapters: (ID: number, StuID: string) =>
     mathGet("/api/c_course_packet/GetPacketV2", {
       ID,
       StuID,
-      System_Station_ID: station,
     }),
   exams: (StuID: string) =>
-    mathCommand("GetDryRunInfoList", { StuID, System_Station_ID: station }),
+    mathCommand("GetDryRunInfoList", { StuID }),
   async photoSearch(image: File) {
     const form = new FormData();
     form.append("image", image);
@@ -324,7 +311,6 @@ export const mathApi = {
     return mathPost("/api/question_search_photo/SearchPhotoKey", {
       SearchKey1: data.feat,
       SearchKey2: data.ocr,
-      System_Station_ID: station,
     });
   },
 };

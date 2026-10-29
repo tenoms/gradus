@@ -7,7 +7,8 @@ import {loadBookNotes} from '../../src/features/math/notebook/notebook-data.mjs'
 
 async function moduleFrom(relative,replace){
   const source=await readFile(new URL(relative,import.meta.url),'utf8');
-  const code=replace(ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText);
+  const code=replace(ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText)
+    .replace(/(['"])(?:\.\.\/)+shared\/config\/public\.mjs\1/g,JSON.stringify(new URL('../../src/shared/config/public.mjs',import.meta.url).href));
   return import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`);
 }
 const frontend=await moduleFrom('../../src/features/computer/api/computer.ts',code=>code.replace(/import \{ catalogResource, platformRequest, studyFetch \} from ['"]\.\.\/\.\.\/\.\.\/shared\/api\/client['"];?/,"const catalogResource=(_key,load)=>load();const platformRequest=(...args)=>globalThis.__sharedFrontendTransport(...args);const studyFetch=()=>{throw new Error('upload not in this case')};"));

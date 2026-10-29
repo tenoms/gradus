@@ -896,7 +896,6 @@ function Practice({ stuid }: { stuid: string }) {
                       Type: type,
                       BusType: subject,
                       CatalogID: selected.ID,
-                      System_Station_ID: 1,
                       StuID: stuid,
                     },
                   );

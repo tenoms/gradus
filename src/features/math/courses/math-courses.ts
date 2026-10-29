@@ -4,14 +4,12 @@ export const courseApi = {
   catalog: (StuID: string, BusType = "") =>
     mathGet("/api/c_course_product/GetProductByStuID2", {
       StuID,
-      System_Station_ID: 1,
       BusType,
       SortDesc: "Sort",
       IsRecommend: 1,
     }),
   vipCatalog: (BusType = "", ProductName = "") =>
     mathCommand("GetCourseProductRecordCounts", {
-      System_Station_ID: 1,
       BusType,
       Type: "VIP精品课程",
       ProductName,
@@ -19,18 +17,16 @@ export const courseApi = {
   products: (StuID: string) =>
     mathGet("/api/c_course_product/GetProductByStuID", {
       StuID,
-      System_Station_ID: 1,
       Type: "培训课程",
       SortDesc: "Sort",
     }),
   free: (StuID: string) =>
     mathCommand("GetUserByProductCourseWare2", {
       StuID,
-      System_Station_ID: 1,
       Type: "免费产品",
     }),
   handouts: (StuID: string) =>
-    mathCommand("GetUserByProductCourseWare2", { StuID, System_Station_ID: 1 }),
+    mathCommand("GetUserByProductCourseWare2", { StuID }),
   courseInfo: (ID: number | string) =>
     mathGet("/api/c_course_list/GetListByPage", { ID, page: 1, limit: 1 }),
   product: (StuID: string, CourseProductID: number | string) =>
@@ -147,7 +143,6 @@ export const courseApi = {
       StuID,
       CourseID,
       BusType,
-      System_Station_ID: 1,
     }),
   ability: (StuID: string) => mathCommand("GetPaperRecordCounts", { StuID }),
 };

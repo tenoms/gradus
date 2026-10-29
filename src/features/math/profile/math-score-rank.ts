@@ -181,7 +181,6 @@ export const scoreRankApi = {
       SchoolCode: form.SchoolCode,
       MajorCode: form.MajorCode,
       IsQuanRiZ: form.IsQuanRiZ,
-      System_Station_ID: 1,
     }),
   async save(score: ScoreRow) {
     const response = await api("/api/platform/math/first-score", {

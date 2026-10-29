@@ -107,7 +107,7 @@ export const bookshelfApi = {
       mathApi.books(),
       mathCommand(
         "GetBookListCountAndLookCount_LastTop3",
-        { StuID: stuid, System_Station_ID: 1 },
+        { StuID: stuid },
         true,
       ),
     ]);

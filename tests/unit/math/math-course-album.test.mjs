@@ -31,7 +31,6 @@ test("album reading logs retain exact course/product scope and update an existin
     CatalogID: 21,
     AlbumID: 20,
     StuID: "s",
-    System_Station_ID: 1,
     BusID: 22,
     ProductID: 12,
     CourseID: 10,

@@ -72,7 +72,6 @@ function Status({
 export default function MathInformationResources({ stuid }: { stuid: string }) {
   const remote = useData(`knowledge-${stuid}`, () =>
     mathGet("/api/headimg_list/GetListByAll", {
-      System_Station_ID: 1,
       BusType: "考研知识",
       StuID: stuid,
       IsValid: 1,

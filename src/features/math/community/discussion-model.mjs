@@ -24,7 +24,6 @@ export function discussionReplyPayload({
     Level,
     BusType: busType,
     BusID: qid,
-    System_Station_ID: 1,
     Files: files.join(","),
     Quote,
     ReplyID,

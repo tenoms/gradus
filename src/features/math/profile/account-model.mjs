@@ -20,7 +20,6 @@ export function studyProfilePayload(form, stuid) {
     StuID: stuid,
     ...Object.fromEntries(keys.map((k) => [k, form[k] ?? ""])),
     isJoinCourse: form.IsJoinCourse ?? form.isJoinCourse ?? "",
-    System_Station_ID: 1,
     Source: form.Source || "Web学习空间",
   };
 }

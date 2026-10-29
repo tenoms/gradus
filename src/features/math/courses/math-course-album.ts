@@ -27,7 +27,6 @@ export const courseAlbumApi = {
       mathGet("/api/book_highscorealbum_studylog/GetListByPage", {
         AlbumID,
         StuID: context.stuid,
-        System_Station_ID: 1,
         ProductID: context.ProductID,
         CourseID: context.CourseID,
         Type: "章节",
@@ -58,7 +57,6 @@ export const courseAlbumApi = {
         AlbumID,
         CatalogID,
         StuID: context.stuid,
-        System_Station_ID: 1,
         ProductID: context.ProductID,
         CourseID: context.CourseID,
         Type: "章节",
@@ -138,7 +136,6 @@ export const courseAlbumApi = {
             CatalogID,
             AlbumID,
             StuID: context.stuid,
-            System_Station_ID: 1,
           },
         ),
 };

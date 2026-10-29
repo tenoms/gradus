@@ -2,9 +2,11 @@ import test, { beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { stripTypeScriptTypes } from "node:module";
+import { publicConfig } from "../../../src/shared/config/public.mjs";
 
 // Transform the actual source: ApiError uses parameter properties that strip-only mode cannot erase.
-const source = stripTypeScriptTypes(readFileSync(new URL("../../../src/shared/api/client.ts", import.meta.url), "utf8"), { mode: "transform" });
+const source = stripTypeScriptTypes(readFileSync(new URL("../../../src/shared/api/client.ts", import.meta.url), "utf8"), { mode: "transform" })
+  .replace('"../config/public.mjs"', JSON.stringify(new URL("../../../src/shared/config/public.mjs", import.meta.url).href));
 const { catalogResource, invalidateCatalogResources, api, studyFetch, setApiIdentity, configureApiSpace, getSession, resolveApiPath, ApiError } = await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
 const originalFetch = globalThis.fetch;
 const originalWindow = globalThis.window;
@@ -197,10 +199,32 @@ test("catalogue reads join concurrent loads and reuse stable data until refresh 
   assert.equal(calls, 2, "explicit refresh requests a new response");
   const originalNow = Date.now;
   try {
-    Date.now = () => originalNow() + 61_000;
+    Date.now = () => originalNow() + publicConfig.catalogCache.maxAgeMs + 1;
     await catalogResource("book-1", load);
-    assert.equal(calls, 3, "catalogues expire after a minute");
+    assert.equal(calls, 3, "catalogues expire after the configured duration");
   } finally { Date.now = originalNow; }
+});
+
+test("catalogue cache duration and capacity follow public configuration", async () => {
+  const original = { ...publicConfig.catalogCache }, originalNow = Date.now;
+  let now = 100, calls = 0;
+  try {
+    publicConfig.catalogCache.maxAgeMs = 5;
+    publicConfig.catalogCache.maxEntries = 2;
+    Date.now = () => now;
+    invalidateCatalogResources();
+    const load = async () => ++calls;
+    assert.equal(await catalogResource("duration", load), 1);
+    now += 6;
+    assert.equal(await catalogResource("duration", load), 2);
+    await catalogResource("other", load);
+    await catalogResource("third", load);
+    assert.equal(await catalogResource("duration", load), 5, "capacity eviction uses the configured maximum");
+  } finally {
+    Object.assign(publicConfig.catalogCache, original);
+    Date.now = originalNow;
+    invalidateCatalogResources();
+  }
 });
 
 test("personal catalogue progress joins only in-flight reads and retries failures", async () => {

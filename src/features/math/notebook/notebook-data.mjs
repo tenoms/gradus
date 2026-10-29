@@ -18,7 +18,6 @@ export async function loadBookNotes({
   const params = {
     StuID: stuid,
     Type: kind,
-    System_Station_ID: 1,
     BookID: Number(bookId) || 0,
     CatalogID: Number(catalogId) || 0,
   };
@@ -28,7 +27,6 @@ export async function loadBookNotes({
   const query = {
     StuID: stuid,
     Type: kind,
-    System_Station_ID: 1,
     limit: 1000,
     page: 1,
     ...(Number(bookId) > 0 ? { BookID: Number(bookId) } : {}),

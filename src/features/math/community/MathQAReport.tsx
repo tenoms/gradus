@@ -58,7 +58,7 @@ export default function MathQAReport({
           "getUserQAMonthList",
           "getUserQAChaperList",
         ].map((command) =>
-          mathCommand(command, { StuID: stuid, System_Station_ID: 1 }),
+          mathCommand(command, { StuID: stuid }),
         ),
       );
       setData({

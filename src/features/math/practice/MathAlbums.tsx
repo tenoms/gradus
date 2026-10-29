@@ -158,7 +158,6 @@ export default function MathAlbums({
             AlbumID: album?.ID,
             CatalogID: catalog.ID,
             StuID: stuid,
-            System_Station_ID: 1,
             limit: 1,
             page: 1,
             SortDesc: "AddTime Desc",
@@ -229,7 +228,6 @@ export default function MathAlbums({
           CatalogID: catalog.ID,
           AlbumID: album.ID,
           StuID: stuid,
-          System_Station_ID: 1,
           BusID,
           ...(previous?.ID
             ? {
@@ -274,7 +272,6 @@ export default function MathAlbums({
             CatalogID: catalog.ID,
             AlbumID: album.ID,
             StuID: stuid,
-            System_Station_ID: 1,
           },
         );
       likes.reload();

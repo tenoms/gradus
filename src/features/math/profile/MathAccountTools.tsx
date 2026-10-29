@@ -133,7 +133,6 @@ function Rankings({ onQuestion }: { onQuestion: (row: MathRow) => void }) {
         id={`rank-${type}`}
         load={() =>
           mathCommand("GetQuestionNoteRankList", {
-            System_Station_ID: 1,
             Type: type,
           })
         }

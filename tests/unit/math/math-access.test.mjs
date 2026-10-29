@@ -10,6 +10,7 @@ const compile = source => ts.transpileModule(source, {
 }).outputText;
 const source = await readFile(new URL("../../../src/features/math/api/math.ts", import.meta.url), "utf8");
 const output = compile(source)
+  .replace(/(['"])(?:\.\.\/)+shared\/config\/public\.mjs\1/g, JSON.stringify(new URL("../../../src/shared/config/public.mjs", import.meta.url).href))
   .replace(/import \{ catalogResource, platformRequest, studyFetch \} from ["']\.\.\/\.\.\/\.\.\/shared\/api\/client["'];?/, "const catalogResource=(_key,load)=>load();const platformRequest=(...args)=>globalThis.__mathContentRequest(...args); const studyFetch=()=>{throw new Error('unexpected upload')};")
   .replace(/import \{ mergeMathLibraryCatalog \} from ["']\.\.\/library\/math-library["'];?/, "const {mergeMathLibraryCatalog}=globalThis.__mathContentFixture;")
   .replace(/import \{ mathResponseData, mathResponseError \} from ["']\.\/math-response["'];?/, "const {mathResponseData,mathResponseError}=globalThis.__mathContentFixture;");
@@ -32,6 +33,17 @@ test("the library keeps all returned books without fetching course grants or all
   assert.deepEqual(result.map(row => row.ID), [721, 2170, 4893, 9900]);
   assert.deepEqual(seen.sort(), ["GetBookListCountAndLookCount_New", "GetBookPaperListOfVip"]);
   assert.equal(books.length, 3);
+});
+
+test("browser math requests leave the authoritative station to the server", async () => {
+  const requests = [];
+  globalThis.__mathContentRequest = async (_platform, request) => { requests.push(request); return { SuccessResponse: true, data: [] }; };
+  await adapter.mathApi.books();
+  await adapter.mathApi.analysis(42);
+  for (const request of requests) {
+    assert.equal(Object.hasOwn(request.query || {}, "System_Station_ID"), false);
+    assert.equal(Object.hasOwn(request.data?.data ? JSON.parse(request.data.data) : request.data || {}, "System_Station_ID"), false);
+  }
 });
 
 test("QR lookup requests content directly and preserves every returned row", async () => {

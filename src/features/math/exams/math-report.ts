@@ -9,7 +9,7 @@ export async function loadMathReport(
 ) {
   const StuID = context.stuid,
     PaperID = context.PaperID,
-    common = { PaperID, StuID, System_Station_ID: 1 };
+    common = { PaperID, StuID };
   const requests: Record<string, () => Promise<any>> = {};
   if (context.kind === "dry") {
     const shared = { DryrunID: context.DryID, PaperID };
@@ -72,7 +72,6 @@ export async function loadMathReport(
       requests.history = () =>
         mathCommand("GetPaperPastPerformance", {
           StuID,
-          System_Station_ID: meta.System_Station_ID || 1,
           PaperNotes: meta.PaperNotes,
         });
     requests.recommendations = () =>

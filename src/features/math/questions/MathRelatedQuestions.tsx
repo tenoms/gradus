@@ -135,11 +135,9 @@ export default function MathRelatedQuestions({
     if (source === "考点刷题")
       return mathCommand("GetRelQuestionMenu_zyk", {
         StuID: stuid,
-        System_Station_ID: 1,
       });
     const Type = source === "真题书籍包" ? "真题书籍包" : "自定义刷题包";
     const catalog = await mathGet("/api/c_course_product/GetProductByZyk", {
-      System_Station_ID: 1,
       type: Type,
       IsValid: 1,
     });
@@ -398,12 +396,12 @@ function RelatedCollection({
           ? "GetRelQuestionList_rel_zyk"
           : "GetRelPaperQuestionList_zyk",
         collection.type === 0
-          ? { System_Station_ID: 1, Standard_ID: collection.ID }
+          ? { Standard_ID: collection.ID }
           : { Standard_ID: collection.ID, ispay: 1 },
       ),
   );
   const definitions = useData("related-properties", () =>
-    mathCommand("GetRelPropertyList_rel", { System_Station_ID: 1 }),
+    mathCommand("GetRelPropertyList_rel", {}),
   );
   const logs = useData(`related-logs-${stuid}-${scope}`, () =>
     mathCommand("GetUserQuestionLogTypeList_zyk", {
@@ -487,7 +485,6 @@ function RelatedCollection({
       const wrong = drafts
         .filter((r) => r.State === 2 || r.State === 3)
         .map((r) => ({
-          System_Station_ID: 1,
           Type: "错题",
           QuestionID: r.QuestionID,
           StuID: stuid,
@@ -909,7 +906,6 @@ function RelatedReader({
         });
       else
         await mathPost("/api/rel_question_log/Inner_rel_question_log", {
-          System_Station_ID: 1,
           Type,
           QuestionID: row.QuestionID,
           StuID: stuid,
@@ -944,7 +940,6 @@ function RelatedReader({
   ) => {
     const State = relatedGradeState(details?.options || [], MyAnswer, correct);
     const payload = {
-      System_Station_ID: 1,
       ActiveOptionIDs: details?.options?.length ? MyAnswer.split(",") : [],
       MyAnswer,
       Type: "题目",
@@ -975,7 +970,6 @@ function RelatedReader({
       result.IsSubmit = 1;
       if (State > 1 && !annotations.some((r) => r.Type === "错题"))
         await mathPost("/api/rel_question_log/Inner_rel_question_log", {
-          System_Station_ID: 1,
           Type: "错题",
           QuestionID: row.QuestionID,
           StuID: stuid,

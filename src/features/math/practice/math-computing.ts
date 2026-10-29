@@ -87,7 +87,6 @@ export function computingRecord(
     };
   return {
     Type: "四大计算",
-    System_Station_ID: 1,
     QuestionID: question.QuestionID,
     PaperID: Number(context.PaperID),
     StuID: context.stuid,
@@ -113,7 +112,6 @@ export function computingPaperRecord(
 ): ComputingRow {
   return {
     Type: "四大计算",
-    System_Station_ID: 1,
     QuestionID: 0,
     PaperID: Number(context.PaperID),
     StuID: context.stuid,
@@ -133,7 +131,6 @@ export function computingHintRecord(
 ): ComputingRow {
   return {
     Type: "四大计算",
-    System_Station_ID: 1,
     QuestionID: question.QuestionID,
     PaperID: Number(context.PaperID),
     StuID: context.stuid,
@@ -152,7 +149,7 @@ export const computingApi = {
   catalogs: (StuID: string) =>
     mathCommand(
       "GetMajorComputingAndUserAllocation",
-      { StuID, System_Station_ID: 1, IsValid: 1 },
+      { StuID, IsValid: 1 },
       true,
     ),
   lastLog: (StuID: string) =>
@@ -166,7 +163,6 @@ export const computingApi = {
   records: (context: ComputingContext) =>
     mathGet("/api/c_paper_users_record/GetListByAll", {
       Type: "四大计算",
-      System_Station_ID: 1,
       PaperID: Number(context.PaperID),
       StuID: context.stuid,
       BusID: Number(context.catalogID),
@@ -176,7 +172,6 @@ export const computingApi = {
   retry: (context: ComputingContext) =>
     mathPost("/api/c_paper_users_record/RetryPaper", {
       Type: "四大计算",
-      System_Station_ID: 1,
       PaperID: Number(context.PaperID),
       StuID: context.stuid,
       BusID: Number(context.catalogID),
@@ -246,7 +241,6 @@ export const computingApi = {
       .filter((q) => !q.record)
       .map((q) => ({
         Type: "四大计算",
-        System_Station_ID: 1,
         QuestionID: q.QuestionID,
         PaperID: Number(context.PaperID),
         StuID: context.stuid,

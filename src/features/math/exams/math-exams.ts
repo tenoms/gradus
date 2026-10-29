@@ -186,7 +186,7 @@ export function buildMathExamRecord(
 ): ExamRow {
   const old = existingRecord(context, q),
     grade = gradeQuestion(q, answer, selfScore),
-    base = { ID: old.ID || 0, StuID: context.stuid, System_Station_ID: 1 },
+    base = { ID: old.ID || 0, StuID: context.stuid },
     hasOptions = optionRows(q).length > 0,
     pendingTeacher = teacherMark && !hasOptions;
   if (context.kind === "dry")
@@ -278,7 +278,6 @@ export const mathExamApi = {
       {
         IsValid: 1,
         BusType: "模考",
-        System_Station_ID: 1,
         SortDesc: "Sort Desc",
         page,
         limit: 20,
@@ -294,7 +293,7 @@ export const mathExamApi = {
   application: (DryID: string | number, StuID: string) =>
     mathCommand("GetDryAppliInfoStuID", { DryID, StuID }),
   weeklyList: (StuID: string) =>
-    mathCommand("GetksPaperList", { StuID, System_Station_ID: 1 }),
+    mathCommand("GetksPaperList", { StuID }),
   deleteWeekly: (StuID: string, ids: (string | number)[]) => {
     const selected = [
       ...new Set(
@@ -308,7 +307,7 @@ export const mathExamApi = {
     });
   },
   weeklyConfigs: () =>
-    mathCommand("GetKsConfigsList", { System_Station_ID: 1 }),
+    mathCommand("GetKsConfigsList", {}),
   scopes: () =>
     mathGet("/api/question_property_content/GetListByAll", {
       PropertyID: 20,
@@ -335,7 +334,6 @@ export const mathExamApi = {
     const query = {
       StuID: context.stuid,
       PaperID: context.PaperID,
-      System_Station_ID: 1,
       CalendarID: context.CalendarID || 0,
       ProductID: context.ProductID || 0,
     };
@@ -369,7 +367,6 @@ export const mathExamApi = {
     const common = {
       StuID: context.stuid,
       PaperID: context.PaperID,
-      System_Station_ID: 1,
     };
     if (context.kind === "weekly") {
       const [meta, questions] = await Promise.all([
@@ -400,7 +397,6 @@ export const mathExamApi = {
             StuID: context.stuid,
             PaperID: context.PaperID,
             StuState: 1,
-            System_Station_ID: 1,
             BusID: context.CalendarID,
             ProductID: context.ProductID,
           }),
@@ -450,7 +446,6 @@ export const mathExamApi = {
       mathGet("/api/c_paper/GetListByAll", { ID: context.PaperID }),
       mathGet("/api/c_paper_question/GetPaperQuestion", {
         ID: context.PaperID,
-        System_Station_ID: 1,
       }),
       mathGet("/api/sys_users_dryrun_questionlog/GetListByPage", {
         ...common,
@@ -520,7 +515,6 @@ export const mathExamApi = {
       return mathPost(
         "/api/sys_users_dryrun_paperlog/Inner_sys_users_dryrun_paperlog",
         {
-          System_Station_ID: 1,
           StuID: context.stuid,
           PaperID: context.PaperID,
           DryrunID: context.DryID,
@@ -554,7 +548,6 @@ export const mathExamApi = {
               DryrunID: context.DryID,
               BusID: context.RoomID || 0,
               QuestionID: q.ID || q.QuestionID,
-              System_Station_ID: 1,
               TeacherState: 1,
               QuestionScore: 0,
               StuQuestionState: 0,
@@ -577,7 +570,6 @@ export const mathExamApi = {
               PaperID: context.PaperID,
               BusID: context.CalendarID,
               ProductID: context.ProductID,
-              System_Station_ID: 1,
               AppraiseID: 0,
               StuQuestionImg: "",
               StuQuestionContent: optionRows(q).length ? "" : "不会做",
@@ -593,7 +585,6 @@ export const mathExamApi = {
         "/api/sys_users_dryrun_paperlog/Inner_sys_users_dryrun_paperlog",
         {
           ID: paperlog.ID || 0,
-          System_Station_ID: 1,
           StuID: context.stuid,
           PaperID: context.PaperID,
           DryrunID: context.DryID,
@@ -630,7 +621,6 @@ export const mathExamApi = {
         TeacherContext: "",
         TeacherState: allSystem ? 1 : 0,
         StuState: 1,
-        System_Station_ID: 1,
         BusID: context.CalendarID,
         ProductID: context.ProductID,
         ...(allSystem ? { Score: totalScore } : {}),

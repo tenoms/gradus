@@ -1061,7 +1061,6 @@ function DryApplication({
         FunctionID: exam.ID,
         StuID: stuid,
         BusID: detail.PaperID || paper.ID,
-        System_Station_ID: 1,
         Notes: "Web报名",
         PowerCount: "0",
         BusValue: school,

@@ -37,7 +37,6 @@ import {
   qaVoicePayload,
 } from "./math-qa";
 
-const station = 1;
 const stateNames: Record<string, string> = {
   "0": "等待解答",
   "1": "老师解答中",
@@ -267,7 +266,6 @@ export default function MathQuestions({
     mathCommand("GetUserQuestionOrderList", {
       StuID: stuid,
       State: state,
-      System_Station_ID: station,
       Page: page * 30,
       PageSize: 30,
     }),
@@ -511,7 +509,6 @@ export function NewMathQuestion({
           BkID: chosen.BookID || bookId || question?.BookID,
           StuID: stuid,
           State: 0,
-          System_Station_ID: station,
           IsValid: 1,
           Tags: isTruePaper ? "真题" : "会员",
         },
@@ -706,7 +703,6 @@ function QuestionOrder({
         QuestionID: qid,
         ID: orderId,
         StuID: stuid,
-        System_Station_ID: station,
       },
     ),
   );
@@ -714,7 +710,6 @@ function QuestionOrder({
     mathCommand("GetQuestionOrderCommentList", {
       QuestionID: qid,
       OrderID: orderId,
-      System_Station_ID: station,
     }),
   );
   const levels = useData(`order-levels-${orderId}`, () =>
@@ -726,7 +721,6 @@ function QuestionOrder({
         QuestionID: qid,
         OrderID: orderId,
         ...(teacher ? {} : { StuID: stuid }),
-        System_Station_ID: station,
       },
     ),
   );
@@ -789,7 +783,6 @@ function QuestionOrder({
             QuestionID: qid,
             Notes: teacher ? 1 : 0,
             ...(teacher ? { TeacherID: teacher.TeacherID } : { StuID: stuid }),
-            System_Station_ID: station,
           },
         );
       },
@@ -806,7 +799,6 @@ function QuestionOrder({
         BusID: Number(rating),
         Json: orderId,
         IsValid: 1,
-        System_Station_ID: station,
       });
       await mathPost("/api/question_orders/Inner_question_orders", {
         ID: orderId,
@@ -836,7 +828,6 @@ function QuestionOrder({
       const work = mathRows(
         await mathCommand("GetQuestionTeacherWorkToday", {
           TeacherID: teacher?.TeacherID,
-          System_Station_ID: station,
         }),
       );
       if (
@@ -848,7 +839,6 @@ function QuestionOrder({
       const count = mathRows(
         await mathCommand("GetTeacherWaitAnswerCounts", {
           TeacherID: teacher?.TeacherID,
-          System_Station_ID: station,
         }),
       )[0];
       if (Number(count?.WaitAnswerCounts) > 0)
@@ -1362,7 +1352,6 @@ function SameQuestionHistory({
   const [current, setCurrent] = useState<MathRow>();
   const remote = useData(`teacher-same-question-${qid}-${page}`, () =>
     mathCommand("GetQuestionOrderCountsList", {
-      System_Station_ID: 1,
       QuestionID: qid,
       page,
       limit: 20,
@@ -1450,7 +1439,6 @@ function TeacherDesk({
   const work = useData(`qa-work-${teacher.TeacherID}`, () =>
     mathCommand("GetQuestionTeacherWorkToday", {
       TeacherID: teacher.TeacherID,
-      System_Station_ID: station,
     }),
   );
   const counts = useData(`qa-work-count-${teacher.TeacherID}-${tags}`, () =>
@@ -1460,7 +1448,7 @@ function TeacherDesk({
         : tags === "飞轮"
           ? "GetAnswerTeacherCounts_fx"
           : "GetAnswerTeacherCounts",
-      { TeacherID: teacher.TeacherID, System_Station_ID: station },
+      { TeacherID: teacher.TeacherID },
     ),
   );
   const commands: Record<string, string> = {
@@ -1477,7 +1465,6 @@ function TeacherDesk({
       mathCommand(commands[tab], {
         TeacherID: teacher.TeacherID,
         Tags: tags,
-        System_Station_ID: station,
         page,
         limit: 30,
       }),

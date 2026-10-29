@@ -40,7 +40,6 @@ test("specific category retains the original joined source procedure", async () 
     {
       StuID: "fixture",
       Type: "收藏",
-      System_Station_ID: 1,
       BookID: 34,
       CatalogID: 12,
     },

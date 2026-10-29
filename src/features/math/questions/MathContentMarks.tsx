@@ -40,7 +40,6 @@ export default function MathContentMarks({
         BusType: 1,
         StuID: stuid,
         Type: 4,
-        System_Station_ID: 1,
         BusID: questionId,
         BaseType: markType,
         BusValue: fileId,
@@ -81,7 +80,6 @@ export default function MathContentMarks({
             QuestionID: questionId,
             BusType: markType,
             IsValid: 1,
-            System_Station_ID: 1,
           });
       } else if (marked)
         await mathPost("/api/sys_give/Del_sys_give", { ID: marked.ID });
@@ -90,7 +88,6 @@ export default function MathContentMarks({
           BusType: 1,
           StuID: stuid,
           Type: 4,
-          System_Station_ID: 1,
           BusID: questionId,
           BaseType: markType,
           BusValue: fileId,

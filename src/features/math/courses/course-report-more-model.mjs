@@ -29,7 +29,6 @@ export function courseRankingVote(stuid, row) {
       Content: 1,
       StuID: stuid,
       Type: 1,
-      System_Station_ID: 1,
     },
   };
 }
@@ -64,7 +63,6 @@ export function latestCourseExamParams(context, meta, withProduct = false) {
     StuID: context.stuid,
     CourseID: context.CourseID,
     PaperNotes: meta.PaperNotes,
-    System_Station_ID: 1,
     Year: meta.Use,
     ...(withProduct ? { ProductID: context.ProductID } : {}),
   };

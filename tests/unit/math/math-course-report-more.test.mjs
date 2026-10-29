@@ -63,7 +63,6 @@ test("课程榜单点赞指向记录row.id，撤赞只删除本人已有GiveStat
       Content: 1,
       StuID: "fixture",
       Type: 1,
-      System_Station_ID: 1,
     },
   });
   assert.deepEqual(courseRankingVote("fixture", { id: 91, GiveState: 92 }), {
@@ -78,7 +77,6 @@ test("最近模拟成绩保留原Use年份与课程上下文，不混用当前�
       StuID: "fixture",
       CourseID: 1,
       PaperNotes: "数一",
-      System_Station_ID: 1,
       Year: 2023,
       ProductID: 4,
     },

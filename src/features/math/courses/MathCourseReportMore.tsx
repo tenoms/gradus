@@ -55,7 +55,7 @@ export default function MathCourseReportMore({
           for (let page = 1; ; page += 1) {
             const result = await mathGet("/api/sys_give/GetListBypage", {
               StuID: context.stuid, BusType: 3, Type: 1,
-              System_Station_ID: 1, limit: 1000, page,
+              limit: 1000, page,
             });
             const batch = mathRows(result);
             reactions.push(...batch);

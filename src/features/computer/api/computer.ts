@@ -1,13 +1,8 @@
 import { catalogResource, platformRequest, studyFetch } from "../../../shared/api/client";
+import { publicConfig } from "../../../shared/config/public.mjs";
 
 export type ComputerRecord = Record<string, any>;
-export const computerSubjects = [
-  { id: "701769479767592960", name: "数据结构", examCategory: 1 },
-  { id: "701769719702753280", name: "组成原理", examCategory: 1 },
-  { id: "704332467330486272", name: "操作系统", examCategory: 1 },
-  { id: "707889875399086080", name: "计算机网络", examCategory: 1 },
-  { id: "708024163360706560", name: "C语言程序设计", examCategory: 1 },
-];
+export const computerSubjects = publicConfig.computer.subjects.map(subject => ({ ...subject }));
 export const typeNames: Record<string, string> = {
   1: "单选题",
   2: "多选题",

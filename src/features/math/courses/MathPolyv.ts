@@ -1,5 +1,6 @@
 // Official VOD SDK: https://help.polyv.net/vod/js/video_player/integration/
 // Protected playback requires a playsafe credential supplied by the content owner.
+import { publicConfig } from "../../../shared/config/public.mjs";
 let sdkPromise: Promise<void> | undefined;
 export function loadMathPolyvSDK(): Promise<void> {
   return (sdkPromise ||= new Promise<void>((resolve, reject) => {
@@ -8,7 +9,7 @@ export function loadMathPolyvSDK(): Promise<void> {
       return;
     }
     const script = document.createElement("script");
-    script.src = "https://player.polyv.net/resp/vod-player/latest/player.js";
+    script.src = publicConfig.media.polyvSdkUrl;
     script.async = true;
     script.onload = () => resolve();
     script.onerror = () => {

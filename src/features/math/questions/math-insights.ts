@@ -25,7 +25,6 @@ export function mathCapacityPayload(
   return {
     Level: level,
     StuID: stuid,
-    System_Station_ID: 1,
     BookID: bookId,
     QuestionID: qid,
   };

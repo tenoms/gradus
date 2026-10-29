@@ -279,7 +279,7 @@ test("resume and history queries keep their original scopes", async () => {
     ],
     [
       "GetCourseThrillerPaperList",
-      { StuID: "s", CourseID: 40, BusType: 3, System_Station_ID: 1 },
+      { StuID: "s", CourseID: 40, BusType: 3 },
     ],
   ]);
 });
@@ -308,7 +308,6 @@ test("course catalogues only read without activating subscriptions", async () =>
     "/api/c_course_product/GetProductByStuID2",
     {
       StuID: "s",
-      System_Station_ID: 1,
       BusType: "",
       SortDesc: "Sort",
       IsRecommend: 1,

@@ -11,7 +11,6 @@ export function bookViewPayload({ stuid, qid, bookId, source }) {
     BusType: "02bf2d6b67684fce9d087e333cdcfcde",
     BusID: qid,
     BusValue: "1",
-    System_Station_ID: 1,
     BookID: Number(bookId),
   };
 }

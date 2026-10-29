@@ -835,7 +835,6 @@ function ModuleMarks({
         BusType: 1,
         StuID: stuid,
         Type: 4,
-        System_Station_ID: 1,
         BusID: questionId,
         BaseType: "小模块",
         BusValue: fileId,
@@ -864,7 +863,6 @@ function ModuleMarks({
             QuestionID: questionId,
             BusType: "小模块",
             IsValid: 1,
-            System_Station_ID: 1,
           });
       } else if (marked)
         await mathPost("/api/sys_give/Del_sys_give", { ID: marked.ID });
@@ -873,7 +871,6 @@ function ModuleMarks({
           BusType: 1,
           StuID: stuid,
           Type: 4,
-          System_Station_ID: 1,
           BusID: questionId,
           BaseType: "小模块",
           BusValue: fileId,

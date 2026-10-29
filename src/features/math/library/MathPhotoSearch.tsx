@@ -95,7 +95,6 @@ export default function MathPhotoSearch({
       })
       .catch(() => {});
     mathGet("/api/question_teachers/GetListByPage", {
-      System_Station_ID: 1,
       BusType: "兼职拍搜老师",
       BusValue: stuid,
       IsValid: 1,
@@ -108,7 +107,6 @@ export default function MathPhotoSearch({
         setTeacher(role);
         if (role) {
           const all = await mathGet("/api/book_list/GetListByPage", {
-            System_Station_ID: 1,
           });
           if (active) setBooks(mathRows(all));
         }
@@ -178,7 +176,6 @@ export default function MathPhotoSearch({
       setManualRows(
         mathRows(
           await mathGet("/api/question_list/GetListByPage", {
-            System_Station_ID: 1,
             BookID: manualSource,
             QuestionID: manualNumber,
             QuestionPage: manualPage,
@@ -212,7 +209,6 @@ export default function MathPhotoSearch({
         BusValue: found ? (chosen?._manual ? "手动添加" : "搜到了") : "没搜到",
         BusID: 0,
         ...metadata,
-        System_Station_ID: 1,
         StuID: stuid,
       });
       setNotice("图片索引对照结果已保存");

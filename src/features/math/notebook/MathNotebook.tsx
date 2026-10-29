@@ -106,7 +106,6 @@ export default function MathNotebook({
       StuID: stuid,
       BusType: kind,
       Type: "用户笔记本",
-      System_Station_ID: 1,
       BusValue: subject,
     }),
   );
@@ -228,7 +227,6 @@ export default function MathNotebook({
         StuID: stuid,
         BusType: kind,
         Type: "用户笔记本",
-        System_Station_ID: 1,
         Name: categoryEditor.Name.trim(),
         ...(categoryEditor.ID
           ? { ID: categoryEditor.ID, UpdateColumns: "Name" }

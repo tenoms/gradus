@@ -1,3 +1,5 @@
+import { mathExternalUrl } from "../../../shared/config/public.mjs";
+
 export function reportTables(response) {
   const value =
     response &&
@@ -172,7 +174,7 @@ export function courseReportPrintLinks(context, meta, papers = []) {
   )
     return [];
   const fixed = (filename, paper, legacy = false) => {
-    const url = new URL("https://web.math-upstream.invalid/External/" + filename);
+    const url = mathExternalUrl(filename);
     for (const [key, value] of Object.entries(
       legacy
         ? {

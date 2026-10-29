@@ -25,7 +25,6 @@ test("capacity writes use original Level and question identity, rejecting unsupp
   assert.deepEqual(mathCapacityPayload("actor", 20, 30, 2), {
     Level: 2,
     StuID: "actor",
-    System_Station_ID: 1,
     BookID: 20,
     QuestionID: 30,
   });

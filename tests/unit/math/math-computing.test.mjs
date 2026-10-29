@@ -174,7 +174,7 @@ test("catalog allocation uses Model endpoint and retry keeps catalogue-specific 
   await adapter.computingApi.catalogs("student");
   assert.deepEqual(seen, [
     "GetMajorComputingAndUserAllocation",
-    { StuID: "student", System_Station_ID: 1, IsValid: 1 },
+    { StuID: "student", IsValid: 1 },
     true,
   ]);
   globalThis.__computingPost = async (...args) => {

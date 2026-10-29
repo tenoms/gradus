@@ -1,4 +1,5 @@
 import type { Platform } from "../../../shared/study-data.mjs";
+import { publicConfig } from "../config/public.mjs";
 export type { Platform } from "../../../shared/study-data.mjs";
 export type ApiSpace = "admin" | "learning";
 let apiSpace: ApiSpace = "learning";
@@ -48,14 +49,14 @@ export function setApiIdentity(userId?: string) {
   identity = userId;
 }
 /** Reuse stable catalogues briefly; maxAge=0 only joins concurrent reads. */
-export function catalogResource<T>(key: string, load: () => Promise<T>, maxAge = 60_000): Promise<T> {
+export function catalogResource<T>(key: string, load: () => Promise<T>, maxAge = publicConfig.catalogCache.maxAgeMs): Promise<T> {
   const scopedKey = JSON.stringify([apiSpace, identity, key]);
   const existing = catalogResources.get(scopedKey);
   if (existing && existing.expiresAt > Date.now()) return existing.promise;
   const entry: CatalogEntry = { promise: load(), expiresAt: Infinity };
   catalogResources.delete(scopedKey);
   catalogResources.set(scopedKey, entry);
-  if (catalogResources.size > 80) catalogResources.delete(catalogResources.keys().next().value!);
+  if (catalogResources.size > publicConfig.catalogCache.maxEntries) catalogResources.delete(catalogResources.keys().next().value!);
   entry.promise = entry.promise.then(value => {
     if (catalogResources.get(scopedKey) === entry) {
       if (maxAge > 0) entry.expiresAt = Date.now() + maxAge;

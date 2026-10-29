@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
+import { publicConfig } from "../../../src/shared/config/public.mjs";
 
 const source = await readFile(
   new URL("../../../src/features/computer/api/computer.ts", import.meta.url),
@@ -14,13 +15,18 @@ const compiled = ts
       module: ts.ModuleKind.ESNext,
     },
   })
-  .outputText.replace(
+  .outputText.replace(/(['"])(?:\.\.\/)+shared\/config\/public\.mjs\1/g, JSON.stringify(new URL("../../../src/shared/config/public.mjs", import.meta.url).href)).replace(
     /import \{ catalogResource, platformRequest, studyFetch \} from ['"]\.\.\/\.\.\/\.\.\/shared\/api\/client['"];?/,
     "const catalogResource=(_key,load)=>load();const platformRequest=(...args)=>globalThis.__computerTestRequest(...args); const studyFetch=(...args)=>globalThis.__computerTestFetch(...args);",
   );
 const adapter = await import(
   `data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`
 );
+
+test("default subjects come from public configuration", () => {
+  assert.deepEqual(adapter.computerSubjects, publicConfig.computer.subjects);
+  assert.notEqual(adapter.computerSubjects, publicConfig.computer.subjects);
+});
 
 test("cloud skip records restore independently of the empty answer list", () => {
   const response = { answerTotalNumber: 0, answerList: [], answers: [], skipExerciseIdList: ["skipped-one", "skipped-one", 2, null] };

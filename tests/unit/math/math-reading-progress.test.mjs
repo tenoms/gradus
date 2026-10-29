@@ -14,7 +14,6 @@ test("书籍解析进度保留原view业务类型、题目与书籍编号", () =
       BusType: "02bf2d6b67684fce9d087e333cdcfcde",
       BusID: 12,
       BusValue: "1",
-      System_Station_ID: 1,
       BookID: 34,
     },
   );

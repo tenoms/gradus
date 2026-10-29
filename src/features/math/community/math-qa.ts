@@ -59,7 +59,6 @@ export function qaVoicePayload({
         BusID: orderId,
         QuestionID: questionId,
         TeacherID: teacherId,
-        System_Station_ID: 1,
         BusType: "语音",
         BusValue: url,
       };
@@ -72,7 +71,6 @@ export function qaReportDetailParams(
 ) {
   return {
     StuID: stuid,
-    System_Station_ID: 1,
     ...(type === "book"
       ? { BKID: id }
       : type === "chapter"

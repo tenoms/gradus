@@ -37,7 +37,6 @@ export default function MathMessages({
     setError("");
     mathGet("/api/sys_msg_push/GetListByPagev2", {
       StuID: stuid,
-      System_Station_ID: 1,
       page,
       limit: pageSize,
       SortDesc: "AddTime desc",

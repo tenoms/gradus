@@ -1,3 +1,5 @@
+import { mathExternalUrl } from "../../../shared/config/public.mjs";
+
 const number = (value) => Number(value) || 0;
 const timestamp = (value) => {
   if (typeof value === "number") return value;
@@ -232,9 +234,7 @@ export function recommendationPrintUrl(context, group) {
     const direct = new URL(String(group.Files || ""));
     if (["https:", "http:"].includes(direct.protocol)) return direct.href;
   } catch {}
-  const url = new URL(
-    "https://web.math-upstream.invalid/External/RecommendPaperPrintSpecial.html",
-  );
+  const url = mathExternalUrl("RecommendPaperPrintSpecial.html");
   for (const [key, value] of Object.entries({
     courseID: context.CourseID,
     calendarID: context.CalendarID,

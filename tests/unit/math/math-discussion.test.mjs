@@ -19,7 +19,6 @@ test("discussion reply payload preserves original parent, reply and recipient se
     Level: 1,
     BusType: "题目讨论区",
     BusID: 99,
-    System_Station_ID: 1,
     Files: "https://example.com/image.png",
     Quote: "",
     ReplyID: 0,

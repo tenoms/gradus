@@ -40,7 +40,6 @@ export default function MathVideoFeedback({
   const params = {
     BusType: 2,
     Type: 2,
-    System_Station_ID: 1,
     BusValue: vid,
     BusID: videoId,
   };
@@ -117,7 +116,6 @@ export default function MathVideoFeedback({
         BusType: 1,
         StuID: stuid,
         Type: 4,
-        System_Station_ID: 1,
         BusID: questionId,
         BaseType: "视频解析",
         BusValue: fileId,
@@ -159,7 +157,6 @@ export default function MathVideoFeedback({
             QuestionID: questionId,
             BusType: "视频解析",
             IsValid: 1,
-            System_Station_ID: 1,
           });
       } else if (flag)
         await mathPost("/api/sys_give/Del_sys_give", { ID: flag.ID });
@@ -168,7 +165,6 @@ export default function MathVideoFeedback({
           BusType: 1,
           StuID: stuid,
           Type: 4,
-          System_Station_ID: 1,
           BusID: questionId,
           BaseType: "视频解析",
           BusValue: fileId,
