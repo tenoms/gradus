@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createResourceSync } from '../server/resource-sync.mjs';
+import { createPrivatePlatformStore } from '../server/private-platform.mjs';
+import { createTestDatabase } from './database.mjs';
 import { startHttpApp, testLearner } from './http-app.mjs';
 
 const config={yyb:{baseUrl:'https://yyb.example'},math:{baseUrl:'https://math.example',appId:'math',stationId:1},computer:{baseUrl:'https://computer.example',appId:'computer',tenantCode:1}};
@@ -53,4 +55,48 @@ test('learning requests reuse the YYB directory while management refresh and ser
     const stopped=await app.request('/api/admin/account-pool',{auth:admin,method:'PUT',body:{revision:0,algorithm:'round_robin',enabledRefs:[]}});assert.equal(stopped.status,200);
     assert.equal((await read(7)).status,503,'pool disablement is checked before reusing a source directory');
   }finally{await app.close();}
+});
+
+test('large book outlines do not write a private snapshot for every referenced question',async()=>{
+  const database=await createTestDatabase(),queries=[],query=database.query;
+  database.query=(sql,args)=>{queries.push({sql,args});return query(sql,args);};
+  try{
+    const store=await createPrivatePlatformStore({database}),rows=Array.from({length:2000},(_,index)=>({ID:index+1,QuestionID:index+1,QuestionTitle:`例题 ${index+1}`,CatalogID:1}));
+    queries.length=0;
+    const input={path:'/api/Master/AutoModel',method:'POST',query:{},data:{command:'GetQuestionNexts2',data:JSON.stringify({BookID:42})}};
+    for(let visit=0;visit<2;visit++){
+      const result=await store.handle({userId:'learner',name:'math',input,platform:{},session,config,invoke:async()=>({SuccessResponse:true,data:[rows]})});
+      assert.equal(result.data[0].length,2000);
+    }
+    assert.equal(queries.length,0,'both the first visit and public-cache hits avoid per-question private writes');
+    const stored=await query(`SELECT count(*)::integer AS count FROM ${database.web('platform_records')}`);assert.equal(stored.rows[0].count,0);
+  }finally{await database.close();}
+});
+
+test('full question snapshots use one batch write and still support private collection, answers and reports without resource persistence',async()=>{
+  const database=await createTestDatabase(),queries=[],query=database.query;
+  database.query=(sql,args)=>{queries.push({sql,args});return query(sql,args);};
+  try{
+    const store=await createPrivatePlatformStore({database}),questions=Array.from({length:1200},(_,index)=>({exerciseId:`q${index}`,exerciseType:1,exerciseStems:`完整题干 ${index}`,exerciseAnswer:'A',exerciseProperty:{answer:'A'},MyAnswer:'源私人答案'}));
+    queries.length=0;
+    const response={code:200,data:{exercises:questions}};
+    await store.rememberQuestions('learner','computer',response,'source');
+    assert.equal(queries.length,1,'a full paper snapshot uses one PostgreSQL statement rather than one per question');
+    assert.match(queries[0].sql,/jsonb_to_recordset/);
+    await store.rememberQuestions('learner','computer',response,'source');
+    assert.equal(queries.length,2);
+    const snapshots=await query(`SELECT count(*)::integer AS count FROM ${database.web('platform_records')} WHERE collection='questions:source'`);assert.equal(snapshots.rows[0].count,1200);
+    const handle=input=>store.handle({userId:'learner',name:'computer',input:{method:'GET',query:{},data:{},...input},platform:{},session,config});
+    // The resource domain used by handle must match the domain of the visited question snapshots.
+    const {resourceIdentity}=await import('../server/resource-catalog.mjs');
+    const sourceId=resourceIdentity('computer',session,config,{path:'/api/exam/wx/searchExercise/info/resource-domain',method:'GET',data:{},query:{}}).source.id;
+    await store.rememberQuestions('learner','computer',{data:{exercises:[questions[0]]}},sourceId);
+    await handle({path:'/api/exam/wx/personal/collectExercise',query:{exerciseId:'q0',collectFlag:0,majorId:'major'}});
+    const collection=await handle({path:'/api/exam/wx/personal/collectExerciseList'});
+    assert.equal(collection.data.list[0].exerciseStems,'完整题干 0');assert.equal(collection.data.list[0].MyAnswer,undefined);
+    const submitted=await handle({path:'/api/exam/wx/practice/submitExam',method:'POST',data:{examinationId:'paper',answers:[{exerciseId:'q0',answer:'B',answerType:2,score:0}],submitStatus:1}});
+    const report=await handle({path:'/api/exam/wx/practice/examinationRecord/detail',query:{examRecordId:submitted.data.examRecordId}});
+    assert.equal(report.data.answerList[0].exercise.exerciseStems,'完整题干 0');assert.equal(report.data.answerList[0].answer,'B');
+    const another=await store.list('another-learner','computer','collection');assert.equal(another.length,0);
+  }finally{await database.close();}
 });

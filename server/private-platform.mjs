@@ -103,18 +103,24 @@ export async function createPrivatePlatformStore({ database, resourceStore, pers
     const { ID: localId, id, _importShelfRemoved, _importId, _imported, _sourceRecordId, _key, ...fields } = data;
     return { ...identity,...fields, ...(name === 'math' ? { ID: baseUser.ID, StuID:baseUser.StuID } : { userId:baseUser.userId }) };
   }
-  async function rememberQuestions(userId,name,response,sourceId) {
+  async function rememberQuestions(userId,name,response,sourceId,input) {
+    // A book outline contains question references, not visits to every question.
+    if(name==='math'&&input?.data?.command==='GetQuestionNexts2')return;
     const found = new Map();
+    const content=value=>['QuestionTxt','QuestionContent','QuestionTitle','QuestionImg','exerciseStems','exerciseTitle','exerciseProperty','exerciseAnswer','_question_list','questions','questionList'].some(field=>value[field]!==undefined&&value[field]!==null&&value[field]!=='');
+    const remember=(id,value)=>{if(id&&content(value))found.set(String(id),{...found.get(String(id)),...stripSharedPersonalState(value)});};
     function walk(value) {
       if (Array.isArray(value)) { value.forEach(walk); return; }
       if (!value || typeof value !== 'object') return;
-      const questionId = value.exerciseId || value.QuestionID || ((value.exerciseType || value.QuestionTitle || value.QuestionContent || value.exerciseProperty) ? value.id || value.ID : undefined);
-      if (questionId) found.set(String(questionId), stripSharedPersonalState(value));
+      const questionId = value.exerciseId || value.QuestionID || ((value.exerciseType || value.QuestionTitle || value.QuestionTxt || value.QuestionContent || value.QuestionImg || value.exerciseProperty) ? value.id || value.ID : undefined);
+      remember(questionId,value);
       Object.values(value).forEach(walk);
     }
     walk(unwrap(response));
-    if(name==='computer') for(const row of computerQuestions(response)) if(row.exerciseId) found.set(String(row.exerciseId),stripSharedPersonalState(row));
-    for (const [id,data] of found) await put(userId,name,`questions:${sourceId}`,id,data);
+    if(name==='computer') for(const row of computerQuestions(response)) remember(row.exerciseId,row);
+    if(!found.size)return;
+    const items=[...found].map(([record_key,data])=>({record_key,data:ownKeys(data)}));
+    await database.query(`INSERT INTO ${table} AS existing(user_id,platform,collection,record_key,data) SELECT $1,$2,$3,item.record_key,item.data FROM jsonb_to_recordset($4::jsonb) AS item(record_key text,data jsonb) ON CONFLICT(user_id,platform,collection,record_key) DO UPDATE SET data=existing.data || excluded.data,updated_at=now() WHERE NOT existing.data @> excluded.data`,[userId,name,`questions:${sourceId}`,JSON.stringify(items)]);
   }
   async function question(userId,name,id,sourceId,resourceContext) {
     const cached=(await database.query(`SELECT data FROM ${table} WHERE user_id=$1 AND platform=$2 AND collection=$3 AND record_key=$4`, [userId,name,`questions:${sourceId}`,String(id)])).rows[0]?.data;
@@ -344,7 +350,7 @@ export async function createPrivatePlatformStore({ database, resourceStore, pers
       return success(name,{examId:exam.examinationId,examRecordId:exam.id,exerciseTotalNumber:total,examExerciseIdList:questionIds,exercises:selected,answers,answerList:answers,answerTotalNumber:answers.filter(row=>Number(row.answerType)!==4).length,skipExerciseIdList:answers.filter(row=>Number(row.answerType)===4).map(row=>row.exerciseId),collectExerciseId:collection.map(row=>row.exerciseId),sheetIndex:exam.sheetIndex || 1});
     }
     const response=await invoke();
-    await rememberQuestions(userId,name,response,sourceId);
+    await rememberQuestions(userId,name,response,sourceId,input);
     const safe=stripSharedPersonalState(response);
     if(name==='computer' && input.path==='/api/exam/wx/practice/examination/group/list') {
       const data=unwrap(safe),groups=records(data),exams=await list(userId,name,'exams'),answers=await list(userId,name,'answers');
