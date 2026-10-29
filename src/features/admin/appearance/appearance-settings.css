@@ -23,10 +23,15 @@
 .appearance-palette-swatch { display: grid; place-items: center; width: 29px; height: 29px; border-radius: 50%; color: var(--on-accent, #fff); }
 .appearance-palette strong { font-size: 11px; line-height: 1.5; font-weight: 500; color: var(--muted); white-space: nowrap; }
 .appearance-palette.is-selected strong { color: var(--accent); }
-.appearance-platform input[type=radio] { position: absolute; width: 1px; height: 1px; opacity: 0; margin: 0; }
+.appearance-platform input[type=radio], .appearance-global-mode input[type=radio] { position: absolute; width: 1px; height: 1px; opacity: 0; margin: 0; }
 .appearance-palette:has(input:focus-visible), .appearance-mode:has(input:focus-visible) { outline: 3px solid var(--focus-ring, var(--accent)); outline-offset: 3px; }
-.appearance-platform fieldset:disabled .appearance-palette, .appearance-platform fieldset:disabled .appearance-mode { opacity: .6; cursor: default; }
-.appearance-platform .appearance-mode-field { margin-top: 24px; }
+.appearance-platform fieldset:disabled .appearance-palette, .appearance-global-mode fieldset:disabled .appearance-mode { opacity: .6; cursor: default; }
+.appearance-global-mode { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, 1fr); align-items: center; gap: 24px; padding: 24px; }
+.appearance-global-mode > header { display: flex; align-items: flex-start; gap: 13px; }
+.appearance-global-mode h3 { margin: 0 0 7px; font-size: 17px; color: var(--ink); }
+.appearance-global-mode header p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.8; }
+.appearance-global-mode fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.appearance-platform .appearance-preview { margin-top: 24px; }
 .appearance-mode-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
 .appearance-mode { position: relative; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px 8px; min-height: 44px; border: 1px solid var(--border); background: var(--surface); border-radius: 9px; font-size: 12px; color: var(--muted); cursor: pointer; }
 .appearance-mode.is-selected { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
@@ -75,3 +80,6 @@
 .appearance-footer .text-link { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; white-space: nowrap; }
 @media (max-width: 1150px) { .appearance-platforms { grid-template-columns: 1fr; } .appearance-preview-layout { grid-template-columns: 108px minmax(0, 1fr); } .appearance-preview-nav-line { width: 72px; } .appearance-preview-nav-line.short { width: 50px; } }
 @media (max-width: 600px) { .appearance-settings { gap: 18px; } .appearance-heading h2 { font-size: 21px; } .appearance-heading > div { min-width: 190px; } .appearance-heading-icon { height: 44px; width: 44px; } .appearance-heading { gap: 11px; } .appearance-system-state { margin-left: 55px; } .appearance-explanation { gap: 10px; } .appearance-explanation > span { font-size: 11px; } .appearance-platform { padding: 18px; } .appearance-platform > header { margin-bottom: 19px; padding-bottom: 18px; } .appearance-palette-options { gap: 6px; } .appearance-palette { padding-inline: 2px; } .appearance-palette strong { font-size: 10px; } .appearance-mode-options { gap: 6px; } .appearance-mode { font-size: 11px; padding: 10px 4px; gap: 4px; } .appearance-mode > svg:first-of-type { width: 15px; } .appearance-preview-layout { grid-template-columns: 76px minmax(0, 1fr); } .appearance-preview-content { padding: 14px 10px; } .appearance-preview-content > strong { font-size: 11px; } .appearance-preview-nav-line { width: 48px; } .appearance-preview-nav-line.short { width: 33px; } .appearance-preview-layout aside > .is-active { font-size: 9px; gap: 3px; } .appearance-save-bar { flex-direction: column; align-items: stretch; padding: 15px; gap: 14px; bottom: 8px; } .appearance-save-actions { justify-content: stretch; gap: 7px; } .appearance-save-actions .btn { font-size: 11px; flex: 1; padding-inline: 9px; } .appearance-footer { flex-direction: column; align-items: flex-start; gap: 8px; } }
+
+@media (max-width: 900px) { .appearance-global-mode { grid-template-columns: 1fr; gap: 18px; } }
+@media (max-width: 600px) { .appearance-global-mode { padding: 18px; } }

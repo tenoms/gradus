@@ -12,7 +12,7 @@ async function json(app, path, options = {}, expected = 200) {
 }
 const change = (config, platform, value) => ({ ...config, [platform]: { ...config[platform], ...value } });
 
-test('managed subject themes are public-safe and independent, while only the current administrator can save them', async () => {
+test('managed global mode and independent palettes are public-safe, while only the current administrator can save them', async () => {
   let upstream = 0;
   const unavailable = async () => { upstream++; throw new Error('offline'); };
   const app = await startHttpApp({ yybRequest: unavailable, loginPlatform: unavailable });
@@ -31,10 +31,10 @@ test('managed subject themes are public-safe and independent, while only the cur
     await json(app, endpoint, { auth: learner }, 401);
     await json(app, endpoint, { auth: learner, method: 'PUT', body: { revision: 0, config: initial.config } }, 401);
     await json(app, endpoint, { auth: admin, headers: { 'X-Study-User': 'another-user' } }, 403);
-    const config = change(initial.config, 'math', { palette: 'rose', mode: 'dark' });
+    const config = { ...change(initial.config, 'math', { palette: 'rose' }), mode: 'dark' };
     const saved = await json(app, endpoint, { auth: admin, method: 'PUT', body: { revision: initial.revision, config } });
     assert.deepEqual(saved.config, config);
-    assert.deepEqual(saved.config.computer, initial.config.computer, 'changing mathematics preserves the 408 theme');
+    assert.deepEqual(saved.config.computer, initial.config.computer, 'changing mathematics preserves the 408 palette');
     assert.equal(saved.revision, 1);
     assert.deepEqual(await json(app, '/api/appearance'), saved);
     for (const [space, auth] of [['admin', admin], ['learning', learner]]) {
@@ -55,14 +55,15 @@ test('theme validation and revision conflicts leave the current configuration an
       { revision: 0, config: { math: config.math } },
       { revision: 0, config: { ...config, other: config.math } },
       { revision: 0, config: change(config, 'math', { palette: 'untrusted-css-value' }) },
-      { revision: 0, config: change(config, 'computer', { mode: 'auto' }) },
+      { revision: 0, config: { ...config, mode: 'auto' } },
+      { revision: 0, config: change(config, 'computer', { mode: 'dark' }) },
       { revision: 0, config: change(config, 'computer', { extra: true }) },
       { revision: 0, config, role: 'admin' },
     ];
     for (const body of invalid) await json(app, endpoint, { auth: admin, method: 'PUT', body }, 400);
     assert.deepEqual((await json(app, endpoint, { auth: admin })).config, config);
     assert.equal((await app.app.locals.identityStore.auditEntries()).filter(row => row.action === 'appearance.updated').length, 0);
-    const changed = change(config, 'computer', { palette: 'blue', mode: 'light' });
+    const changed = { ...change(config, 'computer', { palette: 'blue' }), mode: 'light' };
     const saved = await json(app, endpoint, { auth: admin, method: 'PUT', body: { revision: 0, config: changed } });
     await json(app, endpoint, { auth: admin, method: 'PUT', body: { revision: 0, config } }, 409);
     assert.deepEqual(await json(app, endpoint, { auth: admin }), saved);
@@ -83,7 +84,7 @@ test('independent themes survive application recreation and are shared across le
     await app.createUser(admin, testLearner('theme.second', ''));
     const first = await app.login('learning', 'theme.first', 'learner-password-123');
     const study = await json(app, '/api/learning/study/data', { auth: first });
-    const config = { math: { palette: 'amber', mode: 'light' }, computer: { palette: 'rose', mode: 'system' } };
+    const config = { mode: 'light', math: { palette: 'amber' }, computer: { palette: 'rose' } };
     const saved = await json(app, endpoint, { auth: admin, method: 'PUT', body: { revision: 0, config } });
     await app.close(); app = await startHttpApp({ database });
     assert.deepEqual(await json(app, '/api/appearance'), saved);
@@ -95,4 +96,23 @@ test('independent themes survive application recreation and are shared across le
       if (username === 'theme.first') assert.deepEqual(await json(app, '/api/learning/study/data', { auth: learner }), study);
     }
   } finally { await app.close(); await close(); }
+});
+
+
+test('existing managed settings read as one shared mode without a revision change and new writes use only that contract', async () => {
+  const app = await startHttpApp();
+  try {
+    const admin = await app.setup(), table = app.app.locals.database.web('appearance_settings');
+    const prior = { math: { palette: 'rose', mode: 'dark' }, computer: { palette: 'blue', mode: 'light' } };
+    await app.app.locals.database.query(`UPDATE ${table} SET config=$1`, [JSON.stringify(prior)]);
+    const current = await json(app, '/api/appearance');
+    assert.deepEqual(current.config, { mode: 'system', math: { palette: 'rose' }, computer: { palette: 'blue' } });
+    assert.equal(current.revision, 0);
+    await json(app, endpoint, { auth: admin, method: 'PUT', body: { revision: 0, config: prior } }, 400);
+    assert.deepEqual(await json(app, '/api/appearance'), current);
+    const saved = await json(app, endpoint, { auth: admin, method: 'PUT', body: { revision: 0, config: { ...current.config, mode: 'dark' } } });
+    assert.equal(saved.config.mode, 'dark');
+    assert.equal(saved.revision, 1);
+    assert.deepEqual((await app.app.locals.database.query(`SELECT config FROM ${table}`)).rows[0].config, saved.config);
+  } finally { await app.close(); }
 });

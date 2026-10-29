@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { appearanceDefaults } from "../../../../shared/appearance.mjs";
-import type { AppearanceConfig, AppearanceState, AppearanceTheme } from "../../../../shared/appearance.mjs";
+import type { AppearanceConfig, AppearanceState, ThemeMode } from "../../../../shared/appearance.mjs";
 import { api, ApiError } from "../../../shared/api/client";
 
 const message = (cause: unknown) => cause instanceof Error ? cause.message : "请稍后重试";
@@ -28,9 +28,14 @@ export function useAppearanceSettings() {
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [attempt]);
-  function setTheme(platform: keyof AppearanceConfig, value: Partial<AppearanceTheme>) {
+  function setTheme(platform: "math" | "computer", value: Partial<AppearanceConfig["math"]>) {
     if (pendingRef.current || loading) return;
     setDraft(current => current ? { ...current, [platform]: { ...current[platform], ...value } } : current);
+    setNotice(""); if (!refreshRequired) setError("");
+  }
+  function setMode(mode: ThemeMode) {
+    if (pendingRef.current || loading) return;
+    setDraft(current => current ? { ...current, mode } : current);
     setNotice(""); if (!refreshRequired) setError("");
   }
   function discard() {
@@ -49,7 +54,7 @@ export function useAppearanceSettings() {
       const value = await api<AppearanceState>("/api/admin/appearance", { method: "PUT", body: JSON.stringify({ revision: saved.revision, config: copy(draft) }) });
       accept(value);
       window.dispatchEvent(new CustomEvent("study-appearance-updated", { detail: value }));
-      setNotice("主题设置已保存，数学与 408 空间将使用各自的主题。");
+      setNotice("主题设置已保存，两科将使用统一明暗模式与各自配色。");
     } catch (cause) {
       const conflict = cause instanceof ApiError && cause.status === 409;
       const unknown = !(cause instanceof ApiError) || cause.status >= 500;
@@ -57,6 +62,6 @@ export function useAppearanceSettings() {
       setError(conflict ? "主题设置已在其他页面更新，请读取最新设置后重新调整。" : unknown ? `未能确认是否保存成功，请重新读取设置后核实。${message(cause)}` : message(cause));
     } finally { pendingRef.current = false; setPending(false); }
   }
-  return { saved, draft, loading, pending, error, notice, refreshRequired, dirty, setTheme, discard, restoreDefaults, save,
+  return { saved, draft, loading, pending, error, notice, refreshRequired, dirty, setTheme, setMode, discard, restoreDefaults, save,
     reload: () => { if (!pendingRef.current) { setNotice(""); setAttempt(value => value + 1); } } };
 }

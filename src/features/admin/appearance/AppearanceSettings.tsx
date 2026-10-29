@@ -38,25 +38,29 @@ export default function AppearanceSettings() {
   }, []);
   const busy = settings.loading || settings.pending;
   return <div className="appearance-settings">
-    <header className="appearance-heading"><span className="appearance-heading-icon"><Palette size={24} /></span><div><h2>主题与外观</h2><p>为数学与 408 设置独立配色，让每个学习空间都有清晰、一致的体验。</p></div><span className="appearance-system-state"><Monitor size={14} />系统当前为{systemDark ? "深色" : "浅色"}</span></header>
-    <div className="appearance-explanation"><span><Check size={16} />两科学习空间分别应用</span><span><Monitor size={16} />跟随系统时自动切换明暗</span><span><Palette size={16} />调整后可立即预览</span></div>
+    <header className="appearance-heading"><span className="appearance-heading-icon"><Palette size={24} /></span><div><h2>主题与外观</h2><p>统一切换明暗外观，分别设置数学与 408 的主题色。</p></div><span className="appearance-system-state"><Monitor size={14} />系统当前为{systemDark ? "深色" : "浅色"}</span></header>
+    <div className="appearance-explanation"><span><Check size={16} />两科学习空间独立配色</span><span><Monitor size={16} />统一明暗模式与系统自适应</span><span><Palette size={16} />调整后可立即预览</span></div>
     {settings.error && <div className="appearance-message is-error" role="alert"><CircleAlert size={18} /><div><p>{settings.error}</p>{(settings.refreshRequired || !settings.saved) && <button type="button" className="text-link" disabled={busy} onClick={settings.reload}>{settings.refreshRequired ? "读取最新设置并重新调整" : "重新读取设置"}</button>}</div></div>}
     {settings.notice && <div className="appearance-message is-success" role="status"><Check size={18} /><p>{settings.notice}</p></div>}
     {settings.loading && !settings.draft ? <section className="panel appearance-loading" role="status"><LoaderCircle size={25} className="spin" /><p>正在读取空间主题…</p></section> : settings.draft && <>
+      <section className="panel appearance-global-mode" aria-labelledby="appearance-global-mode-title">
+        <header><span className="appearance-platform-symbol"><Monitor size={23} /></span><div><h3 id="appearance-global-mode-title">统一明暗模式</h3><p>管理端、数学与 408 共用同一明暗设置。学习者可在本机选择自己的偏好。</p></div></header>
+        <fieldset className="appearance-mode-field" disabled={busy}><legend className="sr-only">明暗模式</legend><div className="appearance-mode-options">{appearanceModes.map(mode => {
+          const ModeIcon = modeIcons[mode.value];
+          return <label className={`appearance-mode ${settings.draft!.mode === mode.value ? "is-selected" : ""}`} key={mode.value}><input type="radio" name="appearance-mode" aria-label={`明暗模式：${mode.label}`} checked={settings.draft!.mode === mode.value} onChange={() => settings.setMode(mode.value as ThemeMode)} /><ModeIcon size={17} /><span>{mode.label}</span>{settings.draft!.mode === mode.value && <Check size={14} />}</label>;
+        })}</div><p>{settings.draft.mode === "system" ? `将随系统自动切换，当前预览为${systemDark ? "深色" : "浅色"}。` : `将统一使用${settings.draft.mode === "dark" ? "深色" : "浅色"}外观。`}</p></fieldset>
+      </section>
       <div className="appearance-platforms">{platforms.map(({ id, label, description, icon: Icon }) => {
-        const theme = settings.draft![id];
+        const theme = { ...settings.draft![id], mode: settings.draft!.mode };
+        const preview = themeVariables(theme.palette, theme.mode === "dark" || theme.mode === "system" && systemDark ? "dark" : "light");
         return <section className="panel appearance-platform" aria-labelledby={`appearance-${id}-title`} key={id}>
-          <header><span className="appearance-platform-symbol"><Icon size={23} /></span><div><h3 id={`appearance-${id}-title`}>{label}</h3><p>{description}</p></div></header>
+          <header><span className="appearance-platform-symbol" style={{ color: preview["--accent"], background: preview["--accent-soft"] }}><Icon size={23} /></span><div><h3 id={`appearance-${id}-title`}>{label}</h3><p>{description}</p></div></header>
           <fieldset className="appearance-palette-field" disabled={busy}><legend>{label}主题色</legend><div className="appearance-palette-options">{appearancePalettes.map(palette => <label className={`appearance-palette ${theme.palette === palette.value ? "is-selected" : ""}`} key={palette.value}><input type="radio" name={`${id}-palette`} aria-label={`${label}主题色：${palette.label}`} checked={theme.palette === palette.value} onChange={() => settings.setTheme(id, { palette: palette.value })} /><span className="appearance-palette-swatch" style={{ background: themeVariables(palette.value, "light")["--accent"], color: themeVariables(palette.value, "light")["--on-accent"] }}>{theme.palette === palette.value && <Check size={17} />}</span><strong>{palette.label}</strong></label>)}</div></fieldset>
-          <fieldset className="appearance-mode-field" disabled={busy}><legend>{label}明暗模式</legend><div className="appearance-mode-options">{appearanceModes.map(mode => {
-            const ModeIcon = modeIcons[mode.value];
-            return <label className={`appearance-mode ${theme.mode === mode.value ? "is-selected" : ""}`} key={mode.value}><input type="radio" name={`${id}-mode`} aria-label={`${label}明暗模式：${mode.label}`} checked={theme.mode === mode.value} onChange={() => settings.setTheme(id, { mode: mode.value as ThemeMode })} /><ModeIcon size={17} /><span>{mode.label}</span>{theme.mode === mode.value && <Check size={14} />}</label>;
-          })}</div><p>{theme.mode === "system" ? `将随系统自动切换，当前预览为${systemDark ? "深色" : "浅色"}。` : `该空间将始终使用${theme.mode === "dark" ? "深色" : "浅色"}外观。`}</p></fieldset>
           <ThemePreview platform={id} theme={theme} systemDark={systemDark} />
         </section>;
       })}</div>
       <div className="appearance-save-bar" aria-busy={settings.pending}><div><strong><span className={settings.dirty ? "is-dirty" : ""} />{settings.pending ? "正在保存主题…" : settings.dirty ? "更改尚未保存" : "主题设置已同步"}</strong><p>{settings.dirty ? "保存后应用到对应的学习空间。" : savedTime(settings.saved?.updatedAt)}</p></div><div className="appearance-save-actions"><button type="button" className="btn btn-secondary" disabled={busy} onClick={settings.restoreDefaults}><RotateCcw size={15} />恢复推荐设置</button><button type="button" className="btn btn-secondary" disabled={busy || !settings.dirty} onClick={settings.discard}>放弃更改</button><button type="button" className="btn btn-primary" disabled={busy || !settings.dirty || settings.refreshRequired} onClick={() => void settings.save()}>{settings.pending ? <LoaderCircle size={16} className="spin" /> : <Save size={16} />}保存主题</button></div></div>
-      <div className="appearance-footer"><p>主题设置面向所有学习者生效，数学与 408 的配色和明暗模式互不影响。</p><button type="button" className="text-link" disabled={busy || settings.dirty} onClick={settings.reload}><RefreshCw size={14} />重新读取设置</button></div>
+      <div className="appearance-footer"><p>这里是学习空间的默认主题。两科配色独立、明暗模式统一，学习者的本机偏好不会修改管理设置。</p><button type="button" className="text-link" disabled={busy || settings.dirty} onClick={settings.reload}><RefreshCw size={14} />重新读取设置</button></div>
     </>}
   </div>;
 }

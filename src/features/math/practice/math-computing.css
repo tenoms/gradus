@@ -242,6 +242,7 @@
 }
 .computing-option > .rich-content {
   flex: 1;
+  color: var(--ink);
 }
 .computing-option.active {
   border-color: var(--accent);
@@ -293,6 +294,7 @@
   background: var(--accent-soft);
 }
 .computing-analysis {
+  color: var(--ink);
   font-size: 14px;
   line-height: 1.9;
   padding: 15px 0;
@@ -386,6 +388,11 @@
 .computing-paper button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+.math-computing .computing-option:disabled,
+.computing-paper .computing-option:disabled {
+  opacity: 1;
+  cursor: default;
 }
 @media (max-width: 700px) {
   .computing-heading {

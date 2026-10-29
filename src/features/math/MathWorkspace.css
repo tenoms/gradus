@@ -493,6 +493,7 @@
   border-bottom: 1px solid var(--border);
 }
 .math-question-body {
+  color: var(--ink);
   padding: 28px;
   line-height: 1.9;
   font-size: 14px;
@@ -551,6 +552,11 @@
 .math-options > button > div {
   flex: 1;
   min-width: 0;
+  color: var(--ink);
+}
+.math-options > button:disabled {
+  opacity: 1;
+  cursor: default;
 }
 .math-answer-label,
 .math-field {

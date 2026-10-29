@@ -14,14 +14,19 @@
   color: var(--warning); border-color: var(--warning-border); background: var(--warning-soft);
 }
 :is(.computer-session, .math-workspace) :is(.computer-sheet, .math-answer-sheet, .computing-sheet, .math-exam-sheet) > button[aria-current="step"] {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ink) 8%, transparent);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: none;
 }
 .math-workspace .mrq-question-grid > .answer-progress-correct .mrq-number { color: var(--success); background: var(--success-soft); }
 .math-workspace .mrq-question-grid > .answer-progress-incorrect .mrq-number { color: var(--danger); background: var(--danger-soft); }
 .math-workspace .mrq-question-grid > .answer-progress-saved .mrq-number { color: var(--text-secondary); background: var(--surface-soft); }
-.computer-session .computer-sheet-legend i.correct { color: var(--success); border-color: var(--success-border); background: var(--success-soft); }
-.computer-session .computer-sheet-legend i.incorrect { color: var(--danger); border-color: var(--danger-border); background: var(--danger-soft); }
-.computer-session .computer-sheet-legend i.saved { border-color: var(--border); background: var(--surface-soft); }
+.computer-session .computer-sheet-legend i.correct { border-color: var(--success); background: var(--success); }
+.computer-session .computer-sheet-legend i.incorrect { border-color: var(--danger); background: var(--danger); }
+.computer-session .computer-sheet-legend i.saved { border-color: var(--muted); background: var(--muted); }
+.computer-session .computer-sheet-legend i.draft { border-color: var(--accent); background: var(--accent); }
+.computer-session .computer-sheet-legend i.skipped { border-color: var(--warning); background: var(--warning); }
+.computer-session .computer-sheet-legend i { border-color: var(--muted); background: transparent; }
 .math-workspace .math-exam-result-correct { color: var(--success); }
 .math-workspace .math-exam-result-incorrect { color: var(--danger); }
 .math-workspace .math-exam-result-saved { color: var(--text-secondary); }

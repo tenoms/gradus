@@ -135,8 +135,8 @@
   right: -4px;
   top: -4px;
   border: 0;
-  background: var(--text-secondary);
-  color: var(--on-accent);
+  background: var(--media-bg);
+  color: var(--on-media);
   border-radius: 50%;
   display: grid;
   place-items: center;

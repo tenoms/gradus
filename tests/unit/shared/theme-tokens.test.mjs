@@ -23,10 +23,10 @@ test('every subject palette keeps text, controls and status feedback readable in
   }
 });
 
-test('system scheme resolves immediately while explicit subject choices remain independent', () => {
+test('the global scheme resolves immediately while subject palettes remain independent', () => {
   const config = appearanceDefaults();
-  assert.equal(resolvedScheme(config.math.mode, false), 'light');
-  assert.equal(resolvedScheme(config.math.mode, true), 'dark');
+  assert.equal(resolvedScheme(config.mode, false), 'light');
+  assert.equal(resolvedScheme(config.mode, true), 'dark');
   assert.equal(resolvedScheme('light', true), 'light');
   assert.equal(resolvedScheme('dark', false), 'dark');
   assert.notEqual(themeVariables(config.math.palette)['--accent'], themeVariables(config.computer.palette)['--accent']);

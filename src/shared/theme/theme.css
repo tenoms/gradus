@@ -87,6 +87,8 @@ textarea.input { line-height: 1.8; }
 .bar.current { background: var(--accent); }
 .hero-button { background: var(--surface); color: var(--accent); box-shadow: var(--shadow); font-size: 12px; }
 .brand-mark, .management-brand > span { background: var(--accent); color: var(--on-accent); }
+.stat-top .mini-icon { background: var(--accent-soft); color: var(--accent); }
+.art-star { color: color-mix(in srgb, var(--on-accent) 65%, transparent); }
 .topbar, .management-header { background: color-mix(in srgb, var(--surface) 94%, transparent); }
 .sidebar, .management-sidebar { background: var(--surface); border-color: var(--border); }
 .nav-item.active, .management-sidebar nav > a.active { background: var(--accent-soft); color: var(--accent); }
@@ -102,6 +104,12 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   .modal-backdrop { padding: 12px; }
   .modal { padding: 22px; max-height: calc(100dvh - 24px); }
 }
+@media (max-width: 560px) {
+  .topbar-right { gap: 7px; }
+  .topbar-left { flex-shrink: 0; }
+}
+@media (max-width: 420px) { .subject-symbol { display: none; } }
+@media (max-width: 360px) { .topbar .study-sync-indicator { display: none; } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }

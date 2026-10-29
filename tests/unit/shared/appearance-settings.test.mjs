@@ -26,12 +26,12 @@ function controller(request){
   fixture.render();return fixture;
 }
 
-test('appearance drafts keep subjects independent and only save explicitly',async()=>{
+test('appearance drafts share one mode, keep palettes independent and only save explicitly',async()=>{
   const f=controller(async()=>state());await f.flush();
   assert.equal(f.current.dirty,false);
-  f.act('setTheme','math',{palette:'rose',mode:'dark'});
-  assert.equal(f.current.draft.math.palette,'rose');assert.equal(f.current.draft.math.mode,'dark');
-  assert.equal(f.current.draft.computer.palette,'teal');assert.equal(f.current.draft.computer.mode,'system');
+  f.act('setTheme','math',{palette:'rose'});f.act('setMode','dark');
+  assert.equal(f.current.draft.math.palette,'rose');assert.equal(f.current.draft.mode,'dark');
+  assert.equal(f.current.draft.computer.palette,'teal');assert.equal('mode' in f.current.draft.computer,false);
   assert.equal(f.calls.length,1,'previews and edits do not write remotely');
   f.act('discard');assert.equal(f.current.dirty,false);assert.equal(f.current.draft.math.palette,'violet');
 });
@@ -39,13 +39,13 @@ test('appearance drafts keep subjects independent and only save explicitly',asyn
 test('save sends both subjects once, locks edits and publishes the accepted server theme',async()=>{
   const gate=deferred();
   const f=controller(async(_path,input)=>input?.method==='PUT'?gate.promise:state());await f.flush();
-  f.act('setTheme','computer',{palette:'blue',mode:'dark'});
+  f.act('setTheme','computer',{palette:'blue'});f.act('setMode','dark');
   const saving=f.current.save();f.render();await f.current.save();
   f.act('setTheme','math',{palette:'rose'});
   assert.equal(f.calls.filter(call=>call.input?.method==='PUT').length,1);
   assert.equal(f.current.draft.math.palette,'violet');assert.equal(f.current.pending,true);
   const payload=JSON.parse(f.calls[1].input.body);
-  assert.deepEqual(payload,{revision:3,config:{math:{palette:'violet',mode:'system'},computer:{palette:'blue',mode:'dark'}}});
+  assert.deepEqual(payload,{revision:3,config:{mode:'dark',math:{palette:'violet'},computer:{palette:'blue'}}});
   gate.resolve(state(4,payload.config));await saving;f.render();
   assert.equal(f.current.dirty,false);assert.equal(f.current.pending,false);assert.equal(f.events.length,1);
   assert.equal(f.events[0].type,'study-appearance-updated');assert.equal(f.events[0].detail.revision,4);
@@ -54,7 +54,7 @@ test('save sends both subjects once, locks edits and publishes the accepted serv
 
 test('a version conflict preserves the draft and requires readback before another save',async()=>{
   let reads=0,writes=0;
-  const f=controller(async(_path,input)=>{if(input?.method==='PUT'){writes++;throw new ApiError('版本冲突',409);}return state(++reads===1?3:8,{math:{palette:'amber',mode:'light'},computer:{palette:'teal',mode:'system'}});});await f.flush();
+  const f=controller(async(_path,input)=>{if(input?.method==='PUT'){writes++;throw new ApiError('版本冲突',409);}return state(++reads===1?3:8,{mode:'light',math:{palette:'amber'},computer:{palette:'teal'}});});await f.flush();
   f.act('setTheme','math',{palette:'rose'});await f.current.save();f.render();
   assert.equal(f.current.refreshRequired,true);assert.equal(f.current.draft.math.palette,'rose');assert.match(f.current.error,/其他页面更新/);
   await f.current.save();assert.equal(writes,1);
@@ -64,7 +64,7 @@ test('a version conflict preserves the draft and requires readback before anothe
 test('an uncertain save result requires a read without resubmitting a mutation',async()=>{
   let writes=0;
   const f=controller(async(_path,input)=>{if(input?.method==='PUT'){writes++;throw new Error('连接已断开');}return state();});await f.flush();
-  f.act('setTheme','math',{mode:'dark'});await f.current.save();f.render();
+  f.act('setMode','dark');await f.current.save();f.render();
   assert.equal(f.current.refreshRequired,true);assert.match(f.current.error,/未能确认是否保存成功/);
   await f.current.save();assert.equal(writes,1);
   f.act('reload');await f.flush();assert.equal(f.current.dirty,false);assert.equal(f.current.refreshRequired,false);
@@ -72,9 +72,9 @@ test('an uncertain save result requires a read without resubmitting a mutation',
 
 test('restoring recommendations changes only the draft until saved and failed reads can retry',async()=>{
   let reads=0;
-  const f=controller(async()=>{if(++reads===1)throw new Error('暂不可用');return state(5,{math:{palette:'rose',mode:'dark'},computer:{palette:'amber',mode:'light'}});});await f.flush();
+  const f=controller(async()=>{if(++reads===1)throw new Error('暂不可用');return state(5,{mode:'dark',math:{palette:'rose'},computer:{palette:'amber'}});});await f.flush();
   assert.match(f.current.error,/读取失败/);assert.equal(f.current.loading,false);
   f.act('reload');await f.flush();f.act('restoreDefaults');
-  assert.equal(f.current.dirty,true);assert.equal(f.current.draft.math.mode,'system');assert.equal(f.current.draft.computer.mode,'system');
+  assert.equal(f.current.dirty,true);assert.equal(f.current.draft.mode,'system');assert.equal('mode' in f.current.draft.math,false);assert.equal('mode' in f.current.draft.computer,false);
   assert.equal(f.calls.filter(call=>call.input?.method==='PUT').length,0);assert.match(f.current.notice,/保存后/);
 });

@@ -40,6 +40,7 @@ import StudyPlan from "../../features/learning/plans/StudyPlan";
 import TaskEditor from "../../features/learning/plans/TaskEditor";
 import StudyInsights from "../../features/learning/reports/StudyInsights";
 import StudySettings from "../../features/learning/settings/StudySettings";
+import LearningAppearance from "../../features/learning/settings/LearningAppearance";
 import { setUserScope } from "../../features/learning/state/store";
 import StudyTimeProvider from "../../features/learning/time/StudyTimeProvider";
 import type { Platform, Session } from "../../shared/api/client";
@@ -122,7 +123,7 @@ export default function LearningApp() {
   const [platform, setPlatform] = useState<Platform>(() =>
     localStorage.getItem("study-platform") === "computer" ? "computer" : "math",
   );
-  useSpaceTheme(platform);
+  const theme = useSpaceTheme(platform);
   const [session, setSession] = useState<Session>(emptySession);
   const activeIdentity = useRef<string | undefined>(undefined);
   const [booting, setBooting] = useState(true);
@@ -367,6 +368,7 @@ export default function LearningApp() {
                 />
                 <kbd>↵</kbd>
               </form>
+              <LearningAppearance theme={theme} />
               <div className="subject-switch">
                 <span className={`subject-symbol ${platform}`}>
                   {platform === "math" ? (
