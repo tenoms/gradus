@@ -8,7 +8,7 @@
 
 ```sh
 cp .env.example .env
-# 填写数据库连接和需要由环境控制的接口参数
+# 填写 DATABASE_URL、STUDY_SCHEMA_PREFIX 和需要由环境控制的接口参数
 npm ci
 npm run dev
 ```
@@ -29,6 +29,8 @@ npm run dev
 
 系统默认 YYB 服务的地址和 API Key 也遵循字段级环境优先规则。新增 YYB 服务由其独立管理记录维护，不受默认服务环境变量覆盖；服务启用状态和账号调度仍在管理端维护。用户个人中心的账号关联独立于系统资源池。
 
+未设置 YYB 环境变量时，管理端新增或编辑服务会写入 `<前缀>_web.yyb_services`；数学与计算机管理配置写入 `<前缀>_web.platform_configuration`。配置不会写回 `.env` 或 `system.json`。默认 YYB 尚未单独保存的字段可继承平台配置中的已有 YYB 值，环境变量只对默认服务的对应字段生效。
+
 ## 环境变量
 
 | 分组 | 变量 |
@@ -41,7 +43,7 @@ npm run dev
 | 计算机录播 | `COMPUTER_VIDEO_KEY`、`COMPUTER_VIDEO_IV` |
 | 浏览器公开功能 | `MATH_EXTERNAL_URL`、`MATH_PRINT_STATION_ID`、`POLYV_SDK_URL` |
 
-`MATH_ENABLED`、`COMPUTER_ENABLED`、`COOKIE_SECURE` 接受 `0`、`1`、`false`、`true`。部署监听、schema 和安全 cookie 的默认值来自 `system.json.runtime`；数据库连接通过部署环境提供。
+`MATH_ENABLED`、`COMPUTER_ENABLED`、`COOKIE_SECURE` 接受 `0`、`1`、`false`、`true`。部署监听和安全 cookie 的默认值来自 `system.json.runtime`；数据库连接与 schema 前缀均由部署环境提供，schema 没有隐式默认值。应用连接数据库时必须设置 `STUDY_SCHEMA_PREFIX`，例如 `study` 对应 `study_web` 和 `study_upstream`；前端构建不需要连接数据库。
 
 浏览器公开功能的三个变量只由环境维护。服务端通过现有会话响应白名单发送，不传输平台 API、OCR/OAuth 凭据或录播密钥。无需把秘密放进 `VITE_*`，修改地址后重启服务即可。未配置外部页面或播放器 SDK 时，相关导出/播放功能显示不可用。
 

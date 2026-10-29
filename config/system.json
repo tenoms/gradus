@@ -18,7 +18,6 @@
       ]
     },
     "database": {
-      "schemaPrefix": "study",
       "maxConnections": 10,
       "connectionTimeoutMs": 5000
     },

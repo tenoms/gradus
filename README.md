@@ -38,7 +38,7 @@ npm start
 
 ## 数据与同步
 
-PostgreSQL 分为两个数据域：默认 `study_web` 保存 Web 用户、会话、配置及个人学习记录，`study_upstream` 保存已访问的资源响应、实体和媒体引用。`STUDY_SCHEMA_PREFIX` 可修改 schema 前缀。
+PostgreSQL 分为两个数据域：`<前缀>_web` 保存 Web 用户、会话、配置及个人学习记录，`<前缀>_upstream` 保存已访问的资源响应、实体和媒体引用。前缀由 `.env` 中的 `STUDY_SCHEMA_PREFIX` 显式提供；示例配置 `study` 对应 `study_web` 和 `study_upstream`。
 
 公共资源优先从本地数据库读取；缺失或过期时，为当前学习请求自动调度系统 YYB 账号池补齐。开启管理端“资源渐进同步”后保存本次实际返回的内容。浏览目录保存目录，打开题目或解析时再保存对应内容；不会遍历全书、预抓下一题或自动下载视频。关闭同步保留旧资源，仍可正常学习。
 

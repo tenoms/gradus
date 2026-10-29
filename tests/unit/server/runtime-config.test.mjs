@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readRuntimeConfig, validateRuntimeConfig } from '../../../server/infrastructure/runtime-config.mjs';
+import { createDatabase } from '../../../server/infrastructure/database.mjs';
 import { requestJson, createUpstreamClient } from '../../../server/integrations/upstream.mjs';
 import { platformConfigFixture } from '../../support/platform-config.mjs';
 
@@ -25,8 +26,13 @@ test('deployment environment supplies the connection and listener without mutati
   assert.equal(runtime.http.uploadBodyLimit, defaults.http.uploadBodyLimit);
   assert.equal(defaults.http.port, 3001);
   assert.equal(defaults.database.url, '');
+  assert.equal(defaults.database.schemaPrefix, '', 'deployment schema has no release default');
   runtime.upstream.requestTimeoutMs = 1;
   assert.equal(readRuntimeConfig({ env: {} }).upstream.requestTimeoutMs, 25_000);
+});
+
+test('opening a database requires an explicit schema prefix before creating a connection', async () => {
+  await assert.rejects(createDatabase({ schemaPrefix: '' }), /STUDY_SCHEMA_PREFIX/);
 });
 
 for (const [runtime, field] of [

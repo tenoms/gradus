@@ -16,12 +16,12 @@ const bodyLimit = (value, field) => {
 export function readRuntimeConfig({ env = process.env } = {}) {
   const runtime = structuredClone(system.runtime);
   runtime.database.url = env.DATABASE_URL || '';
+  runtime.database.schemaPrefix = env.STUDY_SCHEMA_PREFIX ?? '';
   const override = (name, target, key, convert = value => value) => {
     if (env[name] !== undefined && env[name] !== '') target[key] = convert(env[name]);
   };
   override('HOST', runtime.http, 'host');
   override('PORT', runtime.http, 'port', Number);
-  override('STUDY_SCHEMA_PREFIX', runtime.database, 'schemaPrefix');
   override('COOKIE_SECURE', runtime.session, 'secureCookies', value => {
     if (['1', 'true'].includes(String(value))) return true;
     if (['0', 'false'].includes(String(value))) return false;
@@ -46,7 +46,7 @@ export function validateRuntimeConfig(runtime) {
     try { url = new URL(runtime.database.url); } catch { fail('database.url', '必须为 PostgreSQL URL'); }
     if (!['postgres:', 'postgresql:'].includes(url.protocol)) fail('database.url', '必须为 PostgreSQL URL');
   }
-  if (typeof runtime.database.schemaPrefix !== 'string' || !/^[a-z][a-z0-9_]{0,53}$/.test(runtime.database.schemaPrefix)) fail('database.schemaPrefix', '必须为 1–54 位小写字母、数字或下划线，并以字母开头');
+  if (typeof runtime.database.schemaPrefix !== 'string' || runtime.database.schemaPrefix !== '' && !/^[a-z][a-z0-9_]{0,53}$/.test(runtime.database.schemaPrefix)) fail('database.schemaPrefix', '如设置，必须为 1–54 位小写字母、数字或下划线，并以字母开头');
   integer(runtime.database.maxConnections, 'database.maxConnections', 1);
   integer(runtime.database.connectionTimeoutMs, 'database.connectionTimeoutMs');
   integer(runtime.session.lifetimeMs, 'session.lifetimeMs', 1);

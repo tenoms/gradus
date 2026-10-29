@@ -11,6 +11,7 @@ const identifier = (value) => {
 export async function createDatabase(input = {}) {
   const configured = readRuntimeConfig().database;
   const { connectionString = configured.url || undefined, schemaPrefix = configured.schemaPrefix, ...options } = input;
+  if (!schemaPrefix) throw new Error("请通过 STUDY_SCHEMA_PREFIX 提供数据库 schema 前缀");
   if (typeof schemaPrefix !== "string" || !/^[a-z][a-z0-9_]{0,53}$/.test(schemaPrefix)) throw new Error("数据库 schema 前缀需要 1–54 位小写字母、数字或下划线，并以字母开头");
   const webSchema = `${schemaPrefix}_web`, upstreamSchema = `${schemaPrefix}_upstream`;
   const pool = new pg.Pool({ ...(connectionString ? { connectionString } : {}), max: configured.maxConnections, connectionTimeoutMillis: configured.connectionTimeoutMs, ...options });
