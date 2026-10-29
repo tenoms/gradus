@@ -1,5 +1,7 @@
 import QuestionReader from "../components/math/MathQuestionReader";
-import { useEffect, useState } from "react";
+import Pagination from "../components/Pagination";
+import { usePagination } from "../lib/pagination";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -200,6 +202,7 @@ export default function MathWorkspace({ section }: { section: string }) {
 }
 
 function Library({ stuid }: { stuid: string }) {
+  const catalogRef = useRef<HTMLDivElement>(null);
   const [searchParams] = useSearchParams();
   const remote = useRemote("math-books", mathApi.books);
   const [kind, setKind] = useState("全部");
@@ -211,12 +214,10 @@ function Library({ stuid }: { stuid: string }) {
   const [shelfShown, setShelfShown] = useState(false);
   const [qrShown, setQrShown] = useState(false);
   const [qrQuestion, setQrQuestion] = useState<MathRow>();
-  const [limit, setLimit] = useState(36);
   const rows = mathRows(remote.data);
   useEffect(() => {
     setSearch(searchParams.get("q") || "");
     setBook(undefined);
-    setLimit(36);
   }, [searchParams]);
   const years = [
     ...new Set(rows.map((r) => String(r.BookYear || "")).filter(Boolean)),
@@ -235,6 +236,11 @@ function Library({ stuid }: { stuid: string }) {
           .toLowerCase()
           .includes(search.toLowerCase())),
   );
+  const pagination = usePagination({
+    total: filtered.length,
+    pageSize: 36,
+    resetKey: JSON.stringify([kind, subject, year, search]),
+  });
   if (qrQuestion)
     return (
       <div className="math-workspace">
@@ -279,16 +285,6 @@ function Library({ stuid }: { stuid: string }) {
     );
   return (
     <div className="math-workspace">
-      <div className="math-intro">
-        <div>
-          <span className="eyebrow">MATH LIBRARY</span>
-          <h2>从一本好书，开始今天的进步</h2>
-          <p>教辅、历年真题与逐题解析，连接你原有的数学学习内容。</p>
-        </div>
-        <div className="math-intro-symbol">
-          ∫ <small>∞</small>
-        </div>
-      </div>
       <div className="panel math-library">
         <div className="math-toolbar">
           <div className="tabs">
@@ -296,10 +292,7 @@ function Library({ stuid }: { stuid: string }) {
               <button
                 key={t}
                 className={kind === t ? "active" : ""}
-                onClick={() => {
-                  setKind(t);
-                  setLimit(36);
-                }}
+                onClick={() => setKind(t)}
               >
                 {t}
               </button>
@@ -331,10 +324,7 @@ function Library({ stuid }: { stuid: string }) {
               aria-label="搜索教辅和真题"
               placeholder="搜索书名、作者…"
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setLimit(36);
-              }}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </label>
         </div>
@@ -343,10 +333,7 @@ function Library({ stuid }: { stuid: string }) {
           <select
             aria-label="数学类别"
             value={subject}
-            onChange={(e) => {
-              setSubject(e.target.value);
-              setLimit(36);
-            }}
+            onChange={(e) => setSubject(e.target.value)}
           >
             {["全部", "数一", "数二", "数三"].map((v) => (
               <option key={v}>{v}</option>
@@ -355,10 +342,7 @@ function Library({ stuid }: { stuid: string }) {
           <select
             aria-label="资料年份"
             value={year}
-            onChange={(e) => {
-              setYear(e.target.value);
-              setLimit(36);
-            }}
+            onChange={(e) => setYear(e.target.value)}
           >
             <option>全部</option>
             {years.map((y) => (
@@ -380,14 +364,14 @@ function Library({ stuid }: { stuid: string }) {
           empty={!remote.loading && !remote.error && !filtered.length}
           reload={remote.reload}
         />
-        <div className="math-book-grid">
-          {filtered.slice(0, limit).map((r, i) => (
+        <div className="math-book-grid pagination-content" ref={catalogRef}>
+          {filtered.slice(pagination.start, pagination.end).map((r, i) => (
             <button
               key={`${r.ID}-${i}`}
               className="math-book-card"
               onClick={() => setBook(r)}
             >
-              <div className={`math-cover math-cover-${i % 4}`}>
+              <div className={`math-cover math-cover-${(pagination.start + i) % 4}`}>
                 {mathImage(r.HeadImg) ? (
                   <img src={mathImage(r.HeadImg)} alt="" loading="lazy" />
                 ) : (
@@ -417,13 +401,17 @@ function Library({ stuid }: { stuid: string }) {
             </button>
           ))}
         </div>
-        {filtered.length > limit && (
-          <button
-            className="btn btn-secondary math-load-more"
-            onClick={() => setLimit((v) => v + 36)}
-          >
-            加载更多资料
-          </button>
+        {!remote.loading && !remote.error && (
+          <Pagination
+            label="数学资料"
+            contentRef={catalogRef}
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            total={filtered.length}
+            onPageChange={pagination.setPage}
+            onPageSizeChange={pagination.setPageSize}
+            pageSizeOptions={[12, 24, 36, 60]}
+          />
         )}
       </div>
     </div>
@@ -457,6 +445,29 @@ function BookWorkspace({
         .join(" ")
         .includes(filter),
   );
+  const catalogPagination = usePagination({
+    total: shown.length,
+    pageSize: 30,
+    resetKey: JSON.stringify([book.ID, filter, searchResults?.map(mathQuestionId)]),
+  });
+  const selectQuestion = (row: MathRow, reveal = false) => {
+    setCurrent(row);
+    if (reveal) {
+      const visibleIndex = shown.findIndex(
+        (item) => mathQuestionId(item) === mathQuestionId(row),
+      );
+      if (visibleIndex >= 0)
+        catalogPagination.setPage(Math.floor(visibleIndex / catalogPagination.pageSize) + 1);
+    }
+  };
+  useEffect(() => {
+    if (!current) return;
+    const currentIndex = shown.findIndex(
+      (item) => mathQuestionId(item) === mathQuestionId(current),
+    );
+    if (currentIndex >= 0)
+      catalogPagination.setPage(Math.floor(currentIndex / catalogPagination.pageSize) + 1);
+  }, [catalog.data, catalogPagination.pageSize]);
   const index = current
     ? rows.findIndex((r) => mathQuestionId(r) === mathQuestionId(current))
     : -1;
@@ -561,8 +572,8 @@ function BookWorkspace({
             empty={!catalog.loading && !shown.length}
             reload={catalog.reload}
           />
-          <div className="math-catalog-list">
-            {shown.map((r, i) => (
+          <div className="math-catalog-list" key={catalogPagination.page}>
+            {shown.slice(catalogPagination.start, catalogPagination.end).map((r, i) => (
               <button
                 key={`${mathQuestionId(r)}-${i}`}
                 className={
@@ -570,19 +581,30 @@ function BookWorkspace({
                     ? "active"
                     : ""
                 }
-                onClick={() => setCurrent(r)}
+                onClick={() => selectQuestion(r)}
               >
                 <span>
                   <strong>{r.ChapterName || r.Name || "题目"}</strong>
                   <small>
                     第 {r.QuestionPage || "—"} 页 · 第{" "}
-                    {r.QuestionSort || r.QuestionID || i + 1} 题
+                    {r.QuestionSort || r.QuestionID || catalogPagination.start + i + 1} 题
                   </small>
                 </span>
                 <ChevronRight size={14} />
               </button>
             ))}
           </div>
+          {!catalog.loading && !catalog.error && (
+            <Pagination
+              label="题目目录"
+              page={catalogPagination.page}
+              pageSize={catalogPagination.pageSize}
+              total={shown.length}
+              onPageChange={catalogPagination.setPage}
+              onPageSizeChange={catalogPagination.setPageSize}
+              pageSizeOptions={[15, 30, 60]}
+            />
+          )}
         </aside>
         <main className="math-reader-area">
           {current ? (
@@ -590,10 +612,10 @@ function BookWorkspace({
               row={current}
               book={book}
               stuid={stuid}
-              prev={index > 0 ? () => setCurrent(rows[index - 1]) : undefined}
+              prev={index > 0 ? () => selectQuestion(rows[index - 1], true) : undefined}
               next={
                 index >= 0 && index < rows.length - 1
-                  ? () => setCurrent(rows[index + 1])
+                  ? () => selectQuestion(rows[index + 1], true)
                   : undefined
               }
             />
@@ -611,7 +633,7 @@ function BookWorkspace({
               {rows.length > 0 && (
                 <button
                   className="btn btn-primary"
-                  onClick={() => setCurrent(rows[0])}
+                  onClick={() => selectQuestion(rows[0], true)}
                 >
                   从第一题开始
                   <ArrowRight size={16} />
@@ -744,16 +766,6 @@ function Practice({ stuid }: { stuid: string }) {
     );
   return (
     <div className="math-workspace">
-      <div className="math-intro">
-        <div>
-          <span className="eyebrow">DAILY PRACTICE</span>
-          <h2>用一组题，检验真正的理解</h2>
-          <p>沿用数学平台的组卷、答题和成绩记录，保持你的学习连续性。</p>
-        </div>
-        <div className="math-intro-symbol">
-          f <small>(x)</small>
-        </div>
-      </div>
       <div className="panel math-practice-config">
         <div className="math-toolbar">
           <h3>选择你的练习</h3>

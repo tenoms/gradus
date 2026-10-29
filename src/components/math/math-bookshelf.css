@@ -9,20 +9,9 @@
   align-items: center;
   gap: 20px;
 }
-.bookshelf-eyebrow {
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  color: var(--accent);
-}
 .bookshelf-heading h2 {
-  font-size: 23px;
-  margin: 12px 0;
-}
-.bookshelf-heading p {
-  font-size: 13px;
-  color: var(--muted);
+  font-size: 18px;
   margin: 0;
-  line-height: 1.8;
 }
 .bookshelf-toolbar {
   display: flex;
@@ -271,9 +260,6 @@
   .bookshelf-heading {
     align-items: flex-start;
     flex-wrap: wrap;
-  }
-  .bookshelf-heading h2 {
-    font-size: 21px;
   }
   .bookshelf-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -4,6 +4,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { ApiError } from "./upstream.mjs";
 import { validateStudyData } from "../shared/study-data.mjs";
+import { adminActions } from "../shared/admin-actions.mjs";
 export { validateStudyData } from "../shared/study-data.mjs";
 
 const emptyStudy = () => ({ tasks: [], activities: [], goalMinutes: 60 });
@@ -15,6 +16,16 @@ const text = (value, max, label, optional = false) => {
   return value.trim();
 };
 const accountBinding = (value) => value === undefined || value === null || value === "" ? null : text(value, 160, "学习账号");
+function listQuery(input = {}) {
+  const integer = (value, fallback, label, max = Number.MAX_SAFE_INTEGER) => {
+    if (value === undefined) return fallback;
+    if (typeof value !== "string" || !/^[1-9]\d*$/.test(value) || !Number.isSafeInteger(Number(value)) || Number(value) > max)
+      fail(`${label}应为有效正整数`);
+    return Number(value);
+  };
+  const q = input.q === undefined ? "" : text(input.q, 160, "搜索内容", true);
+  return { page: integer(input.page, 1, "页码"), pageSize: integer(input.pageSize, 20, "每页条数", 100), q };
+}
 function passwordHash(password) {
   if (typeof password !== "string" || password.length < 10 || password.length > 256)
     fail("密码需要 10–256 个字符");
@@ -80,6 +91,45 @@ export function createIdentityStore(filename) {
   function auditEntries(limit = 100) {
     return db.prepare("SELECT id, at, actor_name AS actorName, action, target_name AS targetName, detail FROM audit ORDER BY id DESC LIMIT ?")
       .all(limit).map((entry) => ({ ...entry, id: String(entry.id) }));
+  }
+  function pageResult(table, where, parameters, query, select, order) {
+    const total = Number(db.prepare(`SELECT COUNT(*) AS total FROM ${table}${where}`).get(...parameters).total);
+    const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
+    const page = Math.min(query.page, totalPages);
+    const rows = db.prepare(`SELECT ${select} FROM ${table}${where} ORDER BY ${order} LIMIT ? OFFSET ?`)
+      .all(...parameters, query.pageSize, (page - 1) * query.pageSize);
+    return { rows, pagination: { page, pageSize: query.pageSize, total, totalPages } };
+  }
+  function userPage(input = {}) {
+    const query = listQuery(input), clauses = [], parameters = [];
+    for (const [field, choices] of [["role", ["admin", "learner"]], ["status", ["active", "disabled"]]]) {
+      const value = input[field];
+      if (value === undefined || value === "" || value === "all") continue;
+      if (typeof value !== "string" || !choices.includes(value)) fail("用户筛选条件不正确");
+      clauses.push(`${field} = ?`); parameters.push(value);
+    }
+    if (query.q) { clauses.push("instr(lower(username || ' ' || display_name || ' ' || coalesce(yyb_ref,'')), lower(?)) > 0"); parameters.push(query.q); }
+    const result = pageResult("users", clauses.length ? ` WHERE ${clauses.join(" AND ")}` : "", parameters, query, "*", "created_at DESC,id DESC");
+    return { users: result.rows.map(publicIdentity), pagination: result.pagination };
+  }
+  function auditPage(input = {}) {
+    const query = listQuery(input), clauses = [], parameters = [];
+    if (query.q) {
+      const matching = Object.keys(adminActions).filter(action => adminActions[action].toLowerCase().includes(query.q.toLowerCase()));
+      clauses.push(`(instr(lower(actor_name || ' ' || action || ' ' || target_name || ' ' || detail), lower(?)) > 0${matching.length ? ` OR action IN (${matching.map(() => "?").join(",")})` : ""})`);
+      parameters.push(query.q, ...matching);
+    }
+    if (input.action !== undefined && input.action !== "" && input.action !== "all") {
+      clauses.push("action = ?"); parameters.push(text(input.action, 100, "审计操作"));
+    }
+    const result = pageResult("audit", clauses.length ? ` WHERE ${clauses.join(" AND ")}` : "", parameters, query, "id,at,actor_name AS actorName,action,target_name AS targetName,detail", "id DESC");
+    return { entries: result.rows.map(entry => ({ ...entry, id: String(entry.id) })), pagination: result.pagination,
+      actions: db.prepare("SELECT DISTINCT action FROM audit ORDER BY action").all().map(row => row.action) };
+  }
+  function announcementPage(input = {}) {
+    const query = listQuery(input);
+    const result = pageResult("announcements", query.q ? " WHERE instr(lower(title || ' ' || body), lower(?)) > 0" : "", query.q ? [query.q] : [], query, "id,title,body,created_at AS createdAt", "created_at DESC,id DESC");
+    return { announcements: result.rows, pagination: result.pagination };
   }
   function createUser(input, actor, setup = false) {
     const username = text(input?.username, 40, "用户名");
@@ -172,6 +222,7 @@ export function createIdentityStore(filename) {
     createUser, updateUser, login, issueSession, sessionUser, revokeSession,
     user: (id) => publicIdentity(rowFor(id)),
     users: () => db.prepare("SELECT * FROM users ORDER BY created_at,id").all().map(publicIdentity),
+    userPage, auditPage, announcementPage,
     resetPassword(id, password, actor) {
       const hash = passwordHash(password);
       const user = publicIdentity(rowFor(id));

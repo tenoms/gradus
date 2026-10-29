@@ -4,11 +4,9 @@
   gap: 20px;
 }
 .mc-intro h2 {
-  font-size: 29px;
-  letter-spacing: -0.7px;
-  margin: 12px 0;
+  font-size: 18px;
+  margin: 0;
 }
-.mc-intro p,
 .mc-count {
   color: var(--muted, #737a8a);
   line-height: 1.7;
@@ -304,9 +302,6 @@
   .mc-grid,
   .mc-calendar-layout {
     grid-template-columns: 1fr;
-  }
-  .mc-intro h2 {
-    font-size: 24px;
   }
   .mc-calendar {
     max-height: 340px;

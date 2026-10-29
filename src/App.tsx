@@ -68,6 +68,8 @@ import StudySyncIndicator, { StudySyncNotice } from "./components/identity/Study
 import ConnectionDialog from "./components/identity/ConnectionDialog";
 import PasswordSettings from "./components/identity/PasswordSettings";
 import Announcements from "./components/identity/Announcements";
+import Pagination from "./components/Pagination";
+import { usePagination } from "./lib/pagination";
 const MathWorkspace = lazy(() => import("./pages/MathWorkspace"));
 const ComputerWorkspace = lazy(() => import("./pages/ComputerWorkspace"));
 const navItems = [
@@ -185,17 +187,7 @@ function StudyPage({ platform }: { platform: Platform }) {
   const title = sectionTitles[section];
   return (
     <>
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">{label(platform)} · 学习中心</p>
-          <h1>{title?.[0] || "学习空间"}</h1>
-          <p>{title?.[1]}</p>
-        </div>
-        <span className="pill">
-          <span className="status-dot" />
-          原平台内容
-        </span>
-      </div>
+      <div className="page-heading"><h1>{title?.[0] || "学习空间"}</h1></div>
       <PlatformGate platform={platform}>
         <ErrorBoundary
           key={`${platform}-${section}-${session.account?.ref || "guest"}`}
@@ -400,31 +392,10 @@ function Dashboard({
   const minutes = Math.floor(
     todaysActivities.reduce((n, a) => n + (a.durationSeconds || 0), 0) / 60,
   );
-  const displayName =
-    session.user?.displayName || session.account?.nickname || session.account?.name || "同学";
   const recent = activities[0];
-  const date = new Intl.DateTimeFormat("zh-CN", {
-    month: "long",
-    day: "numeric",
-    weekday: "long",
-    timeZone: "Asia/Shanghai",
-  }).format(new Date());
   return (
     <>
-      <div className="page-heading dashboard-heading">
-        <div>
-          <p className="eyebrow">YOUR LEARNING SPACE</p>
-          <h1>
-            你好，{displayName}
-            <span className="wave">☀</span>
-          </h1>
-          <p>学习是一场积累，今天也向前一步。</p>
-        </div>
-        <span className="date-label">
-          <CalendarDays size={16} />
-          {date}
-        </span>
-      </div>
+      <h1 className="sr-only">学习概览</h1>
       <Announcements />
       <div className="dashboard-grid">
         <div className="main-column">
@@ -733,6 +704,7 @@ function Dashboard({
 }
 function Plan({ platform, onAdd }: { platform: Platform; onAdd: () => void }) {
   const { tasks } = useStudyData();
+  const listRef = useRef<HTMLElement>(null);
   const [filter, setFilter] = useState("all");
   const [date, setDate] = useState("");
   const visible = tasks
@@ -742,20 +714,19 @@ function Plan({ platform, onAdd }: { platform: Platform; onAdd: () => void }) {
         (!date || t.date === date),
     )
     .sort((a, b) => a.date.localeCompare(b.date));
+  const pagination = usePagination({ total: visible.length, resetKey: `${filter}:${date}` });
   return (
     <>
       <div className="page-heading">
         <div>
-          <p className="eyebrow">一步一步，成为想成为的人</p>
           <h1>学习计划</h1>
-          <p>安排你的时间，把想法变成行动。</p>
         </div>
         <button className="btn btn-primary" onClick={onAdd}>
           <Plus size={16} />
           添加计划
         </button>
       </div>
-      <section className="panel">
+      <section className="panel pagination-content" ref={listRef}>
         <div className="filter-bar">
           <div className="tabs">
             {[
@@ -792,7 +763,7 @@ function Plan({ platform, onAdd }: { platform: Platform; onAdd: () => void }) {
           </label>
         </div>
         {visible.length ? (
-          visible.map((t) => <TaskRow task={t} key={t.id} />)
+          visible.slice(pagination.start, pagination.end).map((t) => <TaskRow task={t} key={t.id} />)
         ) : (
           <div className="empty-state">
             <CalendarDays size={38} />
@@ -804,6 +775,7 @@ function Plan({ platform, onAdd }: { platform: Platform; onAdd: () => void }) {
             </button>
           </div>
         )}
+        <Pagination page={pagination.page} pageSize={pagination.pageSize} total={visible.length} onPageChange={pagination.setPage} onPageSizeChange={pagination.setPageSize} label="学习计划" contentRef={listRef} />
       </section>
       <p className="footnote">
         计划随你的账号同步，可在不同设备继续；也可在设置中导出备份。
@@ -813,6 +785,11 @@ function Plan({ platform, onAdd }: { platform: Platform; onAdd: () => void }) {
 }
 function Insights() {
   const { activities, tasks } = useStudyData();
+  const listRef = useRef<HTMLElement>(null);
+  const [activitySearch, setActivitySearch] = useState("");
+  const [activityPlatform, setActivityPlatform] = useState("all");
+  const visibleActivities = activities.filter(activity => (activityPlatform === "all" || activity.platform === activityPlatform) && activity.title.toLowerCase().includes(activitySearch.trim().toLowerCase()));
+  const pagination = usePagination({ total: visibleActivities.length, resetKey: `${activityPlatform}:${activitySearch}` });
   const total = activities.reduce((n, a) => n + (a.total || 0), 0);
   const correct = activities.reduce((n, a) => n + (a.correct || 0), 0);
   const graded = activities
@@ -827,9 +804,7 @@ function Insights() {
     <>
       <div className="page-heading">
         <div>
-          <p className="eyebrow">看得见的努力</p>
           <h1>学习报告</h1>
-          <p>回看自己的节奏，让下一步更有方向。</p>
         </div>
         <button className="btn btn-secondary" onClick={exportStudyData}>
           <ArrowDownToLine size={16} />
@@ -881,14 +856,15 @@ function Insights() {
           ))}
         </section>
       </div>
-      <section className="panel">
+      <section className="panel pagination-content" ref={listRef}>
         <div className="section-heading">
           <h2>学习足迹</h2>
           <span className="subtle">
-            最近 {Math.min(activities.length, 100)} 条
+            全部 {activities.length} 条活动
           </span>
         </div>
-        {activities.length ? (
+        <div className="records-filters"><input className="input" aria-label="搜索学习足迹" placeholder="搜索学习内容" value={activitySearch} onChange={event => setActivitySearch(event.target.value)} /><select className="input" aria-label="按学科筛选学习足迹" value={activityPlatform} onChange={event => setActivityPlatform(event.target.value)}><option value="all">全部学科</option><option value="math">考研数学</option><option value="computer">计算机 408</option></select></div>
+        {visibleActivities.length ? (
           <div className="table-scroll">
             <table className="records-table">
               <thead>
@@ -900,7 +876,7 @@ function Insights() {
                 </tr>
               </thead>
               <tbody>
-                {activities.slice(0, 100).map((a) => (
+                {visibleActivities.slice(pagination.start, pagination.end).map((a) => (
                   <tr key={a.id}>
                     <td>
                       <Link to={a.path || "/study/practice"}>{a.title}</Link>
@@ -920,14 +896,15 @@ function Insights() {
         ) : (
           <div className="empty-state">
             <ChartNoAxesCombined size={35} />
-            <h3>积累，正在发生</h3>
-            <p>完成你的第一组练习，开始记录学习进步。</p>
+            <h3>{activities.length ? "没有符合条件的学习活动" : "积累，正在发生"}</h3>
+            <p>{activities.length ? "调整关键词或学科筛选后再试。" : "完成你的第一组练习，开始记录学习进步。"}</p>
             <Link className="btn btn-primary" to="/study/practice">
               开始练习
               <ArrowRight size={16} />
             </Link>
           </div>
         )}
+        <Pagination page={pagination.page} pageSize={pagination.pageSize} total={visibleActivities.length} onPageChange={pagination.setPage} onPageSizeChange={pagination.setPageSize} label="学习足迹" contentRef={listRef} />
       </section>
       <p className="footnote">
         此报告汇总在 Web
@@ -945,9 +922,7 @@ function Settings() {
     <>
       <div className="page-heading">
         <div>
-          <p className="eyebrow">适合自己的，才是好节奏</p>
           <h1>学习设置</h1>
-          <p>管理账号连接、学习目标和云端记录。</p>
         </div>
       </div>
       <section className="panel settings-panel">

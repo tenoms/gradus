@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Pagination from "../Pagination";
+import { usePagination } from "../../lib/pagination";
 import {
   ArrowRight,
   BookOpen,
@@ -30,6 +32,7 @@ export default function MathBookshelf({
   stuid: string;
   onOpenBook: (book: R, lastQuestion?: R) => void;
 }) {
+  const catalogRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<{
       user: R;
       books: R[];
@@ -47,8 +50,7 @@ export default function MathBookshelf({
     [subject, setSubject] = useState("全部"),
     [search, setSearch] = useState(""),
     [selected, setSelected] = useState<string[]>([]),
-    [managing, setManaging] = useState(false),
-    [limit, setLimit] = useState(24);
+    [managing, setManaging] = useState(false);
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -101,6 +103,11 @@ export default function MathBookshelf({
             .toLowerCase()
             .includes(search.toLowerCase())),
     );
+  const pagination = usePagination({
+    total: rows.length,
+    pageSize: 24,
+    resetKey: JSON.stringify([stuid, tab, kind, subject, search]),
+  });
   async function add(book: R) {
     if (!data) return;
     setBusy(true);
@@ -180,17 +187,12 @@ export default function MathBookshelf({
   }
   return (
     <div className="math-bookshelf">
-      <div className="panel bookshelf-heading">
-        <div>
-          <span className="bookshelf-eyebrow">MY STUDY SHELF</span>
-          <h2>把常用的书，放在手边</h2>
-          <p>书架、真实学习进度与最近阅读位置同步到数学账号。</p>
-        </div>
+      <div className="bookshelf-heading">
+        <h2>我的书架</h2>
         <button
           className="btn btn-primary"
           onClick={() => {
             setTab("library");
-            setLimit(24);
           }}
         >
           <Plus size={16} />
@@ -212,7 +214,6 @@ export default function MathBookshelf({
                   setTab(id);
                   setManaging(false);
                   setSelected([]);
-                  setLimit(24);
                 }}
               >
                 {title}
@@ -225,10 +226,7 @@ export default function MathBookshelf({
               placeholder="搜索书名、作者、年份"
               aria-label="搜索我的数学书架"
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setLimit(24);
-              }}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </label>
           <button
@@ -245,10 +243,7 @@ export default function MathBookshelf({
             className="input"
             aria-label="筛选书籍类型"
             value={kind}
-            onChange={(e) => {
-              setKind(e.target.value);
-              setLimit(24);
-            }}
+            onChange={(e) => setKind(e.target.value)}
           >
             {["全部", "教辅", "真题"].map((v) => (
               <option key={v}>{v}</option>
@@ -258,10 +253,7 @@ export default function MathBookshelf({
             className="input"
             aria-label="筛选数学类别"
             value={subject}
-            onChange={(e) => {
-              setSubject(e.target.value);
-              setLimit(24);
-            }}
+            onChange={(e) => setSubject(e.target.value)}
           >
             {["全部", "数一", "数二", "数三"].map((v) => (
               <option key={v}>{v}</option>
@@ -328,8 +320,8 @@ export default function MathBookshelf({
             )}
           </div>
         )}
-        <div className="bookshelf-grid">
-          {rows.slice(0, limit).map((book, index) => {
+        <div className="bookshelf-grid pagination-content" ref={catalogRef}>
+          {rows.slice(pagination.start, pagination.end).map((book, index) => {
             const id = String(book.ID),
               plan = data?.progress.find((p) => String(p.ID) === id) || book,
               progress = shelfProgress(plan),
@@ -435,22 +427,34 @@ export default function MathBookshelf({
             );
           })}
         </div>
-        {rows.length > limit && (
-          <button
-            className="btn btn-secondary bookshelf-more"
-            onClick={() => setLimit((v) => v + 24)}
-          >
-            加载更多
-          </button>
+        {!loading && !error && (
+          <Pagination
+            label="数学书架"
+            contentRef={catalogRef}
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            total={rows.length}
+            onPageChange={pagination.setPage}
+            onPageSizeChange={pagination.setPageSize}
+            pageSizeOptions={[12, 24, 48]}
+            disabled={busy}
+          />
         )}
         {managing && (
           <div className="bookshelf-manage">
             <span>已选择 {selected.length} 本</span>
             <button
               className="btn btn-secondary"
-              onClick={() => setSelected(rows.map((r) => String(r.ID)))}
+              onClick={() =>
+                setSelected((previous) => [
+                  ...new Set([
+                    ...previous,
+                    ...rows.slice(pagination.start, pagination.end).map((r) => String(r.ID)),
+                  ]),
+                ])
+              }
             >
-              全选当前列表
+              全选本页
             </button>
             <button
               className="btn btn-primary"

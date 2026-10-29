@@ -386,7 +386,7 @@ svg {
   background: #6eb8a4;
 }
 .main-content {
-  padding: 35px 38px 0;
+  padding: 22px 38px 0;
   max-width: 2048px;
   margin: auto;
 }
@@ -394,12 +394,18 @@ svg {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 28px;
-  min-height: 89px;
+  gap: 14px;
+  margin-bottom: 14px;
+  min-height: 36px;
 }
 .page-heading h1 {
-  margin: 5px 0 8px;
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.5;
+  letter-spacing: -0.3px;
+}
+.page-heading > .btn {
+  margin-top: 0;
 }
 .page-heading p:not(.eyebrow) {
   font-size: 11px;
@@ -1701,7 +1707,7 @@ svg {
 }
 @media (min-width: 1450px) {
   .main-content {
-    padding: 40px 48px 0;
+    padding-inline: 48px;
   }
   .dashboard-grid {
     grid-template-columns: minmax(0, 1fr) 310px;
@@ -1755,7 +1761,7 @@ svg {
     margin-left: 205px;
   }
   .main-content {
-    padding: 27px 25px 0;
+    padding-inline: 25px;
   }
   .topbar {
     padding: 0 25px;
@@ -1904,12 +1910,6 @@ svg {
   .date-label {
     font-size: 9px;
   }
-  .page-heading h1 {
-    font-size: 25px;
-  }
-  .page-heading {
-    margin-bottom: 24px;
-  }
   .connect-features {
     gap: 16px;
   }
@@ -1953,13 +1953,14 @@ svg {
     gap: 14px;
   }
   .main-content {
-    padding: 25px 24px 0;
+    padding: 16px 24px 0;
   }
   .dashboard-grid {
     gap: 20px;
   }
   .page-heading {
-    min-height: 85px;
+    min-height: 34px;
+    margin-bottom: 12px;
   }
   .sidebar {
     padding-top: 27px;
@@ -2013,7 +2014,7 @@ svg {
 }
 @media (max-width: 560px) {
   .main-content {
-    padding: 21px 17px 0;
+    padding-inline: 17px;
   }
   .topbar {
     padding: 0 17px;
@@ -2067,13 +2068,8 @@ svg {
   .date-label {
     display: none;
   }
-  .page-heading {
-    align-items: flex-start;
-    margin-bottom: 20px;
-    min-height: 76px;
-  }
   .page-heading h1 {
-    font-size: 23px;
+    font-size: 18px;
   }
   .page-heading p:not(.eyebrow) {
     font-size: 10px;
@@ -2084,7 +2080,7 @@ svg {
   .page-heading > .btn {
     font-size: 10px;
     padding: 8px 11px;
-    margin-top: 17px;
+    min-height: 34px;
     white-space: nowrap;
   }
   .wave {
@@ -2531,3 +2527,9 @@ svg {
   .password-settings-form { align-items: stretch; flex-direction: column; }
   .password-settings-form .field-label { width: 100%; }
 }
+
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.records-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 0 0 16px; }
+.records-filters > input { flex: 1; min-width: 150px; }
+.records-filters > select { width: auto; min-width: 130px; }
+@media(max-width:560px) { .records-filters { gap: 8px; } }

@@ -2,13 +2,15 @@ import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  Activity, ArrowRight, Bell, Check, ChevronLeft, ChevronRight,
+  Activity, ArrowRight, Bell, Check, ChevronRight,
   CircleAlert, Clock3, KeyRound, Link2, ListChecks,
   LoaderCircle, Plus, RefreshCw, Search, ShieldCheck, Trash2, Users, X,
 } from "lucide-react";
 import { api } from "../lib/api";
 import { useSession } from "../lib/session";
 import { useDialogFocus } from "../lib/focus";
+import Pagination from "../components/Pagination";
+import { adminActions } from "../../shared/admin-actions.mjs";
 import "./admin.css";
 const OperationsConsole = lazy(() => import("./admin/OperationsConsole"));
 const IntegrationSettings = lazy(() => import("./admin/IntegrationSettings"));
@@ -24,7 +26,9 @@ interface AdminUser {
   createdAt: string;
   lastLoginAt?: string | null;
 }
-interface LearningAccount { ref: string; nickname: string; status: string }
+interface LearningAccount { ref: string; nickname: string; status: string; assignedTo?: { id: string; displayName: string } }
+interface PageInfo { page: number; pageSize: number; total: number; totalPages: number }
+const emptyPage: PageInfo = { page: 1, pageSize: 20, total: 0, totalPages: 1 };
 interface AuditEntry {
   id: string;
   at: string;
@@ -39,12 +43,7 @@ interface OverviewData {
   platforms: { id: string; label: string; connectedUsers: number }[];
   recentAudit: AuditEntry[];
 }
-const actions: Record<string, string> = {
-  "system.setup": "初始化系统", "user.created": "创建用户", "user.updated": "更新用户",
-  "user.password_reset": "重置密码", "auth.login": "登录系统", "auth.logout": "退出系统",
-  "platform.connected": "连接学习账号", "auth.password_changed": "修改个人密码", "announcement.created": "发布公告",
-  "announcement.deleted": "删除公告", "configuration.updated": "更新平台配置", "configuration.probed": "检查平台连接",
-};
+const actions = adminActions;
 const dateTime = (value?: string | null) => {
   if (!value) return "尚无记录";
   const date = new Date(value);
@@ -152,7 +151,8 @@ function UserEditor({ user, users, accounts, accountsError, onSaved, onClose }: 
       <div className="admin-field-pair"><label className="field-label">用户角色<select className="input" value={draft.role} onChange={(event) => set("role", event.target.value as Role)} disabled={pending}><option value="learner">学习者</option><option value="admin">管理员</option></select></label>{user && <label className="field-label">账号状态<select className="input" value={draft.status} onChange={(event) => set("status", event.target.value as UserDraft["status"])} disabled={pending || user.id === ownId}><option value="active">已启用</option><option value="disabled">已停用</option></select></label>}</div>
       {draft.role === "admin" && <p className="admin-inline-hint"><ShieldCheck size={14} />管理员可以管理所有用户、分配学习账号和发布公告。</p>}
       <label className="field-label">分配 YYB 学习账号<select className="input" value={draft.yybRef} onChange={(event) => set("yybRef", event.target.value)} disabled={pending || !!accountsError}><option value="">暂不分配</option>{draft.yybRef && !accounts.some((account) => account.ref === draft.yybRef) && <option value={draft.yybRef}>已分配账号 · {draft.yybRef}</option>}{accounts.map((account) => {
-        const owner = users.find((item) => item.id !== user?.id && item.yybRef === account.ref);
+        const assigned = account.assignedTo || users.find((item) => item.yybRef === account.ref);
+        const owner = assigned?.id !== user?.id ? assigned : undefined;
         return <option key={account.ref} value={account.ref} disabled={!!owner}>{account.nickname || account.ref}{owner ? `（已分配给 ${owner.displayName}）` : account.status === "alive" ? "" : "（需检查会话）"}</option>;
       })}</select><small>{accountsError ? `账号目录暂不可用：${accountsError}` : "每个学习账号仅分配给一位用户。学习者连接后可使用原有内容权限。"}</small></label>
       {user && user.yybRef !== draft.yybRef && <p className="admin-inline-hint"><CircleAlert size={14} />更换或解除分配后，此用户原有的平台连接将失效。</p>}
@@ -165,25 +165,30 @@ function UserEditor({ user, users, accounts, accountsError, onSaved, onClose }: 
   </aside>;
 }
 function UsersPanel({ version, notify }: { version: number; notify: (value: string) => void }) {
-  const resource = useResource<{ users: AdminUser[] }>("/api/admin/users", version);
-  const accountsResource = useResource<{ accounts: LearningAccount[] }>("/api/admin/accounts", version);
+  const contentRef = useRef<HTMLElement>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [role, setRole] = useState("all");
-  const [editor, setEditor] = useState<string | "create" | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize), q: search, role, status });
+  const resource = useResource<{ users: AdminUser[]; pagination: PageInfo }>(`/api/admin/users?${params}`, version);
+  const accountsResource = useResource<{ accounts: LearningAccount[] }>("/api/admin/accounts", version);
+  const [editor, setEditor] = useState<AdminUser | "create" | null>(null);
   const users = resource.data?.users || [];
+  const pagination = resource.data?.pagination || { ...emptyPage, pageSize };
   const accounts = accountsResource.data?.accounts || [];
-  const selected = users.find((user) => user.id === editor);
-  const shown = users.filter((user) => (status === "all" || user.status === status) && (role === "all" || user.role === role) && `${user.username} ${user.displayName} ${user.yybRef || ""}`.toLowerCase().includes(search.trim().toLowerCase()));
+  const selected = editor && editor !== "create" ? editor : null;
+  const filter = (update: () => void) => { update(); setPage(1); };
   return <div className={`admin-users-layout ${editor ? "has-editor" : ""}`}>
-    <section className="panel admin-users-panel">
-      <div className="admin-section-heading"><div><h2>用户与学习账号 <span className="admin-count">{users.length}</span></h2><p>按成员分配学习资源，管理登录和使用权限。</p></div><button className="btn btn-primary" onClick={() => setEditor("create")}><Plus size={15} />创建用户</button></div>
-      <div className="admin-user-toolbar"><label className="admin-search"><Search size={17} /><input aria-label="搜索用户" placeholder="搜索姓名、用户名或学习账号" value={search} onChange={(event) => setSearch(event.target.value)} /></label><select className="input" aria-label="按角色筛选" value={role} onChange={(event) => setRole(event.target.value)}><option value="all">全部角色</option><option value="admin">管理员</option><option value="learner">学习者</option></select><select className="input" aria-label="按状态筛选" value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">全部状态</option><option value="active">已启用</option><option value="disabled">已停用</option></select></div>
-      {resource.loading || resource.error ? <ResourceState {...resource} retry={resource.reload} /> : shown.length ? <div className="admin-table-scroll"><table className="admin-table admin-users-table"><caption className="sr-only">系统用户列表</caption><thead><tr><th>用户</th><th>角色</th><th>状态</th><th>学习账号</th><th>最近登录</th><th><span className="sr-only">管理操作</span></th></tr></thead><tbody>{shown.map((user) => <tr className={editor === user.id ? "selected" : ""} key={user.id}><td><button className="admin-user-name" onClick={() => setEditor(user.id)}><span className={`admin-person-avatar ${user.role === "admin" ? "is-admin" : ""}`}>{user.displayName.slice(0, 1).toUpperCase()}</span><span><strong>{user.displayName}</strong><small>@{user.username}</small></span></button></td><td><RoleBadge role={user.role} /></td><td><span className={`admin-user-status ${user.status}`}><i />{user.status === "active" ? "已启用" : "已停用"}</span></td><td><span className={`admin-account-value ${user.yybRef ? "assigned" : ""}`}>{user.yybRef ? accounts.find((account) => account.ref === user.yybRef)?.nickname || `账号 ${user.yybRef}` : "暂未分配"}</span></td><td className="admin-date">{dateTime(user.lastLoginAt)}</td><td><button className="admin-row-action" onClick={() => setEditor(user.id)} aria-label={`管理用户 ${user.displayName}`}>管理<ChevronRight size={14} /></button></td></tr>)}</tbody></table></div> : <Empty>{users.length ? "没有符合筛选条件的用户。" : "还没有学习者，创建用户后开始分配学习账号。"}</Empty>}
-      <div className="admin-list-footer"><span>显示 {shown.length} / {users.length} 位用户</span><span><ShieldCheck size={13} />用户学习记录分别保存</span></div>
+    <section className="panel admin-users-panel pagination-content" ref={contentRef}>
+      <div className="admin-section-heading"><div><h2>用户与学习账号 <span className="admin-count">{pagination.total}</span></h2><p>按成员分配学习资源，管理登录和使用权限。</p></div><button className="btn btn-primary" onClick={() => setEditor("create")}><Plus size={15} />创建用户</button></div>
+      <div className="admin-user-toolbar"><label className="admin-search"><Search size={17} /><input aria-label="搜索用户" placeholder="搜索姓名、用户名或学习账号" value={search} onChange={event => filter(() => setSearch(event.target.value))} /></label><select className="input" aria-label="按角色筛选" value={role} onChange={event => filter(() => setRole(event.target.value))}><option value="all">全部角色</option><option value="admin">管理员</option><option value="learner">学习者</option></select><select className="input" aria-label="按状态筛选" value={status} onChange={event => filter(() => setStatus(event.target.value))}><option value="all">全部状态</option><option value="active">已启用</option><option value="disabled">已停用</option></select></div>
+      {resource.loading || resource.error ? <ResourceState {...resource} retry={resource.reload} /> : users.length ? <div className="admin-table-scroll"><table className="admin-table admin-users-table"><caption className="sr-only">系统用户列表</caption><thead><tr><th>用户</th><th>角色</th><th>状态</th><th>学习账号</th><th>最近登录</th><th><span className="sr-only">管理操作</span></th></tr></thead><tbody>{users.map(user => <tr className={selected?.id === user.id ? "selected" : ""} key={user.id}><td><button className="admin-user-name" onClick={() => setEditor(user)}><span className={`admin-person-avatar ${user.role === "admin" ? "is-admin" : ""}`}>{user.displayName.slice(0, 1).toUpperCase()}</span><span><strong>{user.displayName}</strong><small>@{user.username}</small></span></button></td><td><RoleBadge role={user.role} /></td><td><span className={`admin-user-status ${user.status}`}><i />{user.status === "active" ? "已启用" : "已停用"}</span></td><td><span className={`admin-account-value ${user.yybRef ? "assigned" : ""}`}>{user.yybRef ? accounts.find(account => account.ref === user.yybRef)?.nickname || `账号 ${user.yybRef}` : "暂未分配"}</span></td><td className="admin-date">{dateTime(user.lastLoginAt)}</td><td><button className="admin-row-action" onClick={() => setEditor(user)} aria-label={`管理用户 ${user.displayName}`}>管理<ChevronRight size={14} /></button></td></tr>)}</tbody></table></div> : <Empty>没有符合筛选条件的用户。</Empty>}
+      <Pagination contentRef={contentRef} page={pagination.page} pageSize={pagination.pageSize} total={pagination.total} onPageChange={setPage} onPageSizeChange={size => { setPageSize(size); setPage(1); }} label="用户列表" disabled={resource.loading || !!resource.error} />
       {accountsResource.error && <div className="admin-directory-error" role="status"><CircleAlert size={15} /><span>学习账号目录暂不可用。{accountsResource.error}</span><button className="text-link" onClick={accountsResource.reload}>重试</button></div>}
     </section>
-    {editor && (editor === "create" || selected) && <UserEditor key={editor} user={selected || null} users={users} accounts={accounts} accountsError={accountsResource.error || (accountsResource.loading ? "正在读取账号目录" : "")} onClose={() => setEditor(null)} onSaved={(message) => { notify(message || (editor === "create" ? "用户已创建，可以将登录信息交给学习者。" : "用户设置已保存。")); resource.reload(); setEditor(null); }} />}
+    {editor && <UserEditor key={selected?.id || "create"} user={selected} users={users} accounts={accounts} accountsError={accountsResource.error || (accountsResource.loading ? "正在读取账号目录" : "")} onClose={() => setEditor(null)} onSaved={message => { notify(message || (editor === "create" ? "用户已创建，可以将登录信息交给学习者。" : "用户设置已保存。")); setPage(1); resource.reload(); accountsResource.reload(); setEditor(null); }} />}
   </div>;
 }
 function DeleteAnnouncement({ announcement, onClose, onDeleted }: { announcement: Announcement; onClose: () => void; onDeleted: () => void }) {
@@ -194,7 +199,13 @@ function DeleteAnnouncement({ announcement, onClose, onDeleted }: { announcement
   return <div className="modal-backdrop" onClick={() => !pending && onClose()}><section className="modal small-modal admin-delete-modal" role="dialog" aria-modal="true" aria-labelledby="announcement-delete-title" ref={ref} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.key === "Escape" && !pending && onClose()}><button className="icon-button modal-close" onClick={onClose} disabled={pending} aria-label="关闭删除确认"><X size={20} /></button><h2 id="announcement-delete-title">删除这条公告？</h2><p>“{announcement.title}”将从所有学习者的公告中移除。</p>{error && <p className="admin-form-error" role="alert">{error}</p>}<div className="admin-form-actions"><button className="btn btn-secondary" onClick={onClose} disabled={pending}>保留公告</button><button className="btn admin-btn-danger" disabled={pending} onClick={async () => { setPending(true); setError(""); try { await api(`/api/admin/announcements/${encodeURIComponent(announcement.id)}`, { method: "DELETE" }); onDeleted(); } catch (cause) { setError(errorMessage(cause)); } finally { setPending(false); } }}>{pending ? <LoaderCircle className="spin" size={15} /> : <Trash2 size={15} />}确认删除</button></div></section></div>;
 }
 function AnnouncementsPanel({ version, notify }: { version: number; notify: (value: string) => void }) {
-  const resource = useResource<{ announcements: Announcement[] }>("/api/admin/announcements", version);
+  const contentRef = useRef<HTMLElement>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [search, setSearch] = useState("");
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize), q: search });
+  const resource = useResource<{ announcements: Announcement[]; pagination: PageInfo }>(`/api/admin/announcements?${params}`, version);
+  const pagination = resource.data?.pagination || { ...emptyPage, pageSize };
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [pending, setPending] = useState(false);
@@ -202,22 +213,23 @@ function AnnouncementsPanel({ version, notify }: { version: number; notify: (val
   const [deleting, setDeleting] = useState<Announcement>();
   async function publish(event: FormEvent) {
     event.preventDefault(); setPending(true); setError("");
-    try { await api("/api/admin/announcements", { method: "POST", body: JSON.stringify({ title: title.trim(), body: body.trim() }) }); setTitle(""); setBody(""); resource.reload(); notify("公告已发布，学习者可以在学习概览中查看。"); }
+    try { await api("/api/admin/announcements", { method: "POST", body: JSON.stringify({ title: title.trim(), body: body.trim() }) }); setTitle(""); setBody(""); setPage(1); resource.reload(); notify("公告已发布，学习者可以在学习概览中查看。"); }
     catch (cause) { setError(errorMessage(cause)); }
     finally { setPending(false); }
   }
-  return <div className="admin-announcements-layout"><section className="panel"><div className="admin-section-heading"><div><h2>已发布公告 <span className="admin-count">{resource.data?.announcements.length || 0}</span></h2><p>公告面向所有登录用户。</p></div><Bell size={20} /></div>{resource.loading || resource.error ? <ResourceState {...resource} retry={resource.reload} /> : !resource.data?.announcements.length ? <Empty icon={<Bell size={26} />}>还没有公告。在右侧编写第一条学习通知。</Empty> : <div className="admin-announcement-list">{resource.data.announcements.map((announcement) => <article className="admin-announcement" key={announcement.id}><div><time>{dateTime(announcement.createdAt)}</time><button className="icon-button" aria-label={`删除公告 ${announcement.title}`} onClick={() => setDeleting(announcement)}><Trash2 size={16} /></button></div><h3>{announcement.title}</h3><p>{announcement.body}</p></article>)}</div>}</section><aside className="panel admin-announcement-editor"><div className="admin-section-heading"><div><span className="admin-kicker">面向全体学习者</span><h2>发布学习公告</h2></div><span className="admin-quick-icon"><Bell size={19} /></span></div><form onSubmit={publish}><label className="field-label">公告标题<input className="input" placeholder="例如：本周复习安排" value={title} onChange={(event) => setTitle(event.target.value)} required maxLength={120} disabled={pending} /></label><label className="field-label">公告内容<textarea className="input" rows={9} placeholder="写下学习安排、使用提示或其他通知…" value={body} onChange={(event) => setBody(event.target.value)} required maxLength={4000} disabled={pending} /><small>{body.length} / 4000</small></label><p className="admin-inline-hint"><Bell size={14} />发布后，公告将显示在学习者的学习概览中。</p>{error && <p className="admin-form-error" role="alert">{error}</p>}<button className="btn btn-primary" type="submit" disabled={pending || !title.trim() || !body.trim()}>{pending ? <LoaderCircle className="spin" size={15} /> : <Plus size={15} />}发布公告</button></form></aside>{deleting && <DeleteAnnouncement announcement={deleting} onClose={() => setDeleting(undefined)} onDeleted={() => { setDeleting(undefined); resource.reload(); notify("公告已删除。"); }} />}</div>;
+  return <div className="admin-announcements-layout"><section className="panel pagination-content" ref={contentRef}><div className="admin-section-heading"><div><h2>已发布公告 <span className="admin-count">{pagination.total}</span></h2><p>公告面向所有登录用户。</p></div><Bell size={20} /></div><label className="admin-search"><Search size={17} /><input aria-label="搜索公告" placeholder="搜索公告标题或内容" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></label>{resource.loading || resource.error ? <ResourceState {...resource} retry={resource.reload} /> : !resource.data?.announcements.length ? <Empty icon={<Bell size={26} />}>{search ? "没有符合搜索条件的公告。" : "还没有公告。在右侧编写第一条学习通知。"}</Empty> : <div className="admin-announcement-list">{resource.data.announcements.map(announcement => <article className="admin-announcement" key={announcement.id}><div><time>{dateTime(announcement.createdAt)}</time><button className="icon-button" aria-label={`删除公告 ${announcement.title}`} onClick={() => setDeleting(announcement)}><Trash2 size={16} /></button></div><h3>{announcement.title}</h3><p>{announcement.body}</p></article>)}</div>}<Pagination contentRef={contentRef} page={pagination.page} pageSize={pagination.pageSize} total={pagination.total} onPageChange={setPage} onPageSizeChange={size => { setPageSize(size); setPage(1); }} label="公告列表" disabled={resource.loading || !!resource.error} /></section><aside className="panel admin-announcement-editor"><div className="admin-section-heading"><div><span className="admin-kicker">面向全体学习者</span><h2>发布学习公告</h2></div><span className="admin-quick-icon"><Bell size={19} /></span></div><form onSubmit={publish}><label className="field-label">公告标题<input className="input" placeholder="例如：本周复习安排" value={title} onChange={event => setTitle(event.target.value)} required maxLength={120} disabled={pending} /></label><label className="field-label">公告内容<textarea className="input" rows={9} placeholder="写下学习安排、使用提示或其他通知…" value={body} onChange={event => setBody(event.target.value)} required maxLength={4000} disabled={pending} /><small>{body.length} / 4000</small></label><p className="admin-inline-hint"><Bell size={14} />发布后，公告将显示在学习者的学习概览中。</p>{error && <p className="admin-form-error" role="alert">{error}</p>}<button className="btn btn-primary" type="submit" disabled={pending || !title.trim() || !body.trim()}>{pending ? <LoaderCircle className="spin" size={15} /> : <Plus size={15} />}发布公告</button></form></aside>{deleting && <DeleteAnnouncement announcement={deleting} onClose={() => setDeleting(undefined)} onDeleted={() => { setDeleting(undefined); resource.reload(); notify("公告已删除。"); }} />}</div>;
 }
 function AuditPanel({ version }: { version: number }) {
-  const resource = useResource<{ entries: AuditEntry[] }>("/api/admin/audit", version);
+  const contentRef = useRef<HTMLElement>(null);
   const [search, setSearch] = useState("");
   const [action, setAction] = useState("all");
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize), q: search, action });
+  const resource = useResource<{ entries: AuditEntry[]; pagination: PageInfo; actions: string[] }>(`/api/admin/audit?${params}`, version);
+  const pagination = resource.data?.pagination || { ...emptyPage, pageSize };
   const entries = resource.data?.entries || [];
-  const filtered = entries.filter((entry) => (action === "all" || entry.action === action) && `${entry.actorName} ${entry.targetName || ""} ${actionName(entry.action)}`.toLowerCase().includes(search.trim().toLowerCase()));
-  const totalPages = Math.max(1, Math.ceil(filtered.length / 20));
-  const currentPage = Math.min(page, totalPages - 1);
-  return <section className="panel"><div className="admin-section-heading"><div><h2>操作审计</h2><p>查看系统记录的登录、账号分配和管理操作。</p></div><span className="admin-badge"><Clock3 size={13} />最近 {entries.length} 条</span></div><div className="admin-user-toolbar"><label className="admin-search"><Search size={17} /><input aria-label="搜索审计记录" placeholder="搜索操作人、对象或操作" value={search} onChange={(event) => { setSearch(event.target.value); setPage(0); }} /></label><select className="input admin-audit-filter" aria-label="按操作筛选" value={action} onChange={(event) => { setAction(event.target.value); setPage(0); }}><option value="all">全部操作</option>{[...new Set(entries.map((entry) => entry.action))].map((item) => <option value={item} key={item}>{actionName(item)}</option>)}</select></div>{resource.loading || resource.error ? <ResourceState {...resource} retry={resource.reload} /> : filtered.length ? <AuditList entries={filtered.slice(currentPage * 20, (currentPage + 1) * 20)} /> : <Empty icon={<Activity size={26} />}>{entries.length ? "没有符合筛选条件的记录。" : "还没有操作记录。"}</Empty>}<div className="admin-list-footer"><span>共 {filtered.length} 条记录</span><div className="admin-pagination"><button className="icon-button" disabled={currentPage === 0} aria-label="上一页审计记录" onClick={() => setPage(currentPage - 1)}><ChevronLeft size={17} /></button><span>{currentPage + 1} / {totalPages}</span><button className="icon-button" disabled={currentPage >= totalPages - 1} aria-label="下一页审计记录" onClick={() => setPage(currentPage + 1)}><ChevronRight size={17} /></button></div></div></section>;
+  return <section className="panel pagination-content" ref={contentRef}><div className="admin-section-heading"><h2>审计记录</h2><span className="admin-badge"><Clock3 size={13} />共 {pagination.total} 条</span></div><div className="admin-user-toolbar"><label className="admin-search"><Search size={17} /><input aria-label="搜索审计记录" placeholder="搜索操作人、对象、操作或详情" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></label><select className="input admin-audit-filter" aria-label="按操作筛选" value={action} onChange={event => { setAction(event.target.value); setPage(1); }}><option value="all">全部操作</option>{(resource.data?.actions || []).map(item => <option value={item} key={item}>{actionName(item)}</option>)}</select></div>{resource.loading || resource.error ? <ResourceState {...resource} retry={resource.reload} /> : entries.length ? <AuditList entries={entries} /> : <Empty icon={<Activity size={26} />}>没有符合筛选条件的记录。</Empty>}<Pagination contentRef={contentRef} page={pagination.page} pageSize={pagination.pageSize} total={pagination.total} onPageChange={setPage} onPageSizeChange={size => { setPageSize(size); setPage(1); }} label="操作审计" disabled={resource.loading || !!resource.error} /></section>;
 }
 export default function AdminWorkspace() {
   const { session, openLogin } = useSession();
@@ -229,10 +241,10 @@ export default function AdminWorkspace() {
   const section = location.pathname.split("/")[1] || "overview";
   useEffect(() => { if (!["overview", "users", "configuration", "announcements", "audit", "operations"].includes(section)) navigate("/", { replace: true }); }, [section, navigate]);
   if (!session.authenticated || user?.role !== "admin") return <section className="panel admin-access-state"><span className="admin-access-icon"><ShieldCheck size={30} /></span><h1>管理工作台</h1><p>{session.authenticated ? "当前账号没有管理权限。请联系系统管理员。" : "请使用管理员账号登录，管理用户与学习空间。"}</p>{session.authenticated ? <a className="btn btn-primary" href="/learn/">返回学习空间<ArrowRight size={15} /></a> : <button className="btn btn-primary" onClick={openLogin}>登录管理账号<ArrowRight size={15} /></button>}</section>;
-  const headings: Record<string, [string, string]> = { overview: ["管理总览", "查看系统使用与学习平台的运行情况。"], users: ["用户与学习账号", "为每位学习者分配身份、权限和平台账号。"], configuration: ["平台集成配置", "管理 YYB、数学与计算机学习平台的连接配置。"], announcements: ["学习公告", "向学习者传递学习安排和空间通知。"], audit: ["操作审计", "查看系统登录、配置和管理操作记录。"], operations: ["运行诊断", "查看两个空间的接口状态和请求耗时。"] };
+  const headings: Record<string, string> = { overview: "管理总览", users: "用户与学习账号", configuration: "平台集成配置", announcements: "学习公告", audit: "操作审计", operations: "运行诊断" };
   const heading = headings[section] || headings.overview;
   return <div className="admin-workspace">
-    <div className="page-heading admin-page-heading"><div><p className="eyebrow">知序 · 系统管理</p><h1>{heading[0]}</h1><p>{heading[1]}</p></div><div className="admin-heading-actions"><span className="admin-badge admin-badge-purple"><ShieldCheck size={14} />{user.displayName}</span>{!["configuration", "operations"].includes(section) && <button className="btn btn-secondary" onClick={() => { setVersion((value) => value + 1); setNotice(""); }}><RefreshCw size={15} />刷新数据</button>}</div></div>
+    <div className="page-heading admin-page-heading"><h1>{heading}</h1><div className="admin-heading-actions">{!["configuration", "operations"].includes(section) && <button className="btn btn-secondary" onClick={() => { setVersion((value) => value + 1); setNotice(""); }}><RefreshCw size={15} />刷新数据</button>}</div></div>
     {notice && <div className="admin-feedback" role="status"><Check size={17} /><span>{notice}</span><button className="icon-button" aria-label="关闭操作提示" onClick={() => setNotice("")}><X size={16} /></button></div>}
     {section === "operations" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><OperationsConsole /></Suspense> : section === "configuration" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><IntegrationSettings /></Suspense> : section === "users" ? <UsersPanel version={version} notify={setNotice} /> : section === "announcements" ? <AnnouncementsPanel version={version} notify={setNotice} /> : section === "audit" ? <AuditPanel version={version} /> : <Overview version={version} />}
   </div>;

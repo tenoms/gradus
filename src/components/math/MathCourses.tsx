@@ -1,4 +1,6 @@
 import MathVideoFeedback from "./MathVideoFeedback";
+import Pagination from "../Pagination";
+import { usePagination } from "../../lib/pagination";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -2162,12 +2164,12 @@ function Product({
 }
 
 export default function MathCourses({ stuid }: { stuid: string }) {
+  const catalogRef = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState("owned"),
     [product, setProduct] = useState<Row>(),
     [paper, setPaper] = useState<Row>(),
     [resume, setResume] = useState<Row>(),
     [search, setSearch] = useState(""),
-    [limit, setLimit] = useState(30),
     [subject, setSubject] = useState("全部");
   const remote = useContent(`course-list-${stuid}-${tab}`, () =>
     tab === "owned"
@@ -2186,6 +2188,19 @@ export default function MathCourses({ stuid }: { stuid: string }) {
       courseApi.userLast(stuid),
     ),
     lastTarget = courseResumeTarget(mathData(last.data));
+  const all = mathRows(remote.data).filter(
+    (r) =>
+      courseLabel(r).toLowerCase().includes(search.toLowerCase()) &&
+      (subject === "全部" ||
+        !r.BusValue ||
+        ["通用", subject].includes(String(r.BusValue))),
+  );
+  const pagination = usePagination({
+    total: all.length,
+    pageSize: 30,
+    resetKey: JSON.stringify([stuid, tab, subject, search]),
+  });
+  const rows = all.slice(pagination.start, pagination.end);
   if (product)
     return (
       <div className="math-courses">
@@ -2214,20 +2229,10 @@ export default function MathCourses({ stuid }: { stuid: string }) {
         }}
       />
     );
-  const all = mathRows(remote.data).filter(
-      (r) =>
-        courseLabel(r).toLowerCase().includes(search.toLowerCase()) &&
-        (subject === "全部" ||
-          !r.BusValue ||
-          ["通用", subject].includes(String(r.BusValue))),
-    ),
-    rows = all.slice(0, limit);
   return (
     <div className="math-courses">
       <div className="mc-intro">
-        <span className="eyebrow">MATHEMATICS · COURSE</span>
-        <h2>沿着课程安排，稳步向前</h2>
-        <p>课程包、章节日程、录播与能力测评，连接到原有学习记录。</p>
+        <h2>数学课程</h2>
       </div>
       {tab === "owned" && lastTarget && (
         <div className="panel mc-resume">
@@ -2268,7 +2273,6 @@ export default function MathCourses({ stuid }: { stuid: string }) {
               onClick={() => {
                 setTab(id);
                 setSearch("");
-                setLimit(30);
               }}
             >
               {title}
@@ -2281,7 +2285,6 @@ export default function MathCourses({ stuid }: { stuid: string }) {
           value={subject}
           onChange={(e) => {
             setSubject(e.target.value);
-            setLimit(30);
           }}
         >
           {["全部", "数一", "数二", "数三"].map((v) => (
@@ -2297,10 +2300,7 @@ export default function MathCourses({ stuid }: { stuid: string }) {
             placeholder={
               tab === "ability" ? "搜索能力测评试卷" : "搜索课程或资料"
             }
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setLimit(30);
-            }}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </label>
         <button className="btn btn-secondary" onClick={remote.reload}>
@@ -2315,7 +2315,7 @@ export default function MathCourses({ stuid }: { stuid: string }) {
         reload={remote.reload}
       />
       {all.length > 0 && <p className="mc-count">共 {all.length} 项</p>}
-      <div className="mc-grid">
+      <div className="mc-grid pagination-content" ref={catalogRef}>
         {rows.map((row, i) => (
           <button
             key={row.ID || i}
@@ -2375,13 +2375,17 @@ export default function MathCourses({ stuid }: { stuid: string }) {
           </button>
         ))}
       </div>
-      {limit < all.length && (
-        <button
-          className="btn btn-secondary mc-more"
-          onClick={() => setLimit((n) => n + 30)}
-        >
-          加载更多（剩余 {all.length - limit} 项）
-        </button>
+      {!remote.loading && !remote.error && (
+        <Pagination
+          label="数学课程"
+          contentRef={catalogRef}
+          page={pagination.page}
+          pageSize={pagination.pageSize}
+          total={all.length}
+          onPageChange={pagination.setPage}
+          onPageSizeChange={pagination.setPageSize}
+          pageSizeOptions={[12, 30, 60]}
+        />
       )}
     </div>
   );

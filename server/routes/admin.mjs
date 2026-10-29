@@ -7,7 +7,7 @@ export function createAdminRouter({ service, identities, connections, configurat
   router.use(auth.require);
   router.get("/overview", (req, res) => res.json(identities.overview(connections)));
   router.get("/operations", (req, res) => res.json({ ...operations.snapshot(), configurationRevision: configuration.publicConfig().revision }));
-  router.get("/users", (req, res) => res.json({ users: identities.users() }));
+  router.get("/users", (req, res) => res.json(identities.userPage(req.query)));
   router.post("/users", (req, res) => res.status(201).json({ user: identities.createUser(req.body, req.studySession.user) }));
   router.patch("/users/:id", (req, res) => {
     const user = identities.updateUser(req.params.id, req.body, req.studySession.user);
@@ -20,9 +20,12 @@ export function createAdminRouter({ service, identities, connections, configurat
     connections.delete(req.params.id);
     res.json({ ok: true });
   });
-  router.get("/accounts", async (req, res) => res.json({ accounts: (await service.yybRequest("/accounts")).map(cleanAccount) }));
-  router.get("/audit", (req, res) => res.json({ entries: identities.auditEntries() }));
-  router.get("/announcements", (req, res) => res.json({ announcements: identities.listAnnouncements() }));
+  router.get("/accounts", async (req, res) => {
+    const assigned = new Map(identities.users().filter(user => user.yybRef).map(user => [user.yybRef, { id: user.id, displayName: user.displayName }]));
+    res.json({ accounts: (await service.yybRequest("/accounts")).map(source => { const account = cleanAccount(source); return { ...account, ...(assigned.has(account.ref) ? { assignedTo: assigned.get(account.ref) } : {}) }; }) });
+  });
+  router.get("/audit", (req, res) => res.json(identities.auditPage(req.query)));
+  router.get("/announcements", (req, res) => res.json(identities.announcementPage(req.query)));
   router.post("/announcements", (req, res) => res.status(201).json({ announcement: identities.announce(req.body, req.studySession.user) }));
   router.delete("/announcements/:id", (req, res) => { identities.deleteAnnouncement(req.params.id, req.studySession.user); res.json({ ok: true }); });
   router.get("/configuration", (req, res) => res.json(configuration.publicConfig()));

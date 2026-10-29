@@ -1,4 +1,6 @@
 import ComputerCourseDanmaku from "./ComputerCourseDanmaku";
+import Pagination from "../Pagination";
+import { usePagination } from "../../lib/pagination";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -105,6 +107,7 @@ function Status({
   return null;
 }
 export default function ComputerCourses() {
+  const catalogRef = useRef<HTMLDivElement>(null);
   const [scope, setScope] = useState("joined"),
     [courseType, setCourseType] = useState("all"),
     [course, setCourse] = useState<R | null>(null),
@@ -248,6 +251,11 @@ export default function ComputerCourses() {
         (!search ||
           `${label(item)} ${item.courseBrief || ""}`.includes(search)),
     );
+  const catalogPagination = usePagination({
+    total: items.length,
+    pageSize: 12,
+    resetKey: JSON.stringify([scope, courseType, search]),
+  });
   async function back() {
     if (videoRef.current) await saveProgress(videoRef.current, true);
     setCourse(null);
@@ -311,8 +319,8 @@ export default function ComputerCourses() {
             empty={!list.loading && !list.error && !items.length}
             retry={list.reload}
           />
-          <div className="computer-course-grid">
-            {items.map((item, i) => (
+          <div className="computer-course-grid pagination-content" ref={catalogRef}>
+            {items.slice(catalogPagination.start, catalogPagination.end).map((item, i) => (
               <button
                 className="panel computer-course-card"
                 key={item.id || i}
@@ -359,6 +367,18 @@ export default function ComputerCourses() {
               </button>
             ))}
           </div>
+          {!list.loading && !list.error && (
+            <Pagination
+              label="计算机课程"
+              contentRef={catalogRef}
+              page={catalogPagination.page}
+              pageSize={catalogPagination.pageSize}
+              total={items.length}
+              onPageChange={catalogPagination.setPage}
+              onPageSizeChange={catalogPagination.setPageSize}
+              pageSizeOptions={[12, 24, 48]}
+            />
+          )}
         </>
       ) : (
         <>
