@@ -1,3 +1,4 @@
+import { WorkspaceBar, WorkspaceTabs } from "../../../shared/ui/workspace-bar/WorkspaceBar";
 import { useEffect, useState } from "react";
 import { ArrowRight, LoaderCircle, RefreshCw } from "lucide-react";
 import RichContent from "../../../shared/content/RichContent";
@@ -228,24 +229,18 @@ export default function ComputerStages({
   }
   return (
     <div className="computer-stages">
-      <div className="tabs">
-        {[
-          [20, "408基础通关"],
-          [21, "预备测评"],
-          [22, "定校模考"],
-        ].map(([id, title]) => (
-          <button
-            key={id}
-            className={type === id ? "active" : ""}
-            onClick={() => {
-              setType(Number(id));
-              setReport(null);
-            }}
-          >
-            {title}
-          </button>
-        ))}
-      </div>
+      <WorkspaceBar label="阶段测评类型" navigation={
+        <WorkspaceTabs
+          label="阶段测评分类"
+          value={String(type)}
+          items={[
+            { value: "20", label: "408基础通关" },
+            { value: "21", label: "预备测评" },
+            { value: "22", label: "定校模考" },
+          ]}
+          onChange={value => { setType(Number(value)); setReport(null); }}
+        />
+      } />
       {loading && (
         <p className="computer-status" role="status">
           <LoaderCircle size={18} className="spin" />

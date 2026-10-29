@@ -1,7 +1,7 @@
 .cc-courses {
   display: flex;
   flex-direction: column;
-  gap: 19px;
+  gap: 16px;
 }
 .cc-course-title {
   display: flex;
@@ -23,9 +23,9 @@
 }
 .cc-details-tabs {
   border-top: 1px solid var(--border);
-  margin-top: 27px;
-  padding-top: 23px;
-  margin-bottom: 20px;
+  margin-top: 14px;
+  padding-top: 10px;
+  margin-bottom: 12px;
 }
 .cc-introduction > img {
   width: 100%;

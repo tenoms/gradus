@@ -322,8 +322,8 @@ export default function LearningApp() {
               >
                 <Menu size={22} />
               </button>
-              <span className="breadcrumb">
-                学习空间<span>/</span>
+              <span className="workspace-context">
+                <span>学习空间</span>
                 <strong>{activeTitle}</strong>
               </span>
             </div>
@@ -346,6 +346,7 @@ export default function LearningApp() {
                   type="button"
                   className="search-trigger"
                   aria-label="展开搜索"
+                  title="搜索题目与知识点"
                   onClick={() => {
                     setSearchExpanded(true);
                     requestAnimationFrame(() => searchInput.current?.focus());
@@ -369,7 +370,7 @@ export default function LearningApp() {
                 <kbd>↵</kbd>
               </form>
               <LearningAppearance theme={theme} />
-              <div className="subject-switch">
+              <div className="subject-switch" title="切换学习科目">
                 <span className={`subject-symbol ${platform}`}>
                   {platform === "math" ? (
                     <Sigma size={17} />

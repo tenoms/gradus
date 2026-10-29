@@ -371,7 +371,7 @@ function QuestionReader({
         ].map((t) => (
           <button
             key={t}
-            className={tab === t ? "active" : ""}
+            className={tab === t ? "active" : ""} aria-pressed={tab === t}
             onClick={() => (t === "解析" ? loadAnalysis() : setTab(t))}
           >
             {t}
@@ -446,7 +446,7 @@ function QuestionReader({
             <div className="math-self-assessment">
               <span>本题需对照解析自评</span>
               <button
-                className={result === true ? "active" : ""}
+                className={result === true ? "active" : ""} aria-pressed={result === true}
                 disabled={saving}
                 onClick={() => {
                   void submit(true);
@@ -455,7 +455,7 @@ function QuestionReader({
                 回答正确
               </button>
               <button
-                className={result === false ? "active" : ""}
+                className={result === false ? "active" : ""} aria-pressed={result === false}
                 disabled={saving}
                 onClick={() => {
                   void submit(false);

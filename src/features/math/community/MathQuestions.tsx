@@ -342,7 +342,7 @@ export default function MathQuestions({
             ].map(([value, title]) => (
               <button
                 key={value}
-                className={value === state ? "active" : ""}
+                className={value === state ? "active" : ""} aria-pressed={value === state}
                 onClick={() => {
                   setState(value);
                   setPage(0);
@@ -1588,7 +1588,7 @@ function TeacherDesk({
           <div className="tabs">
             {Object.keys(commands).map((t) => (
               <button
-                className={t === tab ? "active" : ""}
+                className={t === tab ? "active" : ""} aria-pressed={t === tab}
                 key={t}
                 onClick={() => {
                   setTab(t);

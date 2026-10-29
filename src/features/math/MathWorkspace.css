@@ -1,5 +1,6 @@
 .math-workspace {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 24px;
   min-width: 0;
 }
@@ -1476,3 +1477,8 @@
 @media(max-width:560px) { .math-explanation-video { padding: 12px; } }
 
 .math-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 18%, transparent); }
+
+.math-library > .math-filters { padding: 9px 2px; flex-wrap: wrap; }
+.math-library > .math-filters .btn { min-height: 32px; padding: 5px 10px; font-size: 12px; }
+.math-library > .math-filters .btn[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+.math-library > .math-library-tag-filter { padding: 0 2px 12px; }

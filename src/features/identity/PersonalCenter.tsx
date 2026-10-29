@@ -4,6 +4,7 @@ import { ArrowLeft, LoaderCircle, LogOut, UserRound } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../../shared/api/client";
 import { useSession } from "../../shared/auth/session";
+import { WorkspaceBar, WorkspaceTabs } from "../../shared/ui/workspace-bar/WorkspaceBar";
 import MathLearningPlan, { MathPreparationSettings } from "../math/preparation/MathLearningPlan";
 import MathAccountTools from "../math/profile/MathAccountTools";
 import MathQuestionReader from "../math/questions/MathQuestionReader";
@@ -30,14 +31,16 @@ export default function PersonalCenter({ settings }: { settings: ReactNode }) {
   return <MathLearningPlan key={session.user?.id}>
     <div className="personal-center math-workspace">
       <h1 className="sr-only">个人中心</h1>
-      <section className="panel personal-identity"><span className="personal-avatar">{session.user?.avatar ? <img src={session.user.avatar} alt="个人头像" /> : <UserRound size={26} />}</span><div><strong>{session.user?.displayName || session.user?.username}</strong><p>{session.user?.username} · 学习账号</p></div><button className="btn btn-secondary" disabled={loggingOut} onClick={async () => { setLoggingOut(true); try { await api("/api/auth/logout", { method: "POST" }); await refresh(); } catch (error) { setError((error as Error).message); } finally { setLoggingOut(false); } }}><LogOut size={15} />退出账号</button></section>
-      <nav className="panel personal-tabs tabs" aria-label="个人中心栏目">{Object.entries(sections).map(([id, name]) => <button key={id} className={tab === id ? "active" : ""} aria-current={tab === id ? "page" : undefined} onClick={() => { setQuestion(undefined); setParams({ tab: id }); }}>{name}</button>)}</nav>
+      <WorkspaceBar label="个人中心工具" navigation={<WorkspaceTabs label="个人中心栏目" items={Object.entries(sections).map(([value, label]) => ({value, label}))} value={tab} onChange={value => { setQuestion(undefined); setParams({tab: value}); }} />}>
+        <div className="personal-toolbar-identity"><span className="personal-avatar">{session.user?.avatar ? <img src={session.user.avatar} alt="个人头像" /> : <UserRound size={19} />}</span><div><strong>{session.user?.displayName || session.user?.username}</strong><small>{session.user?.username}</small></div></div>
+        <button className="btn btn-secondary" disabled={loggingOut} onClick={async () => { setLoggingOut(true); try { await api("/api/auth/logout", { method: "POST" }); await refresh(); } catch (error) { setError((error as Error).message); } finally { setLoggingOut(false); } }}><LogOut size={15} />退出账号</button>
+      </WorkspaceBar>
       {error && <p className="error-banner" role="alert">{error}</p>}
       {tab === "account" ? <>
         <section className="panel settings-panel"><h2>个人资料</h2><p className="muted">用于当前 Web 学习账号，随账号保存。</p><AccountProfile userId={stuid} /></section>
         <PasswordSettings />
       </> : tab === "source" ? <PersonalLearningAccount /> : tab === "settings" ? settings : tab === "computer" ? <Suspense fallback={<p className="loading-state"><LoaderCircle className="spin" size={20} />正在读取自选科目…</p>}><ComputerLearningSettings /></Suspense> : <>
-        <div className="tabs personal-math-tabs">{["备考设置", "学习记录", "学习榜单"].map(name => <button key={name} className={mathTab === name ? "active" : ""} onClick={() => { setQuestion(undefined); setMathTab(name); }}>{name}</button>)}</div>
+        <WorkspaceTabs label="数学个人中心栏目" items={["备考设置", "学习记录", "学习榜单"].map(value => ({value, label: value}))} value={mathTab} onChange={value => { setQuestion(undefined); setMathTab(value); }} />
         {mathTab === "备考设置" ? <MathPreparationSettings /> : question ? <><button className="math-back" onClick={() => setQuestion(undefined)}><ArrowLeft size={16} />返回个人中心</button><MathQuestionReader row={question} stuid={stuid} /></> : <section className="panel personal-math-content"><MathAccountTools key={`${mathTab}-${stuid}`} tab={mathTab} user={user} onQuestion={setQuestion} /></section>}
       </>}
 

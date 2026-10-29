@@ -1,3 +1,4 @@
+import { WorkspaceBar, WorkspaceTabs } from "../../../shared/ui/workspace-bar/WorkspaceBar";
 import { useMathLearningPlan } from "../preparation/MathLearningPlan";
 import { matchesMathSubject } from "../preparation/learning-plan-model.mjs";
 import MathVideoFeedback from "./MathVideoFeedback";
@@ -1147,7 +1148,7 @@ function Packet({
         ].map(([id, title]) => (
           <button
             key={id}
-            className={tab === id ? "active" : ""}
+            className={tab === id ? "active" : ""} aria-pressed={tab === id}
             onClick={() => setTab(id)}
           >
             {title}
@@ -1914,46 +1915,43 @@ export default function MathCourses({ stuid }: { stuid: string }) {
           </button>
         </div>
       )}
-      <div className="panel mc-toolbar">
-        <div className="tabs">
-          {[
-            ["owned", "我的课程"],
-            ["free", "公开课程"],
-            ["vip", "精品课程"],
-            ["catalog", "课程目录"],
-            ["handouts", "课程资料"],
-            ["ability", "能力测评"],
-          ].map(([id, title]) => (
-            <button
-              key={id}
-              className={tab === id ? "active" : ""}
-              onClick={() => {
-                setTab(id);
-                setSearch("");
-              }}
-            >
-              {title}
-            </button>
-          ))}
-        </div>
-        <button className="btn btn-secondary" onClick={() => setAllSubjects(!allSubjects)}>{allSubjects ? "全部科目 · 回到我的目标" : `${subject} · 浏览全部科目`}</button>
+      <WorkspaceBar
+        label="数学课程导航与工具"
+        navigation={<WorkspaceTabs
+          label="课程栏目"
+          items={[
+            { value: "owned", label: "我的课程" },
+            { value: "free", label: "公开课程" },
+            { value: "vip", label: "精品课程" },
+            { value: "catalog", label: "课程目录" },
+            { value: "handouts", label: "课程资料" },
+            { value: "ability", label: "能力测评" },
+          ]}
+          value={tab}
+          onChange={(value) => { setTab(value); setSearch(""); }}
+        />}
+      >
+        <button
+          className="btn btn-secondary workspace-scope"
+          aria-pressed={allSubjects}
+          title={allSubjects ? "回到我的备考目标" : "浏览全部数学科目"}
+          onClick={() => setAllSubjects(!allSubjects)}
+        >{allSubjects ? "全部科目" : `${subject} · 备考目标`}</button>
         <label className="mc-search">
-          <Search size={17} />
+          <Search size={16} />
           <input
             className="input"
             aria-label="搜索数学课程"
             value={search}
-            placeholder={
-              tab === "ability" ? "搜索能力测评试卷" : "搜索课程或资料"
-            }
+            placeholder={tab === "ability" ? "搜索测评试卷" : "搜索课程或资料"}
             onChange={(e) => setSearch(e.target.value)}
           />
         </label>
-        <button className="btn btn-secondary" onClick={remote.reload}>
-          <RefreshCw size={15} />
+        <button className="btn btn-secondary" disabled={remote.loading} aria-busy={remote.loading} onClick={remote.reload}>
+          <RefreshCw size={15} className={remote.loading ? "spin" : undefined} />
           刷新
         </button>
-      </div>
+      </WorkspaceBar>
       <Status
         loading={remote.loading}
         error={remote.error}

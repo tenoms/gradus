@@ -140,7 +140,7 @@ export default function MathCourseReportMore({
               ["accuracy", "逐题得分率"],
             ].map(([value, title]) => (
               <button
-                className={tab === value ? "active" : ""}
+                className={tab === value ? "active" : ""} aria-pressed={tab === value}
                 key={value}
                 onClick={() => setTab(value)}
               >

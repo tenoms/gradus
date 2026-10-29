@@ -1,3 +1,4 @@
+import { WorkspaceBar, WorkspaceTabs } from "../../../shared/ui/workspace-bar/WorkspaceBar";
 import { confirmAction } from "../../../shared/ui/dialogs/InteractionProvider";
 import { useMathLearningPlan } from "../preparation/MathLearningPlan";
 import { loadBookNotes } from "./notebook-data.mjs";
@@ -297,49 +298,30 @@ export default function MathNotebook({
     );
   return (
     <div className="math-workspace">
-      <div className="panel mn-toolbar">
-        <div className="tabs">
-          {(["错题", "收藏", "笔记"] as NoteKind[]).map((k) => (
-            <button
-              className={kind === k ? "active" : ""}
-              key={k}
-              onClick={() => {
-                setKind(k);
-                setCatalog("0");
-                setBook("0");
-              }}
-            >
-              {k}
-            </button>
-          ))}
-        </div>
-        <div className="mn-source">
-          <button
-            className={origin === "book" ? "active" : ""}
-            onClick={() => setOrigin("book")}
-          >
-            书籍与课程
-          </button>
-          <button
-            className={origin === "bank" ? "active" : ""}
-            onClick={() => setOrigin("bank")}
-          >
-            题库记录
-          </button>
-        </div>
+      <WorkspaceBar
+        label="学习记录导航与工具"
+        navigation={<WorkspaceTabs
+          label="记录类型"
+          items={["错题", "收藏", "笔记"].map(value => ({ value, label: value }))}
+          value={kind}
+          onChange={(value) => { setKind(value as NoteKind); setCatalog("0"); setBook("0"); }}
+        />}
+      >
+        <WorkspaceTabs
+          label="记录来源"
+          items={[{ value: "book", label: "书籍与课程" }, { value: "bank", label: "题库记录" }]}
+          value={origin}
+          onChange={(value) => setOrigin(value as "book" | "bank")}
+          className="workspace-tabs-secondary"
+        />
         <button
           className="btn btn-secondary"
           disabled={busy}
-          onClick={() => {
-            categories.reload();
-            entries.reload();
-            books.reload();
-          }}
+          onClick={() => { categories.reload(); entries.reload(); books.reload(); }}
         >
-          <RefreshCw size={15} />
-          刷新记录
+          <RefreshCw size={15} />刷新记录
         </button>
-      </div>
+      </WorkspaceBar>
       {origin === "book" ? (
         <div className="mn-layout">
           <aside className="panel mn-catalogs">
@@ -485,7 +467,7 @@ export default function MathNotebook({
           <div className="tabs mn-bank-tabs">
             {["自定义刷题", "推荐刷题", "真题刷题"].map((name, i) => (
               <button
-                className={bank === i ? "active" : ""}
+                className={bank === i ? "active" : ""} aria-pressed={bank === i}
                 key={name}
                 onClick={() => setBank(i)}
               >

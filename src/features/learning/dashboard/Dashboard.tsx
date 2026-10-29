@@ -18,6 +18,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import type { Platform } from "../../../shared/api/client";
 import { useSession } from "../../../shared/auth/session";
+import { WorkspaceTabs } from "../../../shared/ui/workspace-bar/WorkspaceBar";
 import Announcements from "../../identity/Announcements";
 import TaskRow from "../plans/TaskRow";
 import { useStudyData } from "../state/store";
@@ -120,9 +121,7 @@ export default function Dashboard({
           </section>
           <div className="study-overview-heading">
             <div><span className="study-section-kicker">TODAY'S PROGRESS</span><h2>今天的学习</h2></div>
-            <div className="study-scope-tabs" role="group" aria-label="概览统计科目">
-              {(["all", "math", "computer"] as const).map(value => <button key={value} aria-pressed={scope === value} onClick={() => selectScope(value)}>{value === "all" ? "全部科目" : label(value)}</button>)}
-            </div>
+            <WorkspaceTabs label="概览统计科目" value={scope} onChange={value => selectScope(value as Platform | "all")} items={(["all", "math", "computer"] as const).map(value => ({value, label: value === "all" ? "全部科目" : label(value)}))} />
           </div>
           <div className="stat-grid">
             <div className="stat-card">

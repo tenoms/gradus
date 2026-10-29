@@ -4,6 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import type { Platform } from "../../../shared/api/client";
 import Pagination from "../../../shared/ui/pagination/Pagination";
 import { usePagination } from "../../../shared/ui/pagination/use-pagination";
+import { WorkspaceBar, WorkspaceTabs } from "../../../shared/ui/workspace-bar/WorkspaceBar";
 import WeeklyChart from "../dashboard/WeeklyChart";
 import { exportStudyData, useStudyData } from "../state/store";
 import { platformLabel as label } from "../study-format";
@@ -50,20 +51,16 @@ export default function StudyInsights({ platform = "math", onPlatformChange }: {
   }
   return (
     <div className="study-report">
-      <div className="page-heading report-heading">
-        <div>
-          <span className="report-eyebrow">看见每一次积累</span>
-          <h1>学习报告</h1>
-          <p>分科回看投入与掌握，让下一步更有方向。</p>
-        </div>
-        <button className="btn btn-secondary" onClick={exportStudyData}><ArrowDownToLine size={16} />导出全部记录</button>
-      </div>
-      <div className="report-controls">
-        <div className="report-scope-control" role="group" aria-label="学习报告统计科目">
-          {subjects.map(subject => <button key={subject.key} className={scope === subject.key ? "is-active" : ""} aria-pressed={scope === subject.key} onClick={() => selectScope(subject.key)}>{subject.key === "math" ? <Sigma size={16} /> : subject.key === "computer" ? <Code2 size={16} /> : <ChartNoAxesCombined size={16} />}{subject.label}</button>)}
-        </div>
+      <h1 className="sr-only">学习报告</h1>
+      <WorkspaceBar label="学习报告工具" navigation={
+        <WorkspaceTabs label="学习报告统计科目" value={scope} onChange={value => selectScope(value as Scope)} items={subjects.map(subject => ({
+          value: subject.key,
+          label: <>{subject.key === "math" ? <Sigma size={15} /> : subject.key === "computer" ? <Code2 size={15} /> : <ChartNoAxesCombined size={15} />}{subject.label}</>,
+        }))} />
+      }>
         <label className="report-period">统计范围<select className="input" aria-label="学习报告统计时间范围" value={period} onChange={event => setParams(previous => { const nextParams = new URLSearchParams(previous); nextParams.set("period", event.target.value); return nextParams; }, { replace: true })}><option value={7}>最近 7 天</option><option value={30}>最近 30 天</option><option value="all">全部记录</option></select></label>
-      </div>
+        <button className="btn btn-secondary" title="导出全部科目、时间范围的学习记录与计划" onClick={exportStudyData}><ArrowDownToLine size={16} />导出全部</button>
+      </WorkspaceBar>
       <p className="report-scope-caption">{scopeLabel}<span>·</span>{periodLabel}<span>·</span>{events.length} 次学习活动</p>
       <div className="stat-grid insights-stats report-stats">
         <div className="stat-card"><div className="stat-top"><span>练习题次</span><BookOpen size={17} /></div><div className="stat-number">{summary.questions}<small>题</small></div><span className="stat-note">按实际提交的练习与测评统计</span></div>

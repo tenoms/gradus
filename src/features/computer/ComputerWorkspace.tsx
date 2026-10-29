@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { WorkspaceBar, WorkspaceTabs } from "../../shared/ui/workspace-bar/WorkspaceBar";
 import { invalidateCatalogResources } from "../../shared/api/client";
 import type { ReactNode } from "react";
 import {
@@ -389,22 +390,17 @@ function QuestionBank({ launch }: { launch: (s: ExerciseLaunch) => void }) {
     }
   }
   const modeTabs = (
-    <div className="tabs computer-source-tabs">
-      {[
-        ["practice", "逐题练习"],
-        ["exam", "章节测评"],
-        ["special", "简答与复试"],
-        ["subjects", "管理自选科目"],
-      ].map(([id, title]) => (
-        <button
-          key={id}
-          className={mode === id ? "active" : ""}
-          onClick={() => setMode(id)}
-        >
-          {title}
-        </button>
-      ))}
-    </div>
+    <WorkspaceTabs
+      label="408 练习方式"
+      value={mode}
+      onChange={setMode}
+      items={[
+        { value: "practice", label: "逐题练习" },
+        { value: "exam", label: "章节测评" },
+        { value: "special", label: "简答与复试" },
+        { value: "subjects", label: "管理自选科目" },
+      ]}
+    />
   );
   if (groupChapter)
     return (
@@ -418,14 +414,14 @@ function QuestionBank({ launch }: { launch: (s: ExerciseLaunch) => void }) {
   if (mode === "special")
     return (
       <>
-        {modeTabs}
+        <WorkspaceBar label="408 练习导航" navigation={modeTabs} />
         <ComputerSpecialPractice launch={launch} />
       </>
     );
   if (mode === "subjects")
     return (
       <>
-        {modeTabs}
+        <WorkspaceBar label="408 练习导航" navigation={modeTabs} />
         <div className="panel">
           <ComputerSubjects onUpdated={reloadSubjects} />
         </div>
@@ -433,8 +429,7 @@ function QuestionBank({ launch }: { launch: (s: ExerciseLaunch) => void }) {
     );
   return (
     <>
-      {modeTabs}
-      <div className="panel computer-toolbar">
+      <WorkspaceBar label="408 练习导航与工具" navigation={modeTabs}>
         <ComputerSubjectPicker
           value={subject}
           subjects={subjects}
@@ -448,16 +443,15 @@ function QuestionBank({ launch }: { launch: (s: ExerciseLaunch) => void }) {
           开始随机练习
           <ArrowRight size={16} />
         </button>
-      </div>
-      <div className="panel computer-searchbar">
-        <Search size={17} />
-        <input
-          className="input"
-          aria-label="搜索章节"
-          placeholder="搜索章节或知识点"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-        />
+        <label className="computer-bar-search">
+          <Search size={16} aria-hidden="true" />
+          <input
+            aria-label="搜索章节"
+            placeholder="搜索章节或知识点"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          />
+        </label>
         <input
           className="input"
           aria-label="输入题目编号"
@@ -482,7 +476,7 @@ function QuestionBank({ launch }: { launch: (s: ExerciseLaunch) => void }) {
             onChange={(e) => void search(e.target.files?.[0])}
           />
         </label>
-      </div>
+      </WorkspaceBar>
       <Status loading={loading} error={error} />
       <div className="panel">
         <div className="computer-section-label">
@@ -590,52 +584,30 @@ function Exams({ launch }: { launch: (s: ExerciseLaunch) => void }) {
       { id: "stages", name: "阶段测评与报告" },
     ],
     navigation = (
-      <div className="computer-source-tabs tabs">
-        {sources.map((s) => (
-          <button
-            key={s.id}
-            className={s.id === source ? "active" : ""}
-            onClick={() => {
-              setSource(s.id);
-              setPage(1);
-            }}
-          >
-            {s.name}
-          </button>
-        ))}
-      </div>
+      <WorkspaceTabs
+        label="408 测评类型"
+        value={source}
+        items={sources.map(s => ({ value: s.id, label: s.name }))}
+        onChange={value => { setSource(value); setPage(1); }}
+      />
     );
   if (source === "special")
     return (
       <>
-        {navigation}
+        <WorkspaceBar label="408 测评导航" navigation={navigation} />
         <ComputerSpecialPractice launch={launch} />
       </>
     );
   if (source === "stages")
     return (
       <>
-        {navigation}
+        <WorkspaceBar label="408 测评导航" navigation={navigation} />
         <ComputerStages launch={launch} />
       </>
     );
   return (
     <>
-      <div className="computer-source-tabs tabs">
-        {sources.map((s) => (
-          <button
-            key={s.id}
-            className={s.id === source ? "active" : ""}
-            onClick={() => {
-              setSource(s.id);
-              setPage(1);
-            }}
-          >
-            {s.name}
-          </button>
-        ))}
-      </div>
-      <div className="panel computer-toolbar">
+      <WorkspaceBar label="408 测评导航与筛选" navigation={navigation}>
         {source === "school" ? (
           <select
             className="input computer-select"
@@ -668,7 +640,7 @@ function Exams({ launch }: { launch: (s: ExerciseLaunch) => void }) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-      </div>
+      </WorkspaceBar>
       <Status
         loading={loading || schools.loading}
         error={error || schools.error}
@@ -731,27 +703,19 @@ function Resources() {
   );
   return (
     <>
-      <div className="panel computer-toolbar">
-        <div className="tabs">
-          {[
-            ["", "全部资讯"],
-            ["1", "考研资讯"],
-            ["2", "备考资料"],
-            ["3", "学习方法"],
-          ].map(([id, title]) => (
-            <button
-              key={id}
-              className={type === id ? "active" : ""}
-              onClick={() => {
-                setType(id);
-                setArticle(null);
-                setPage(1);
-              }}
-            >
-              {title}
-            </button>
-          ))}
-        </div>
+      <WorkspaceBar label="408 资讯导航与搜索" navigation={
+        <WorkspaceTabs
+          label="资讯分类"
+          value={type}
+          items={[
+            { value: "", label: "全部资讯" },
+            { value: "1", label: "考研资讯" },
+            { value: "2", label: "备考资料" },
+            { value: "3", label: "学习方法" },
+          ]}
+          onChange={value => { setType(value); setArticle(null); setPage(1); }}
+        />
+      }>
         <input
           className="input"
           aria-label="搜索资讯"
@@ -762,7 +726,7 @@ function Resources() {
             setPage(1);
           }}
         />
-      </div>
+      </WorkspaceBar>
       {article ? (
         <div className="panel">
           <button className="computer-back" onClick={() => setArticle(null)}>

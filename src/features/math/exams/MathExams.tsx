@@ -1,3 +1,4 @@
+import { WorkspaceBar, WorkspaceTabs } from "../../../shared/ui/workspace-bar/WorkspaceBar";
 import { confirmAction, promptAction, showMessage } from "../../../shared/ui/dialogs/InteractionProvider";
 import { useMathLearningPlan } from "../preparation/MathLearningPlan";
 import { weeklySubjectCode, weeklyStageCode } from "../preparation/learning-plan-model.mjs";
@@ -1575,47 +1576,32 @@ export default function MathExams({ stuid }: { stuid: string }) {
     );
   return (
     <div className="math-exams">
-      <div className="tabs">
-        {[
-          ["dry", "数学模考"],
-          ["stage", "阶段测评"],
-          ["weekly", "智能周测"],
-          ["mine", "我的模考"],
-        ].map(([value, title]) => (
-          <button
-            key={value}
-            className={kind === value ? "active" : ""}
-            onClick={() => {
-              setKind(value);
-              setPage(1);
-              setSelectedWeekly([]);
-              setConfirmDelete(false);
-              setDeleteError("");
-              setDeleteNotice("");
-            }}
-          >
-            {title}
-          </button>
-        ))}
-      </div>
-      <div className="panel math-exam-toolbar">
-        {kind !== "weekly" && <span className="math-tag">{subject} · 已沿用备考目标</span>}
+      <WorkspaceBar
+        label="数学测评导航与工具"
+        navigation={<WorkspaceTabs
+          label="测评类型"
+          items={[
+            { value: "dry", label: "数学模考" },
+            { value: "stage", label: "阶段测评" },
+            { value: "weekly", label: "智能周测" },
+            { value: "mine", label: "我的模考" },
+          ]}
+          value={kind}
+          onChange={(value) => { setKind(value); setPage(1); setSelectedWeekly([]); setConfirmDelete(false); setDeleteError(""); setDeleteNotice(""); }}
+        />}
+      >
+        {kind !== "weekly" && <span className="math-tag">{subject} · 备考目标</span>}
         <input
-          className="input"
+          className="input math-exam-search"
           aria-label="筛选测评"
-          placeholder="按测评名称筛选"
+          placeholder="搜索测评名称"
           value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setSelectedWeekly([]);
-            setConfirmDelete(false);
-          }}
+          onChange={(e) => { setSearch(e.target.value); setSelectedWeekly([]); setConfirmDelete(false); }}
         />
         <button className="btn btn-primary" onClick={() => setCreate(true)}>
-          智能组卷
-          <ArrowRight size={16} />
+          智能组卷<ArrowRight size={16} />
         </button>
-      </div>
+      </WorkspaceBar>
       {kind === "weekly" && (
         <div className="panel math-exam-toolbar">
           <label>

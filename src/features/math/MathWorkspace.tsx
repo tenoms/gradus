@@ -1,3 +1,4 @@
+import { WorkspaceBar, WorkspaceTabs } from "../../shared/ui/workspace-bar/WorkspaceBar";
 import { confirmAction } from "../../shared/ui/dialogs/InteractionProvider";
 import { answerProgress } from "../learning/workbench/answer-progress.mjs";
 import "../learning/workbench/answer-progress.css";
@@ -267,34 +268,31 @@ function Library({ stuid }: { stuid: string }) {
   if (shelfShown)
     return (
       <div className="math-workspace">
-        <div className="panel math-toolbar">
-          <button className="btn btn-secondary" onClick={() => setShelfShown(false)}>
-            <BookOpen size={16} />浏览教辅与真题
-          </button>
-          <button className="btn btn-secondary" onClick={() => setQrShown(true)}>书籍二维码</button>
-          <button className="btn btn-secondary" onClick={() => setPhotoShown(true)}><Camera size={16} />图片搜题</button>
-        </div>
         <MathBookshelf
           stuid={stuid}
           onOpenBook={setBook}
+          tools={<>
+            <button className="btn btn-secondary" onClick={() => setShelfShown(false)}>
+              <BookOpen size={16} />浏览教辅与真题
+            </button>
+            <button className="btn btn-secondary" onClick={() => setQrShown(true)}>书籍二维码</button>
+            <button className="btn btn-secondary" onClick={() => setPhotoShown(true)}><Camera size={16} />图片搜题</button>
+          </>}
         />
       </div>
     );
   return (
     <div className="math-workspace">
-      <div className="panel math-library">
-        <div className="math-toolbar">
-          <div className="tabs">
-            {["全部", "教辅", "真题"].map((t) => (
-              <button
-                key={t}
-                className={kind === t ? "active" : ""}
-                onClick={() => { setKind(t); setTag(""); }}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
+      <div className="math-library">
+        <WorkspaceBar
+          label="教辅与真题导航及工具"
+          navigation={<WorkspaceTabs
+            label="资料类型"
+            items={["全部", "教辅", "真题"].map(value => ({ value, label: value }))}
+            value={kind}
+            onChange={(value) => { setKind(value); setTag(""); }}
+          />}
+        >
           <button
             className="btn btn-secondary"
             onClick={() => setShelfShown(true)}
@@ -324,10 +322,10 @@ function Library({ stuid }: { stuid: string }) {
               onChange={(e) => setSearch(e.target.value)}
             />
           </label>
-        </div>
+        </WorkspaceBar>
         <div className="math-filters">
           <span>学习范围</span>
-          <button className="math-text-button" onClick={() => setAllSubjects(!allSubjects)}>{allSubjects ? "全部科目 · 回到我的目标" : `${subject}与通用资料 · 浏览全部科目`}</button>
+          <button className="btn btn-secondary workspace-scope" aria-pressed={allSubjects} title={allSubjects ? "回到我的备考目标和通用资料" : "浏览全部数学科目"} onClick={() => setAllSubjects(!allSubjects)}>{allSubjects ? "全部科目" : `${subject}与通用资料`}</button>
           <select
             aria-label="资料年份"
             value={year}
@@ -744,19 +742,12 @@ function PracticeCenter({ stuid }: { stuid: string }) {
   const setTab = (name: string) => setParams(previous => { const next = new URLSearchParams(previous); next.set("tab", Object.keys(names).find(key => names[key] === name) || "points"); return next; });
   return (
     <div className="math-workspace">
-      <div className="panel math-community-tabs">
-        <div className="tabs">
-          {Object.values(names).map((t) => (
-            <button
-              key={t}
-              className={tab === t ? "active" : ""}
-              onClick={() => setTab(t)}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-      </div>
+      <WorkspaceBar label="专项练习导航" navigation={<WorkspaceTabs
+        label="专项练习导航"
+        items={Object.values(names).map(value => ({ value, label: value }))}
+        value={tab}
+        onChange={setTab}
+      />} />
       {tab === "选择专项" ? (
         <Practice stuid={stuid} />
       ) : tab === "高分指南" ? (
@@ -1208,21 +1199,12 @@ function ResourceCenter({ stuid }: { stuid: string }) {
   const setTab = (name: string) => setParams(previous => { const next = new URLSearchParams(previous); next.set("tab", Object.keys(names).find(key => names[key] === name) || "albums"); return next; });
   return (
     <div className="math-workspace">
-      <div className="panel math-community-tabs">
-        <div className="tabs">
-          {Object.values(names).map(
-            (t) => (
-              <button
-                key={t}
-                className={tab === t ? "active" : ""}
-                onClick={() => setTab(t)}
-              >
-                {t}
-              </button>
-            ),
-          )}
-        </div>
-      </div>
+      <WorkspaceBar label="学习资源导航" navigation={<WorkspaceTabs
+        label="学习资源导航"
+        items={Object.values(names).map(value => ({ value, label: value }))}
+        value={tab}
+        onChange={setTab}
+      />} />
       {tab === "数学专辑" ? (
         <Albums stuid={stuid} />
       ) : tab === "院校分析" ? (
@@ -1267,19 +1249,12 @@ function Community({ stuid, userId }: { stuid: string; userId: string }) {
     );
   return (
     <div className="math-workspace">
-      <div className="panel math-community-tabs">
-        <div className="tabs">
-          {["学习答疑", "收到的讨论回复", "平台消息"].map((t) => (
-            <button
-              key={t}
-              className={t === tab ? "active" : ""}
-              onClick={() => setTab(t)}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-      </div>
+      <WorkspaceBar label="学习社区导航" navigation={<WorkspaceTabs
+        label="学习社区导航"
+        items={["学习答疑", "收到的讨论回复", "平台消息"].map(value => ({ value, label: value }))}
+        value={tab}
+        onChange={setTab}
+      />} />
       {tab === "学习答疑" ? (
         <MathQuestions stuid={stuid} userId={userId} onQuestion={setQuestion} />
       ) : tab === "收到的讨论回复" ? (
@@ -1294,19 +1269,12 @@ function SchoolCenter({ stuid }: { stuid: string }) {
   const [tab, setTab] = useState("院校专业");
   return (
     <div className="math-workspace">
-      <div className="panel math-community-tabs">
-        <div className="tabs">
-          {["院校专业", "初试成绩与排名"].map((t) => (
-            <button
-              key={t}
-              className={tab === t ? "active" : ""}
-              onClick={() => setTab(t)}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-      </div>
+      <WorkspaceBar label="院校信息导航" navigation={<WorkspaceTabs
+        label="院校信息导航"
+        items={["院校专业", "初试成绩与排名"].map(value => ({ value, label: value }))}
+        value={tab}
+        onChange={setTab}
+      />} />
       {tab === "院校专业" ? (
         <MathSchools stuid={stuid} />
       ) : (

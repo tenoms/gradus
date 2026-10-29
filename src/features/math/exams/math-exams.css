@@ -428,7 +428,7 @@
   max-width: 100%;
   height: auto;
 }
-.math-exams .tabs {
+.math-exams .tabs:not(.workspace-tabs) {
   flex-wrap: wrap;
 }
 .math-exam-runner button:disabled,

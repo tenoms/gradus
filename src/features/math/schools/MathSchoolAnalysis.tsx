@@ -165,7 +165,7 @@ function SchoolContent({
             {["讲解视频", "配套资料"].map((t) => (
               <button
                 key={t}
-                className={tab === t ? "active" : ""}
+                className={tab === t ? "active" : ""} aria-pressed={tab === t}
                 onClick={() => setTab(t)}
               >
                 {t}

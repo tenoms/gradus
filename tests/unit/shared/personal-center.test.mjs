@@ -5,6 +5,7 @@ import { runInNewContext } from "node:vm";
 import React, { Suspense, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
+import { workspaceBarComponents } from "../../support/workspace-bar.mjs";
 
 async function component(path, name, scope, constants = []) {
   const source = await readFile(new URL(path, import.meta.url), "utf8");
@@ -32,6 +33,7 @@ const ComputerLearningSettings = await component("../../../src/features/computer
 });
 let currentTab = "";
 const PersonalCenter = await component("../../../src/features/identity/PersonalCenter.tsx", "PersonalCenter", {
+  ...workspaceBarComponents(React),
   Suspense, useState,
   useSearchParams: () => [new URLSearchParams(currentTab ? { tab: currentTab } : {}), () => {}],
   useSession: () => ({ session: { user: { id: "web-student", username: "student", displayName: "Web 学习者" }, platforms: { math: { user: { UserNick: "source nickname" } } } }, refresh: async () => {} }),
@@ -68,7 +70,7 @@ test("the Web profile belongs to my account and receives the Web user identity",
 
 test("math account tools open preparation settings and do not duplicate the profile tab", () => {
   const html = renderTab("math");
-  assert.match(html, /class="active">备考设置<\/button>/);
+  assert.match(html, /class="active" aria-pressed="true"[^>]*>备考设置<\/button>/);
   assert.match(html, /data-math-preparation="true"/);
   assert.match(html, /学习记录/);
   assert.match(html, /学习榜单/);

@@ -11,13 +11,6 @@
   color: var(--muted);
   line-height: 1.7;
 }
-.mc-toolbar {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  flex-wrap: wrap;
-  padding: 18px;
-}
 .mc-tabs {
   margin: 18px 0;
 }
@@ -26,10 +19,19 @@
   align-items: center;
   gap: 9px;
   flex: 1;
-  min-width: 180px;
+  min-width: 150px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
 }
+.mc-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 18%, transparent); }
 .mc-search input {
   width: 100%;
+  border: 0;
+  padding-inline: 0 !important;
+  box-shadow: none;
+  background: transparent;
 }
 .mc-status {
   display: flex;
@@ -307,10 +309,6 @@
   }
   .mc-calendar {
     max-height: 340px;
-  }
-  .mc-toolbar > .tabs {
-    width: 100%;
-    overflow: auto;
   }
   .mc-learning {
     padding: 17px;

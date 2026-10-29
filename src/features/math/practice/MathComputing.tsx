@@ -753,13 +753,13 @@ export default function MathComputing({ stuid }: { stuid: string }) {
         <div className="computing-toolbar">
           <div className="tabs">
             <button
-              className={tab === "catalog" ? "active" : ""}
+              className={tab === "catalog" ? "active" : ""} aria-pressed={tab === "catalog"}
               onClick={() => setTab("catalog")}
             >
               专题目录
             </button>
             <button
-              className={tab === "errors" ? "active" : ""}
+              className={tab === "errors" ? "active" : ""} aria-pressed={tab === "errors"}
               onClick={() => setTab("errors")}
             >
               错题反复练

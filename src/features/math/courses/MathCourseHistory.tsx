@@ -60,7 +60,7 @@ export default function MathCourseHistory({
             [3, "出门进步考"],
           ].map(([value, text]) => (
             <button
-              className={kind === value ? "active" : ""}
+              className={kind === value ? "active" : ""} aria-pressed={kind === value}
               key={value}
               onClick={() => setKind(Number(value))}
             >

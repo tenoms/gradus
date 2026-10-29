@@ -311,9 +311,6 @@
 .math-teacher-summary .math-qa-action-buttons {
   display: flex;
 }
-.math-community-tabs {
-  padding: 16px 23px !important;
-}
 .math-qa-attachments > p {
   font-size: 11px;
   flex-basis: 100%;

@@ -1,7 +1,7 @@
 .computer-workspace {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 .computer-toolbar {
   display: flex;
@@ -123,22 +123,7 @@
   font-size: 13px;
   color: var(--muted);
 }
-.computer-source-tabs {
-  flex-wrap: wrap;
-}
-.computer-searchbar {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.computer-searchbar > .input {
-  flex: 1;
-  min-width: 120px;
-}
-.computer-searchbar > .input:nth-of-type(2) {
-  max-width: 200px;
-}
+
 .computer-upload {
   position: relative;
   overflow: hidden;
@@ -738,9 +723,7 @@
   .computer-list-row .btn {
     font-size: 12px;
   }
-  .computer-searchbar > .input:nth-of-type(2) {
-    max-width: none;
-  }
+
   .computer-section-label {
     align-items: flex-start;
   }
@@ -876,9 +859,9 @@
   background: var(--warning-soft);
   color: var(--warning);
 }
-.computer-stages .tabs,
-.computer-special-practice > .tabs {
-  margin-bottom: 20px;
+.computer-stages > .workspace-bar,
+.computer-special-practice > .workspace-bar {
+  margin-bottom: 12px;
 }
 .computer-stage-card {
   margin-top: 18px;
@@ -966,3 +949,17 @@
   .learning-workbench .computer-session-actions { gap: 8px; }
   .learning-workbench .computer-session-actions .btn { min-height: 40px; flex: 1 0 auto; }
 }
+
+.computer-bar-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  color: var(--muted);
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.computer-bar-search:focus-within { border-color: var(--accent); }
+.computer-bar-search input { color: var(--ink); border: 0; background: transparent; padding: 6px 0; outline-offset: 2px; }
+.workspace-bar-tools > .computer-upload { flex: 0 0 auto; max-width: none; }

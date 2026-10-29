@@ -3,31 +3,16 @@
   flex-direction: column;
   gap: 20px;
 }
-.bookshelf-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-}
-.bookshelf-heading h2 {
-  font-size: 18px;
-  margin: 0;
-}
-.bookshelf-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-}
 .bookshelf-search {
   display: flex;
   gap: 8px;
   align-items: center;
   color: var(--muted);
-  margin-left: auto;
-  max-width: 300px;
-  border-bottom: 1px solid var(--border);
-  padding: 8px 0;
+  max-width: 280px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 0 9px;
 }
 .bookshelf-search input {
   border: 0;
@@ -37,19 +22,12 @@
   background: transparent;
   color: var(--ink);
 }
-.bookshelf-icon {
-  border: 0;
-  background: none;
-  color: var(--muted);
-  padding: 6px;
-  cursor: pointer;
-}
 .bookshelf-filters {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 20px 0;
-  margin-bottom: 10px;
+  padding: 9px 2px;
+  flex-wrap: wrap;
 }
 .bookshelf-filters > .input {
   width: auto;
@@ -248,10 +226,6 @@
   }
 }
 @media (max-width: 700px) {
-  .bookshelf-heading {
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
   .bookshelf-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 20px 8px;
@@ -270,10 +244,6 @@
   .bookshelf-filters {
     flex-wrap: wrap;
   }
-  .bookshelf-filters > .btn {
-    width: 100%;
-    justify-content: center;
-  }
   .bookshelf-manage {
     flex-wrap: wrap;
   }
@@ -289,3 +259,7 @@
 }
 
 .bookshelf-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-ring) 18%, transparent); }
+
+.bookshelf-filters .btn { min-height: 32px; padding: 5px 10px; font-size: 12px; }
+.bookshelf-filters .btn[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.bookshelf-content > .math-library-tag-filter { padding: 0 2px 12px; }

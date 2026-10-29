@@ -378,13 +378,13 @@ export default function MathScoreRank({ stuid }: { stuid: string }) {
       </div>
       <div className="tabs">
         <button
-          className={view === "entry" ? "active" : ""}
+          className={view === "entry" ? "active" : ""} aria-pressed={view === "entry"}
           onClick={() => setView("entry")}
         >
           我的成绩录入
         </button>
         <button
-          className={view === "rank" ? "active" : ""}
+          className={view === "rank" ? "active" : ""} aria-pressed={view === "rank"}
           onClick={() => setView("rank")}
         >
           初试成绩榜
@@ -584,7 +584,7 @@ export default function MathScoreRank({ stuid }: { stuid: string }) {
                       ["college", "同学院与方向"],
                     ].map(([id, title]) => (
                       <button
-                        className={scope === id ? "active" : ""}
+                        className={scope === id ? "active" : ""} aria-pressed={scope === id}
                         key={id}
                         onClick={() => {
                           setScope(id as typeof scope);

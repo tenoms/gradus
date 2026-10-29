@@ -1,0 +1,78 @@
+.workspace-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.workspace-bar-navigation {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+.workspace-bar-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1 1 auto;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.workspace-bar .workspace-tabs {
+  width: max-content;
+  max-width: 100%;
+  margin: 0;
+}
+.workspace-bar .btn,
+.workspace-bar .input,
+.workspace-bar select,
+.workspace-bar input:not([type="checkbox"]):not([type="radio"]) {
+  min-height: 34px;
+  font-size: 12px;
+}
+.workspace-bar .btn { padding: 6px 10px; gap: 6px; white-space: nowrap; }
+.workspace-bar .btn > svg { width: 15px; height: 15px; }
+.workspace-bar .input { padding: 6px 10px; }
+.workspace-bar .btn:is([aria-pressed="true"], [aria-expanded="true"]) {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.workspace-bar .btn:disabled { cursor: not-allowed; opacity: .5; }
+.workspace-bar label { min-width: 0; }
+.workspace-bar-tools > label:has(input) { flex: 1 1 160px; max-width: 280px; }
+.workspace-bar-tools > label:has(input) input { width: 100%; min-width: 0; }
+.workspace-bar-tools > .input { flex: 1 1 130px; width: auto; max-width: 240px; }
+.workspace-bar-tools > button { flex-shrink: 0; }
+.workspace-bar-tools > .math-search,
+.workspace-bar-tools > .computer-searchbar { padding: 0 9px; }
+.workspace-bar-tools > .math-search input,
+.workspace-bar-tools > .computer-searchbar input { padding: 6px 0; }
+.tabs.workspace-tabs-secondary > button[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: none;
+}
+.tabs.workspace-tabs-secondary > button[aria-pressed="true"]:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent); }
+
+@media (max-width: 1100px) {
+  .workspace-bar { gap: 8px; }
+  .workspace-bar-navigation { flex-basis: 100%; }
+  .workspace-bar-tools { justify-content: flex-start; }
+  .workspace-bar-tools > label:has(input) { max-width: none; }
+}
+@media (max-width: 560px) {
+  .workspace-bar { padding: 7px; border-radius: 10px; }
+  .workspace-bar-tools { gap: 7px; }
+  .workspace-bar-tools > label:has(input:not([type="file"])) { flex-basis: 100%; order: -1; }
+  .workspace-bar-tools > label:has(input[type="date"]) { flex: 0 1 auto; order: 0; width: auto; }
+  .workspace-bar-tools > .input { max-width: none; }
+}

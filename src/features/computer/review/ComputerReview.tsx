@@ -1,3 +1,4 @@
+import { WorkspaceBar, WorkspaceTabs } from "../../../shared/ui/workspace-bar/WorkspaceBar";
 import { useEffect, useState } from "react";
 import { confirmAction } from "../../../shared/ui/dialogs/InteractionProvider";
 import {
@@ -331,36 +332,24 @@ export default function ComputerReview({
   }
   return (
     <>
-      <div className="tabs computer-source-tabs">
-        {[
-          ["overview", "学习统计"],
-          ["stages", "阶段报告"],
-          ["mistakes", "错题本"],
-          ["collection", "我的收藏"],
-          ["notes", "学习笔记"],
-          ["history", "答题记录"],
-          ["ranking", "学习排行"],
-        ].map(([id, title]) => (
-          <button
-            key={id}
-            className={tab === id ? "active" : ""}
-            onClick={() => {
-              setTab(id);
-              setPage(1);
-              setReport(null);
-              setError("");
-            }}
-          >
-            {title}
-          </button>
-        ))}
-      </div>
-      {tab === "stages" ? (
-        <ComputerStages launch={launch} />
-      ) : (
-        <>
-          {tab !== "overview" && tab !== "ranking" && (
-            <div className="panel computer-toolbar">
+      <WorkspaceBar label="408 学习记录导航与筛选" navigation={
+        <WorkspaceTabs
+          label="408 学习记录栏目"
+          value={tab}
+          items={[
+            { value: "overview", label: "学习统计" },
+            { value: "stages", label: "阶段报告" },
+            { value: "mistakes", label: "错题本" },
+            { value: "collection", label: "我的收藏" },
+            { value: "notes", label: "学习笔记" },
+            { value: "history", label: "答题记录" },
+            { value: "ranking", label: "学习排行" },
+          ]}
+          onChange={value => { setTab(value); setPage(1); setReport(null); setError(""); }}
+        />
+      }>
+          {tab !== "stages" && tab !== "overview" && tab !== "ranking" && (
+            <>
               {tab === "history" && (
                 <select
                   className="input computer-select"
@@ -475,8 +464,13 @@ export default function ComputerReview({
                   )}
                 </>
               )}
-            </div>
+            </>
           )}
+      </WorkspaceBar>
+      {tab === "stages" ? (
+        <ComputerStages launch={launch} />
+      ) : (
+        <>
           <State
             loading={busy}
             error={

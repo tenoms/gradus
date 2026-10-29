@@ -1,3 +1,4 @@
+import { WorkspaceBar } from "../../../shared/ui/workspace-bar/WorkspaceBar";
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -244,6 +245,7 @@ function MajorPicker({
             <button
               key={`${code}-${i}`}
               className={selected ? "active" : ""}
+              aria-pressed={selected}
               onClick={() =>
                 onChange(
                   selected ? value.filter((v) => v !== code) : [...value, code],
@@ -361,6 +363,7 @@ function TargetSchools({ onClose }: { onClose: () => void }) {
               return (
                 <button
                   className={checked ? "active" : ""}
+                  aria-pressed={checked}
                   key={id}
                   disabled={saving}
                   onClick={() => {
@@ -831,56 +834,62 @@ export default function ComputerSchools() {
   const visible = rows.filter((row) => schoolHasFeature(row, feature));
   return (
     <div className="computer-schools">
-      <div className="cs-heading cs-top">
-        <button
-          className="btn btn-secondary"
-          onClick={() => setTargetOpen((v) => !v)}
-        >
-          <Target size={16} />
-          我的目标院校
-        </button>
-      </div>
-      {targetOpen && <TargetSchools onClose={() => setTargetOpen(false)} />}
       <form
-        className="panel cs-search-bar"
         onSubmit={(e) => {
           e.preventDefault();
           apply();
         }}
       >
-        <Search size={19} />
-        <input
-          className="input"
-          aria-label="搜索院校"
-          placeholder="搜索院校名称"
-          value={draft.name}
-          onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-        />
-        <select
-          className="input"
-          aria-label="招生年份"
-          value={draft.year}
-          onChange={(e) => setDraft((d) => ({ ...d, year: e.target.value }))}
-        >
-          {["2026", "2025", "2024", "2023"].map((y) => (
-            <option key={y}>{y}</option>
-          ))}
-        </select>
-        <button
-          type="button"
-          className={`btn btn-secondary ${filterOpen ? "active" : ""}`}
-          onClick={() => setFilterOpen((v) => !v)}
-        >
-          <Filter size={15} />
-          筛选
-          {draft.provinces.length + draft.majors.length > 0
-            ? `（${draft.provinces.length + draft.majors.length}）`
-            : ""}
-        </button>
-        <button className="btn btn-primary">搜索院校</button>
+        <WorkspaceBar label="院校搜索与筛选" navigation={
+          <button
+            type="button"
+            className="btn btn-secondary"
+            aria-expanded={targetOpen}
+            aria-controls="computer-target-schools"
+            onClick={() => setTargetOpen(value => !value)}
+          >
+            <Target size={16} />
+            我的目标院校
+          </button>
+        }>
+          <label className="computer-bar-search">
+            <Search size={16} aria-hidden="true" />
+            <input
+              aria-label="搜索院校"
+              placeholder="搜索院校名称"
+              value={draft.name}
+              onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+            />
+          </label>
+          <select
+            className="input cs-year-select"
+            aria-label="招生年份"
+            value={draft.year}
+            onChange={(e) => setDraft((d) => ({ ...d, year: e.target.value }))}
+          >
+            {["2026", "2025", "2024", "2023"].map((y) => (
+              <option key={y}>{y}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className={`btn btn-secondary ${filterOpen ? "active" : ""}`}
+            aria-expanded={filterOpen}
+            aria-controls="computer-school-filters"
+            onClick={() => setFilterOpen((v) => !v)}
+          >
+            <Filter size={15} />
+            筛选
+            {draft.provinces.length + draft.majors.length > 0
+              ? `（${draft.provinces.length + draft.majors.length}）`
+              : ""}
+          </button>
+          <button className="btn btn-primary">搜索院校</button>
+        </WorkspaceBar>
       </form>
+      {targetOpen && <div id="computer-target-schools"><TargetSchools onClose={() => setTargetOpen(false)} /></div>}
       {filterOpen && (
-        <section className="panel cs-filters">
+        <section id="computer-school-filters" className="panel cs-filters">
           <div className="cs-filter-row">
             <h4>学位类型</h4>
             <div className="cs-chips">
@@ -892,6 +901,7 @@ export default function ComputerSchools() {
                 <button
                   key={v}
                   className={draft.degree === v ? "active" : ""}
+                  aria-pressed={draft.degree === v}
                   onClick={() => {
                     setDraft((d) => ({ ...d, degree: v, majors: [] }));
                     setMajorOpen(false);
@@ -909,6 +919,7 @@ export default function ComputerSchools() {
                 {region.provinces.map(([id, label]) => (
                   <button
                     className={draft.provinces.includes(id) ? "active" : ""}
+                    aria-pressed={draft.provinces.includes(id)}
                     key={id}
                     onClick={() =>
                       setDraft((d) => ({
@@ -931,6 +942,7 @@ export default function ComputerSchools() {
               {draft.majors.map((code) => (
                 <button
                   className="active"
+                  aria-pressed="true"
                   key={code}
                   onClick={() =>
                     setDraft((d) => ({
@@ -965,6 +977,7 @@ export default function ComputerSchools() {
                 <button
                   key={v}
                   className={draft.subject === v ? "active" : ""}
+                  aria-pressed={draft.subject === v}
                   onClick={() => setDraft((d) => ({ ...d, subject: v }))}
                 >
                   {v === "" ? "不限" : v === "other" ? "其他" : v}
@@ -987,6 +1000,7 @@ export default function ComputerSchools() {
                 <button
                   key={v}
                   className={draft.score === v ? "active" : ""}
+                  aria-pressed={draft.score === v}
                   onClick={() => setDraft((d) => ({ ...d, score: v }))}
                 >
                   {l}
@@ -1122,6 +1136,7 @@ export default function ComputerSchools() {
                   <div className="cs-card-actions">
                     <button
                       className={`btn btn-secondary ${isSelected ? "active" : ""}`}
+                      aria-pressed={isSelected}
                       onClick={() => toggle(row)}
                     >
                       <ArrowRightLeft size={14} />

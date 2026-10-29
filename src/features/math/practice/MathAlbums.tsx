@@ -432,7 +432,7 @@ export default function MathAlbums({
             {[false, true].map((own) => (
               <button
                 key={String(own)}
-                className={myOnly === own ? "active" : ""}
+                className={myOnly === own ? "active" : ""} aria-pressed={myOnly === own}
                 onClick={() => setMyOnly(own)}
               >
                 {own ? "我的专辑" : "全部专辑"}
@@ -450,7 +450,7 @@ export default function MathAlbums({
           </label>
         </div>
         <div className="math-album-stages" aria-label="专辑备考阶段">
-          {["全部阶段", ...mathStages.map(s => s.name), "专题拓展"].map(name => <button key={name} className={stageFilter === name ? "active" : ""} onClick={() => setStageFilter(name)}>{name}{name === stage ? <small>当前阶段</small> : null}</button>)}
+          {["全部阶段", ...mathStages.map(s => s.name), "专题拓展"].map(name => <button key={name} className={stageFilter === name ? "active" : ""} aria-pressed={stageFilter === name} onClick={() => setStageFilter(name)}>{name}{name === stage ? <small>当前阶段</small> : null}</button>)}
         </div>
         <Status
           loading={albums.loading}

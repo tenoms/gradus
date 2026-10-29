@@ -514,13 +514,13 @@ export default function MathExamReport({
             {scores.length > 0 && (
               <div className="tabs">
                 <button
-                  className={tab === "subject" ? "active" : ""}
+                  className={tab === "subject" ? "active" : ""} aria-pressed={tab === "subject"}
                   onClick={() => setTab("subject")}
                 >
                   按知识领域
                 </button>
                 <button
-                  className={tab === "type" ? "active" : ""}
+                  className={tab === "type" ? "active" : ""} aria-pressed={tab === "type"}
                   onClick={() => setTab("type")}
                 >
                   按题型

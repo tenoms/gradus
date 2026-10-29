@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import type { Platform } from "../../../shared/api/client";
 import Pagination from "../../../shared/ui/pagination/Pagination";
 import { usePagination } from "../../../shared/ui/pagination/use-pagination";
+import { WorkspaceBar, WorkspaceTabs } from "../../../shared/ui/workspace-bar/WorkspaceBar";
 import { useStudyData } from "../state/store";
 import TaskRow from "./TaskRow";
 
@@ -21,32 +22,14 @@ export default function StudyPlan({ platform, onAdd }: { platform: Platform; onA
   const pagination = usePagination({ total: visible.length, resetKey: `${filter}:${date}` });
   return (
     <>
-      <div className="page-heading">
-        <div>
-          <h1 className="sr-only">学习计划</h1>
-        </div>
-        <button className="btn btn-primary" onClick={onAdd}>
-          <Plus size={16} />
-          添加计划
-        </button>
-      </div>
-      <section className="panel pagination-content" ref={listRef}>
-        <div className="filter-bar">
-          <div className="tabs">
-            {[
-              ["all", "全部计划"],
-              ["pending", "待完成"],
-              ["done", "已完成"],
-            ].map(([id, text]) => (
-              <button
-                className={filter === id ? "active" : ""}
-                key={id}
-                onClick={() => setFilter(id)}
-              >
-                {text}
-              </button>
-            ))}
-          </div>
+      <h1 className="sr-only">学习计划</h1>
+      <WorkspaceBar label="学习计划工具" className="plan-workspace-bar" navigation={
+        <WorkspaceTabs label="计划状态" value={filter} onChange={setFilter} items={[
+          { value: "all", label: "全部计划" },
+          { value: "pending", label: "待完成" },
+          { value: "done", label: "已完成" },
+        ]} />
+      }>
           <label className="date-filter">
             <span>日期</span>
             <input
@@ -65,7 +48,9 @@ export default function StudyPlan({ platform, onAdd }: { platform: Platform; onA
               </button>
             )}
           </label>
-        </div>
+        <button className="btn btn-primary" onClick={onAdd}><Plus size={16} />添加计划</button>
+      </WorkspaceBar>
+      <section className="panel pagination-content" ref={listRef}>
         {visible.length ? (
           visible.slice(pagination.start, pagination.end).map((t) => <TaskRow task={t} key={t.id} />)
         ) : (

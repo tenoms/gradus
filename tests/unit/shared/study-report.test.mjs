@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
+import { workspaceBarComponents } from "../../support/workspace-bar.mjs";
 import * as summary from "../../../src/features/learning/study-summary.mjs";
 
 const source = await readFile(new URL("../../../src/features/learning/reports/StudyInsights.tsx", import.meta.url), "utf8");
@@ -9,7 +10,12 @@ const output = ts.transpileModule(source, { compilerOptions: { module: ts.Module
 const fixture = { rows: [], state: [], cursor: 0, params: new URLSearchParams(), changes: [] };
 const helpers = {
   ...summary,
-  React: { createElement: (type, props, ...children) => ({ type, props: props || {}, children: children.flat(Infinity).filter(child => child !== false && child !== null && child !== undefined) }) },
+  React: { createElement(type, props, ...children) {
+    const visible = children.flat(Infinity).filter(child => child !== false && child !== null && child !== undefined);
+    return typeof type === "function"
+      ? type({ ...props, children: visible.length === 1 ? visible[0] : visible })
+      : { type, props: props || {}, children: visible };
+  } },
   useStudyData: () => ({ activities: fixture.rows }),
   useRef: () => ({ current: null }),
   useState(initial) { const index = fixture.cursor++; if (!Object.hasOwn(fixture.state, index)) fixture.state[index] = initial; return [fixture.state[index], value => { fixture.state[index] = value; }]; },
@@ -19,6 +25,7 @@ const helpers = {
   label: platform => platform === "math" ? "考研数学" : "计算机 408",
   Link: "Link", WeeklyChart: "WeeklyChart", Pagination: "Pagination",
 };
+Object.assign(helpers, workspaceBarComponents(helpers.React));
 for (const icon of ["ArrowDownToLine", "ArrowRight", "BookOpen", "ChartNoAxesCombined", "CheckCircle2", "Clock3", "Code2", "Sigma"]) helpers[icon] = `Icon${icon}`;
 globalThis.__studyReportFixture = helpers;
 const { default: StudyInsights } = await import(`data:text/javascript;base64,${Buffer.from(`const {${Object.keys(helpers).join(",")}} = globalThis.__studyReportFixture;\n${output}`).toString("base64")}`);
@@ -72,6 +79,9 @@ test("subject selection updates the shareable report scope, all metrics and the 
   const tree = render();
   assert.equal(fixture.params.get("subject"), "computer");
   assert.deepEqual(fixture.changes, ["computer"]);
+  const scope = find(tree, node => node.props["aria-label"] === "学习报告统计科目");
+  assert.equal(all(scope, node => node.type === "button" && node.props["aria-pressed"] === true).length, 1);
+  assert.equal(find(scope, node => node.type === "button" && text(node) === "计算机 408").props["aria-pressed"], true);
   assert.match(stats(tree), /练习题次10题/);
   assert.match(stats(tree), /已批改正确率—/);
   assert.match(stats(tree), /暂无已批改题目 · 待批改 10 题/);

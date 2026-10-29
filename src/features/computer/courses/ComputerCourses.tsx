@@ -1,3 +1,4 @@
+import { WorkspaceBar, WorkspaceTabs } from "../../../shared/ui/workspace-bar/WorkspaceBar";
 import ComputerCourseDanmaku from "./ComputerCourseDanmaku";
 import Pagination from "../../../shared/ui/pagination/Pagination";
 import { usePagination } from "../../../shared/ui/pagination/use-pagination";
@@ -271,21 +272,17 @@ export default function ComputerCourses() {
       <Status loading={loading} error={error} />
       {!course ? (
         <>
-          <div className="panel computer-toolbar">
-            <div className="tabs">
-              <button
-                className={scope === "joined" ? "active" : ""}
-                onClick={() => setScope("joined")}
-              >
-                我的课程
-              </button>
-              <button
-                className={scope === "catalog" ? "active" : ""}
-                onClick={() => setScope("catalog")}
-              >
-                课程与学习资料
-              </button>
-            </div>
+          <WorkspaceBar label="408 课程导航与搜索" navigation={
+            <WorkspaceTabs
+              label="课程范围"
+              value={scope}
+              onChange={setScope}
+              items={[
+                { value: "joined", label: "我的课程" },
+                { value: "catalog", label: "课程与学习资料" },
+              ]}
+            />
+          }>
             {scope === "catalog" && (
               <select
                 className="input computer-select"
@@ -314,7 +311,7 @@ export default function ComputerCourses() {
               onChange={(e) => setSearch(e.target.value)}
               placeholder="搜索课程名称或简介"
             />
-          </div>
+          </WorkspaceBar>
           <Status
             loading={list.loading}
             error={list.error}
@@ -500,21 +497,17 @@ export default function ComputerCourses() {
                   {notice}
                 </p>
               )}
-              <div className="tabs cc-details-tabs">
-                {[
-                  ["introduction", "课程介绍"],
-                  ["files", "课程资料"],
-                  ["comments", "学员评价"],
-                ].map(([value, text]) => (
-                  <button
-                    className={tab === value ? "active" : ""}
-                    key={value}
-                    onClick={() => setTab(value)}
-                  >
-                    {text}
-                  </button>
-                ))}
-              </div>
+              <WorkspaceTabs
+                label="课程详情栏目"
+                className="cc-details-tabs"
+                value={tab}
+                onChange={setTab}
+                items={[
+                  { value: "introduction", label: "课程介绍" },
+                  { value: "files", label: "课程资料" },
+                  { value: "comments", label: "学员评价" },
+                ]}
+              />
               {tab === "introduction" ? (
                 <div className="cc-introduction">
                   {safeLink(

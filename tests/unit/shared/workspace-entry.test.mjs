@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import React, { useEffect, useRef, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
+import { workspaceBarComponents } from "../../support/workspace-bar.mjs";
 import { mathLibraryTag, mathLibraryTagOptions, matchesMathLibraryTag, mathBookLabels, matchesMathBookSearch } from "../../../src/features/math/library/math-library.ts";
 import { matchesMathSubject } from "../../../src/features/math/preparation/learning-plan-model.mjs";
 
@@ -12,8 +13,9 @@ let libraryRows = [];
 const loads = [];
 const icon = () => null;
 const subjects = [{ id: "major", name: "数据结构", examCategory: 1 }];
+const { WorkspaceBar, WorkspaceTabs } = workspaceBarComponents(React);
 globalThis.__workspaceEntryFixture = {
-  React, useEffect, useRef, useState,
+  React, useEffect, useRef, useState, WorkspaceBar, WorkspaceTabs,
   useSearchParams: () => [new URLSearchParams(search)],
   useComputerSubjects: () => ({ subjects, reload() {} }),
   computerSubjects: subjects,
@@ -29,7 +31,7 @@ globalThis.__workspaceEntryFixture = {
   mathApi: { books: async () => ({ data: [] }) },
   usePagination: () => ({ page: 1, pageSize: 36, start: 0, end: 36 }),
   Pagination: () => null,
-  MathBookshelf: () => React.createElement("h2", null, "我的书架"),
+  MathBookshelf: ({ tools }) => React.createElement(React.Fragment, null, React.createElement("h2", null, "我的书架"), tools),
   MathLibraryTagFilter: () => null,
   MathBookLabels: () => null,
   mathLibraryTag, mathLibraryTagOptions, matchesMathLibraryTag, matchesMathSubject, mathBookLabels, matchesMathBookSearch,
@@ -59,10 +61,37 @@ test("computer question bank opens sequential practice and loads practice chapte
   search = "";
   loads.length = 0;
   const html = renderToStaticMarkup(React.createElement(QuestionBank, { launch() {} }));
-  assert.match(html, /class="active">逐题练习/);
-  assert.doesNotMatch(html, /class="active">章节测评/);
+  assert.match(html, /class="active" aria-pressed="true"[^>]*>逐题练习/);
+  assert.match(html, /aria-pressed="false"[^>]*>章节测评/);
   assert.equal(loads[0].path, "/api/exam/wx/practice/knowledge");
   assert.equal(loads[0].query.examType, 3);
+});
+
+test("workspace tabs expose one selected item, dispatch enabled choices and preserve native disabled state", () => {
+  let selected = "practice";
+  const props = {
+    label: "练习方式",
+    items: [
+      { value: "practice", label: "逐题练习" },
+      { value: "exam", label: "章节测评" },
+      { value: "locked", label: "暂不可用", disabled: true },
+    ],
+    value: selected,
+    onChange: value => { selected = value; },
+  };
+  const tree = WorkspaceTabs(props);
+  const buttons = React.Children.toArray(tree.props.children);
+  assert.equal(buttons.filter(button => button.props["aria-pressed"]).length, 1);
+  assert.equal(buttons[0].props["aria-pressed"], true);
+  assert.equal(buttons[2].props.disabled, true);
+  assert.equal(buttons[2].props.type, "button");
+  buttons[1].props.onClick();
+  assert.equal(selected, "exam");
+  const html = renderToStaticMarkup(React.createElement(WorkspaceTabs, { ...props, value: selected }));
+  assert.match(html, /aria-label="练习方式"/);
+  assert.match(html, /aria-pressed="true"[^>]*>章节测评/);
+  assert.match(html, /aria-pressed="false" disabled=""[^>]*>暂不可用/);
+  assert.equal((html.match(/aria-pressed="true"/g) || []).length, 1);
 });
 
 test("math question bank opens the personal bookshelf with a path to discover more books", () => {

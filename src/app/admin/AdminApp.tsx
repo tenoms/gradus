@@ -66,7 +66,9 @@ export default function AdminApp() {
   if (booting) return <Loading />;
   if (!session.authenticated) return <AuthScreen space="admin" onAuthenticated={accept} />;
   if (session.user?.role !== "admin") return <div className="management-loading"><ShieldCheck size={30} /><h1>当前账号没有管理权限</h1><p>请使用管理员身份登录管理空间。</p><button className="btn btn-primary" disabled={loggingOut} onClick={() => void logout()}>返回管理登录</button></div>;
-  const activeLabel = navigation.find(item => item.end ? location.pathname === "/" : location.pathname.startsWith(item.to))?.label || "管理账号";
+  const activePage = navigation.find(item => item.end ? location.pathname === "/" : location.pathname.startsWith(item.to));
+  const activeLabel = activePage?.label || "管理账号";
+  const PageIcon = activePage?.icon || ShieldCheck;
   return <SessionContext.Provider value={{ session, refresh, openLogin: () => { void logout(); } }}>
     <div className="management-shell" key={session.user.id}>
       <a className="skip-link" href="#management-content">跳到管理内容</a>
@@ -78,7 +80,17 @@ export default function AdminApp() {
         <div className="management-sidebar-bottom"><a className="management-space-switch" href="/learn/"><span>进入学习空间<small>使用独立的学习登录</small></span><ArrowUpRight size={17} /></a><p><ShieldCheck size={14} /> 独立管理会话</p></div>
       </aside>
       <div className="management-body">
-        <header className="management-header"><div><button className="icon-button management-menu" aria-label={mobileOpen ? "收起管理导航" : "展开管理导航"} aria-controls="management-sidebar" aria-expanded={mobileOpen} onClick={() => setMobileOpen(!mobileOpen)}>{mobileOpen ? <X size={21} /> : <Menu size={21} />}</button><span>管理空间 <i>/</i> <strong>{activeLabel}</strong></span></div><div><Link className="management-account" to="/account" aria-label="管理账号"><ShieldCheck size={17} /><span>{session.user.displayName}</span></Link><button className="management-logout" aria-label="退出管理" onClick={() => void logout()} disabled={loggingOut}><LogOut size={16} /><span>{loggingOut ? "退出中…" : "退出管理"}</span></button></div></header>
+        <header className="management-header">
+          <div className="management-header-context">
+            <button className="icon-button management-menu" aria-label={mobileOpen ? "收起管理导航" : "展开管理导航"} aria-controls="management-sidebar" aria-expanded={mobileOpen} onClick={() => setMobileOpen(!mobileOpen)}>{mobileOpen ? <X size={21} /> : <Menu size={21} />}</button>
+            <span className="management-space-label">管理空间</span>
+            <span className="management-location"><PageIcon size={17} aria-hidden="true" /><strong>{activeLabel}</strong></span>
+          </div>
+          <div className="management-header-actions">
+            <NavLink className="management-account" to="/account" aria-label="管理账号" title={session.user.displayName}><ShieldCheck size={16} /><span>{session.user.displayName}</span></NavLink>
+            <button className="management-logout" aria-label="退出管理" onClick={() => void logout()} disabled={loggingOut}><LogOut size={16} /><span>{loggingOut ? "退出中…" : "退出"}</span></button>
+          </div>
+        </header>
         <main id="management-content" className="management-content" tabIndex={-1}>
           {error && <div className="error-banner" role="alert"><CircleAlert size={17} /><span>{error}</span><button className="text-link" onClick={() => void refresh()}>重试</button></div>}
           <Suspense fallback={<Loading />}><Routes><Route path="/account" element={<><h1 className="sr-only">管理账号</h1><PasswordSettings /></>} /><Route path="/*" element={<AdminWorkspace />} /></Routes></Suspense>

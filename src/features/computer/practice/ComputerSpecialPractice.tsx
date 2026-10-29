@@ -1,3 +1,4 @@
+import { WorkspaceBar, WorkspaceTabs } from "../../../shared/ui/workspace-bar/WorkspaceBar";
 import { useEffect, useState } from "react";
 import { ArrowRight, LoaderCircle } from "lucide-react";
 import {
@@ -124,25 +125,19 @@ export default function ComputerSpecialPractice({
   }
   return (
     <div className="computer-special-practice">
-      <div className="tabs">
-        {[
-          ["short", "简答专项"],
-          ["interview-general", "复试综合问答"],
-          ["interview-subject", "复试专业问答"],
-          ["hot", "错误率Top20"],
-        ].map(([id, name]) => (
-          <button
-            className={kind === id ? "active" : ""}
-            key={id}
-            disabled={reset.busy}
-            onClick={() => {
-              setKind(id);
-            }}
-          >
-            {name}
-          </button>
-        ))}
-      </div>
+      <WorkspaceBar label="简答与复试导航" navigation={
+        <WorkspaceTabs
+          label="简答与复试类型"
+          value={kind}
+          onChange={setKind}
+          items={[
+            { value: "short", label: "简答专项", disabled: reset.busy },
+            { value: "interview-general", label: "复试综合问答", disabled: reset.busy },
+            { value: "interview-subject", label: "复试专业问答", disabled: reset.busy },
+            { value: "hot", label: "错误率 Top20", disabled: reset.busy },
+          ]}
+        />
+      }>
       {kind === "short" && (
         <select
           className="input computer-select"
@@ -158,6 +153,7 @@ export default function ComputerSpecialPractice({
           ))}
         </select>
       )}
+      </WorkspaceBar>
       <div className="panel">
         {loading && (
           <p className="computer-status" role="status">

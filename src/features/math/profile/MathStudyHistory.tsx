@@ -111,7 +111,7 @@ export default function MathStudyHistory({
         {(Object.keys(mathHistoryCommands) as Category[]).map((t) => (
           <button
             key={t}
-            className={tab === t ? "active" : ""}
+            className={tab === t ? "active" : ""} aria-pressed={tab === t}
             onClick={() => choose(t)}
           >
             {t}
@@ -123,7 +123,7 @@ export default function MathStudyHistory({
           {["不会", "吃力", "熟练"].map((name, i) => (
             <button
               key={name}
-              className={level === i + 1 ? "active" : ""}
+              className={level === i + 1 ? "active" : ""} aria-pressed={level === i + 1}
               onClick={() => {
                 setLevel((v) => (v === i + 1 ? 0 : i + 1));
                 setPage(0);

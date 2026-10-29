@@ -181,7 +181,7 @@ export default function MathRelatedQuestions({
             {["考点刷题", "真题书籍包", "推荐刷题包"].map((t) => (
               <button
                 key={t}
-                className={t === source ? "active" : ""}
+                className={t === source ? "active" : ""} aria-pressed={t === source}
                 onClick={() => {
                   setSource(t);
                 }}

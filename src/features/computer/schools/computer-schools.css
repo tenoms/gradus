@@ -1,6 +1,6 @@
 .computer-schools {
   display: grid;
-  gap: 22px;
+  gap: 16px;
 }
 .cs-heading {
   display: flex;
@@ -26,41 +26,14 @@
   color: var(--muted);
   margin-left: 6px;
 }
-.cs-top {
-  margin: 4px 0 10px;
-}
-.cs-top h2 {
-  font-size: 25px;
-  margin: 12px 0;
-  color: var(--ink);
-}
-.cs-top .eyebrow {
-  font-size: 11px;
-  letter-spacing: 2px;
-  color: var(--muted);
-}
+
 .cs-muted {
   font-size: 12px;
   line-height: 1.9;
   color: var(--muted);
   margin: 8px 0;
 }
-.cs-search-bar {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  padding: 18px 22px;
-}
-.cs-search-bar > .input:first-of-type {
-  flex: 1;
-  min-width: 80px;
-}
-.cs-search-bar select {
-  max-width: 100px;
-}
-.cs-search-bar .btn {
-  white-space: nowrap;
-}
+
 .cs-filters {
   padding: 25px;
 }
@@ -576,24 +549,6 @@
   right: 8px;
 }
 @media (max-width: 720px) {
-  .cs-top h2 {
-    font-size: 22px;
-  }
-  .cs-search-bar {
-    flex-wrap: wrap;
-    padding: 16px;
-    gap: 10px;
-  }
-  .cs-search-bar > .input:first-of-type {
-    min-width: 160px;
-  }
-  .cs-search-bar select {
-    max-width: 85px;
-  }
-  .cs-search-bar .btn {
-    font-size: 11px;
-    padding: 9px 12px;
-  }
   .cs-filter-row {
     grid-template-columns: 1fr;
     gap: 5px;
@@ -649,3 +604,5 @@
     padding: 16px;
   }
 }
+
+.workspace-bar-tools > .cs-year-select { flex: 0 0 96px; min-width: 90px; }

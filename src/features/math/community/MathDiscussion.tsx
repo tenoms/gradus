@@ -144,7 +144,7 @@ export default function MathDiscussion({
         <h3>一起理解这道题</h3>
         <div className="tabs">
           <button
-            className={order === "hot" ? "active" : ""}
+            className={order === "hot" ? "active" : ""} aria-pressed={order === "hot"}
             onClick={() => {
               setOrder("hot");
               setPage(1);
@@ -153,7 +153,7 @@ export default function MathDiscussion({
             热门讨论
           </button>
           <button
-            className={order === "new" ? "active" : ""}
+            className={order === "new" ? "active" : ""} aria-pressed={order === "new"}
             onClick={() => {
               setOrder("new");
               setPage(1);

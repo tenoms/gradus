@@ -120,7 +120,7 @@ function Rankings({ onQuestion }: { onQuestion: (row: MathRow) => void }) {
         {["周错题", "周收藏", "错题高频", "收藏高频"].map((t) => (
           <button
             key={t}
-            className={t === type ? "active" : ""}
+            className={t === type ? "active" : ""} aria-pressed={t === type}
             onClick={() => setType(t)}
           >
             {t}

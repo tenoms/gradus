@@ -1,7 +1,9 @@
+import { WorkspaceBar, WorkspaceTabs } from "../../../shared/ui/workspace-bar/WorkspaceBar";
 import { confirmAction } from "../../../shared/ui/dialogs/InteractionProvider";
 import { useMathLearningPlan } from "../preparation/MathLearningPlan";
 import { matchesMathSubject } from "../preparation/learning-plan-model.mjs";
 import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { invalidateCatalogResources } from "../../../shared/api/client";
 import Pagination from "../../../shared/ui/pagination/Pagination";
 import { usePagination } from "../../../shared/ui/pagination/use-pagination";
@@ -33,9 +35,11 @@ import "./math-bookshelf.css";
 export default function MathBookshelf({
   stuid,
   onOpenBook,
+  tools,
 }: {
   stuid: string;
   onOpenBook: (book: R) => void;
+  tools?: ReactNode;
 }) {
   const catalogRef = useRef<HTMLDivElement>(null);
   const { subject } = useMathLearningPlan();
@@ -170,59 +174,42 @@ export default function MathBookshelf({
   }
   return (
     <div className="math-bookshelf">
-      <div className="bookshelf-heading">
-        <h2>我的书架</h2>
-        <button
-          className="btn btn-primary"
-          onClick={() => {
-            setTab("library");
-            setTag("");
-          }}
+      <h2 className="sr-only">我的书架</h2>
+      <div className="bookshelf-content">
+        <WorkspaceBar
+          label="数学书架导航与工具"
+          navigation={<WorkspaceTabs
+            label="书架栏目"
+            items={[
+              { value: "shelf", label: "我的书架" },
+              { value: "recent", label: "最近阅读" },
+              { value: "library", label: "书籍库" },
+            ]}
+            value={tab}
+            onChange={(value) => { setTab(value); setTag(""); setManaging(false); setSelected([]); }}
+          />}
         >
-          <Plus size={16} />
-          添加书籍
-        </button>
-      </div>
-      <div className="panel">
-        <div className="bookshelf-toolbar">
-          <div className="tabs">
-            {[
-              ["shelf", "我的书架"],
-              ["recent", "最近阅读"],
-              ["library", "书籍库"],
-            ].map(([id, title]) => (
-              <button
-                className={tab === id ? "active" : ""}
-                key={id}
-                onClick={() => {
-                  setTab(id);
-                  setTag("");
-                  setManaging(false);
-                  setSelected([]);
-                }}
-              >
-                {title}
-              </button>
-            ))}
-          </div>
           <label className="bookshelf-search">
             <Search size={16} />
             <input
-              placeholder="搜索书名、作者、标签、年份"
+              placeholder="搜索书名、作者、标签…"
               aria-label="搜索我的数学书架"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </label>
           <button
-            className="bookshelf-icon"
+            className="btn btn-secondary"
             aria-label="刷新书架"
+            aria-busy={loading}
             onClick={() => { invalidateCatalogResources(); setVersion((v) => v + 1); }}
             disabled={loading || busy}
-          >
-            <RefreshCw size={17} />
+          ><RefreshCw size={16} className={loading ? "spin" : undefined} /></button>
+          <button className="btn btn-primary" onClick={() => { setTab("library"); setTag(""); }}>
+            <Plus size={15} />添加书籍
           </button>
-        </div>
+          {tools}
+        </WorkspaceBar>
         <div className="bookshelf-filters">
           <select
             className="input"
@@ -234,11 +221,12 @@ export default function MathBookshelf({
               <option key={v}>{v}</option>
             ))}
           </select>
-          <button className="math-text-button" onClick={() => setAllSubjects(!allSubjects)}>{allSubjects ? "全部科目 · 回到我的目标" : `${subject} · 浏览全部科目`}</button>
+          <button className="btn btn-secondary workspace-scope" aria-pressed={allSubjects} title={allSubjects ? "回到我的备考目标" : "浏览全部数学科目"} onClick={() => setAllSubjects(!allSubjects)}>{allSubjects ? "全部科目" : `${subject} · 备考目标`}</button>
           <span>{rows.length} 份资料</span>
           {tab === "shelf" && !!data?.shelf.length && (
             <button
               className="btn btn-secondary"
+              aria-pressed={managing}
               onClick={() => {
                 setManaging(!managing);
                 setSelected([]);

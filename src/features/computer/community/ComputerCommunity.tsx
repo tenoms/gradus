@@ -1,3 +1,4 @@
+import { WorkspaceTabs } from "../../../shared/ui/workspace-bar/WorkspaceBar";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Check, ImagePlus, LoaderCircle, X } from "lucide-react";
 import RichContent from "../../../shared/content/RichContent";
@@ -258,24 +259,16 @@ export default function ComputerCommunity() {
               {records(tasks.data).length} 个任务
             </p>
             <div className="computer-toolbar">
-              <div className="tabs">
-                {[
-                  ["feed", "全部动态"],
-                  ["my", "我的打卡"],
-                  ["tasks", "任务"],
-                ].map(([id, title]) => (
-                  <button
-                    className={tab === id ? "active" : ""}
-                    key={id}
-                    onClick={() => {
-                      setTab(id);
-                      setPage(1);
-                    }}
-                  >
-                    {title}
-                  </button>
-                ))}
-              </div>
+              <WorkspaceTabs
+                label="打卡活动栏目"
+                value={tab}
+                items={[
+                  { value: "feed", label: "全部动态" },
+                  { value: "my", label: "我的打卡" },
+                  { value: "tasks", label: "任务" },
+                ]}
+                onChange={value => { setTab(value); setPage(1); }}
+              />
               <select
                 className="input computer-select"
                 aria-label="选择打卡任务"
