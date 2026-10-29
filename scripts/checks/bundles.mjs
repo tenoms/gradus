@@ -14,13 +14,13 @@ const relativeModule = (id) => {
 };
 const forbidden = {
   admin: [
-    /^config\/(?!public\.json$)/,
+    /^config\/(?!system\.json$)/,
     /^src\/app\/learning\//,
     /^src\/features\/(?:math|computer|learning)\//,
     /^src\/features\/identity\/(?:PersonalCenter|AccountConnection|PersonalImportedRecords|Announcements|StudySyncIndicator)\./,
   ],
   learning: [
-    /^config\/(?!public\.json$)/,
+    /^config\/(?!system\.json$)/,
     /^src\/app\/admin\//,
     /^src\/features\/admin\//,
   ],
