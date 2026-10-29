@@ -15,14 +15,27 @@ const publicAccount=account=>{const {_routes,aliases,...safe}=account;return saf
 export async function createAccountPool({database,service,connections,identities,tokenLifecycle}){
   const tokens=tokenLifecycle||createTokenLifecycle({service});
   const services=await createYybServices({database,service});
+  // Learning bursts share a short-lived directory; management reads always refresh it.
+  let directorySnapshot;
   const settings=database.web('account_pool'),assignments=database.web('account_assignments');
   await database.query(`CREATE TABLE IF NOT EXISTS ${settings}(id integer PRIMARY KEY CHECK(id=1),revision integer NOT NULL DEFAULT 0,algorithm text NOT NULL DEFAULT 'round_robin',enabled_refs jsonb,cursor bigint NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS ${assignments}(user_id text PRIMARY KEY,account_ref text NOT NULL,expires_at bigint NOT NULL);
     CREATE INDEX IF NOT EXISTS account_assignments_ref ON ${assignments}(account_ref);
     INSERT INTO ${settings}(id) VALUES(1) ON CONFLICT DO NOTHING`);
   async function config(client=database){return (await client.query(`SELECT * FROM ${settings} WHERE id=1`)).rows[0];}
-  async function readDirectory(){
-    const sources=await services.all(),active=sources.filter(source=>source.enabled),issues=[];
+  async function readDirectory({reuse=false}={}){
+    const sources=await services.all(),key=createHash('sha256').update(JSON.stringify(sources)).digest('hex');
+    if(directorySnapshot?.key===key){
+      if(directorySnapshot.pending)return directorySnapshot.pending;
+      if(reuse&&directorySnapshot.expiresAt>Date.now())return directorySnapshot.value;
+    }
+    const snapshot={key};directorySnapshot=snapshot;
+    const pending=loadDirectory(sources);snapshot.pending=pending;
+    try{const value=await pending;snapshot.value=value;snapshot.expiresAt=Date.now()+30000;return value;}
+    finally{delete snapshot.pending;}
+  }
+  async function loadDirectory(sources){
+    const active=sources.filter(source=>source.enabled),issues=[];
     const results=await Promise.allSettled(active.map(async source=>{
       const rows=await service.yybRequest('/accounts',undefined,undefined,services.override(source));
       if(!Array.isArray(rows))throw new ApiError('YYB 账号目录格式不正确',502);
@@ -99,7 +112,7 @@ export async function createAccountPool({database,service,connections,identities
   }
   const loginPlatform=(name,account,yyb,force=false,invalidToken)=>tokens.acquire(name,account,yyb,{force,invalidToken});
   async function lookup(ref){const {accounts}=await readDirectory(),account=match(accounts,ref);if(!account)throw new ApiError('所选 YYB 账号当前不可用',404);const route=account._routes.find(route=>route.raw.status==='alive')||account._routes[0];return {account:publicAccount(account),rawAccount:{...route.raw,ref:route.rawRef},rawRef:route.rawRef,yyb:services.override(route.source)};}
-  async function acquireSource(userId,name,{force=false,invalidToken}={}){
+  async function acquireSource(userId,name,{force=false,invalidToken,reuseDirectory=false}={}){
     try{
       if(!['math','computer'].includes(name))throw new ApiError('未知学习资源来源',404);
       const runtime=service.getConfig();if(!runtime[name].enabled)throw new ApiError('该学科资源来源已停用，本地已有资源仍可使用',503);
@@ -113,7 +126,7 @@ export async function createAccountPool({database,service,connections,identities
         account={...cleanAccount(selected),openid:openid(selected)};routes=[{raw:selected,rawRef:rawRef(selected),source:{id:'custom',name:'本人资源偏好',baseUrl:preferences.baseUrl,apiKey:preferences.apiKey}}];
       }else{
         const pool=await config();if(!user.yybRef&&Array.isArray(pool.enabled_refs)&&!pool.enabled_refs.length)throw new ApiError('本地缺少所需资源，系统账号池暂无可用来源',503);
-        const result=await readDirectory(),ref=await resolve(userId,{fixedRef:user.yybRef,accounts:result.accounts});
+        const result=await readDirectory({reuse:reuseDirectory&&!force}),ref=await resolve(userId,{fixedRef:user.yybRef,accounts:result.accounts});
         const selected=result.accounts.find(row=>row.ref===ref);account=publicAccount(selected);routes=selected._routes.slice().sort((a,b)=>Number(b.raw.status==='alive')-Number(a.raw.status==='alive'));
       }
       let failure;

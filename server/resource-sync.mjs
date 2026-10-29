@@ -57,20 +57,19 @@ export function createResourceSync({store,service,configuration,accountPool}) {
     try{return await pending;}finally{if(resourceReads.get(key)===pending)resourceReads.delete(key);}
   }
   async function read(args) {
-    const cached=await peek(args);
-    if(cached.state==='hit')return publicResourceResponse(cached.resource.response);
+    const config=args.config||configNow(),identity=resourceIdentity(args.platform,sourceSession(args.session,args.platform),config,args.request);
     const load=async()=>{
-      const current=await peek(args);
+      const current=await peek({...args,config});
       if(current.state==='hit')return publicResourceResponse(current.resource.response);
       const response=await args.load();
       await capture({...args,response});
       return current.identity.scope==='public'?publicResourceResponse(response):response;
     };
-    return cached.identity.scope==='public'?inRead(`response:${cached.identity.source.id}:${resourceKey(cached.identity.request)}`,load):load();
+    return identity.scope==='public'?inRead(`response:${identity.source.id}:${resourceKey(identity.request)}`,load):load();
   }
   async function acquire(session,name,{force=false,invalidToken}={}) {
     if(accountPool?.acquireSource && session.user?.id) {
-      const source=await accountPool.acquireSource(session.user.id,name,{force,invalidToken});
+      const source=await accountPool.acquireSource(session.user.id,name,{force,invalidToken,reuseDirectory:true});
       session.resourceSources ||= {};session.resourceSources[name]=source;
       return source;
     }
@@ -114,8 +113,7 @@ export function createResourceSync({store,service,configuration,accountPool}) {
       const total=Number(data?.exerciseTotalNumber??data?.total??questionIds.length);
       return {imported:true,persisted,cacheState,questions,total,questionIds,examId:data?.examId??data?.examinationId,response:clean};
     };
-    const cached=await peek(args);
-    if(cached.state==='hit')return result(cached.resource.response,'hit',true);
+    const identity=resourceIdentity(platform,sourceSession(session,platform),config,request);
     const load=async()=>{
       const latest=await peek(args);
       if(latest.state==='hit')return result(latest.resource.response,'hit',true);
@@ -139,7 +137,7 @@ export function createResourceSync({store,service,configuration,accountPool}) {
         return result(response,latest.state,saved.captured);
       });
     };
-    return cached.identity.scope==='public'?inRead(`questions:${cached.identity.source.id}:${resourceKey(cached.identity.request)}`,load):load();
+    return identity.scope==='public'?inRead(`questions:${identity.source.id}:${resourceKey(identity.request)}`,load):load();
   }
   return {status,updateSettings,capture,peek,lookup,read,requestSource,ensureQuestions,findEntities:options=>store.findEntities(options),list:options=>store.list(options)};
 }
