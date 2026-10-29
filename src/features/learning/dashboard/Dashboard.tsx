@@ -293,40 +293,42 @@ export default function Dashboard({
               </Link>
             </div>
             {events.length ? (
-              <div className="recent-list">
-                {events.slice(0, 3).map((a) => (
-                  <Link
-                    to={a.path || "/study/practice"}
-                    className="recent-item"
-                    key={a.id}
-                    onClick={() => onPlatformChange(a.platform)}
-                  >
-                    <span
-                      className={`recent-icon ${a.platform === "math" ? "violet" : "mint"}`}
+              <div className="recent-history">
+                <div className="recent-list" role="region" aria-label="最近学习记录" tabIndex={0}>
+                  {events.slice(0, 8).map((a) => (
+                    <Link
+                      to={a.path || "/study/practice"}
+                      className="recent-item"
+                      key={a.id}
+                      onClick={() => onPlatformChange(a.platform)}
                     >
-                      {a.platform === "math" ? (
-                        <Sigma size={21} />
-                      ) : (
-                        <Code2 size={21} />
-                      )}
-                    </span>
-                    <div>
-                      <h3>{a.title}</h3>
-                      <p>
-                        {label(a.platform)}
-                        <span>·</span>
-                        {new Date(a.at).toLocaleString("zh-CN", {
-                          month: "2-digit",
-                          day: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          timeZone: "Asia/Shanghai",
-                        })}
-                      </p>
-                    </div>
-                    <ArrowRight size={17} />
-                  </Link>
-                ))}
+                      <span
+                        className={`recent-icon ${a.platform === "math" ? "violet" : "mint"}`}
+                      >
+                        {a.platform === "math" ? (
+                          <Sigma size={21} />
+                        ) : (
+                          <Code2 size={21} />
+                        )}
+                      </span>
+                      <div>
+                        <h3>{a.title}</h3>
+                        <p>
+                          {label(a.platform)}
+                          <span>·</span>
+                          {new Date(a.at).toLocaleString("zh-CN", {
+                            month: "2-digit",
+                            day: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            timeZone: "Asia/Shanghai",
+                          })}
+                        </p>
+                      </div>
+                      <ArrowRight size={17} />
+                    </Link>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="inline-empty">
