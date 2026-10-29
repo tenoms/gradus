@@ -11,10 +11,7 @@
 .integration-card-heading h2 { font-size: 16px; font-weight: 600; }
 .integration-platform-icon { width: 32px; height: 32px; display: grid; place-items: center; flex-shrink: 0; background: #f1edf8; color: #8466b1; border-radius: 9px; }
 .integration-platform-icon > svg { width: 19px; height: 19px; }
-.integration-platform-icon.yyb { background: #eaf3f0; color: #609080; }
 .integration-platform-icon.computer { background: #eaf2f3; color: #578b91; }
-.integration-state { display: inline-flex; align-items: center; background: #f3f0f5; color: #8e7e9b; border-radius: 5px; padding: 5px 8px; font-size: 11px; white-space: nowrap; }
-.integration-state.is-enabled { background: #edf5f0; color: #52836a; }
 .integration-toggle { display: inline-flex; align-items: center; gap: 8px; position: relative; cursor: pointer; white-space: nowrap; }
 .integration-toggle input { position: absolute; width: 36px; height: 24px; margin: 0; opacity: 0; cursor: pointer; }
 .integration-toggle > span { display: block; width: 35px; height: 21px; background: #d5cddd; border-radius: 20px; padding: 3px; transition: background .15s; }

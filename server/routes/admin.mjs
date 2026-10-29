@@ -1,4 +1,5 @@
 import express from 'express';
+import { ApiError } from '../upstream.mjs';
 
 export function createAdminRouter({ service, identities, connections, configuration, operations, auth, accountPool, resourceSync }) {
   const router = express.Router();
@@ -45,6 +46,27 @@ export function createAdminRouter({ service, identities, connections, configurat
     await identities.audit(req.studySession.user,'configuration.updated','平台集成',`版本 ${result.revision}；重新连接：${result.affectedPlatforms.join('、')||'无'}`);
     res.json(result);
   });
-  router.post('/configuration/probe',async(req,res)=>{const selected=req.body?.ref?await accountPool.lookup(req.body.ref):null;const result=await service.probe({target:req.body?.target,ref:selected?.rawRef,yyb:selected?.yyb});await identities.audit(req.studySession.user,'configuration.probed','平台集成',`${result.target}：${result.ok?'通过':'失败'}`);res.json(result);});
+  router.post('/configuration/probe',async(req,res)=>{
+    const target=req.body?.target??'all',ref=req.body?.ref;
+    if(!['all','yyb','math','computer'].includes(target))throw new ApiError('未知检测目标',400);
+    if(ref!==undefined&&(typeof ref!=='string'||!ref||ref.length>512))throw new ApiError('检测账号格式不正确',400);
+    let result;
+    if(target==='yyb'){
+      const sources=(await accountPool.services.list()).services.filter(source=>source.enabled);
+      const checks=await Promise.all(sources.map(async source=>{
+        const checked=await accountPool.services.probe(source.id);
+        return {name:`${source.name}账号目录`,ok:checked.ok,message:checked.ok?`成功读取 ${checked.accountCount} 个学习账号`:checked.message,durationMs:checked.durationMs};
+      }));
+      if(!checks.length)checks.push({name:'系统 YYB 服务',ok:false,message:'当前没有启用的 YYB 服务'});
+      result={target,ok:checks.every(check=>check.ok),checkedAt:new Date().toISOString(),checks};
+    }else{
+      const selected=ref?await accountPool.lookup(ref):null;
+      const targets=target==='all'?['math','computer']:[target];
+      const results=await Promise.all(targets.map(name=>service.probe({target:name,ref:selected?.rawRef,yyb:selected?.yyb})));
+      result={target,ok:results.every(value=>value.ok),checkedAt:new Date().toISOString(),checks:results.flatMap(value=>value.checks)};
+    }
+    await identities.audit(req.studySession.user,'configuration.probed','平台集成',`${result.target}：${result.ok?'通过':'失败'}`);
+    res.json(result);
+  });
   return router;
 }

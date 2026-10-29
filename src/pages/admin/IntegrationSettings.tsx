@@ -12,13 +12,15 @@ import type {
 import "./integration-settings.css";
 
 const labels: Record<IntegrationTarget | "all", string> = {
-  yyb: "默认 YYB 服务", math: "考研数学", computer: "计算机 408", all: "YYB 与学习平台",
+  yyb: "系统 YYB 服务", math: "考研数学", computer: "计算机 408", all: "学习平台",
 };
-const secretPaths: SecretPath[] = [
-  "yyb.apiKey", "math.ocrUsername", "math.ocrPassword",
+type PlatformTarget = Exclude<IntegrationTarget, "yyb">;
+type PlatformSecretPath = Exclude<SecretPath, "yyb.apiKey">;
+const secretPaths: PlatformSecretPath[] = [
+  "math.ocrUsername", "math.ocrPassword",
   "computer.oauthClientSecret", "computer.videoKey", "computer.videoIv",
 ];
-const blankSecrets = () => Object.fromEntries(secretPaths.map(path => [path, ""])) as Record<SecretPath, string>;
+const blankSecrets = () => Object.fromEntries(secretPaths.map(path => [path, ""])) as Record<PlatformSecretPath, string>;
 const message = (cause: unknown) => cause instanceof Error ? cause.message : "操作未完成，请稍后重试";
 const dateTime = (value: string) => {
   const date = new Date(value);
@@ -32,7 +34,7 @@ function Field({ label, help, children, wide = false }: { label: string; help?: 
 }
 
 function SecretField({ path, label, help, configured, value, clear, disabled, onChange, onClear }: {
-  path: SecretPath; label: string; help?: string; configured: boolean; value: string; clear: boolean; disabled: boolean;
+  path: PlatformSecretPath; label: string; help?: string; configured: boolean; value: string; clear: boolean; disabled: boolean;
   onChange: (value: string) => void; onClear: (clear: boolean) => void;
 }) {
   return <div className="integration-secret-field">
@@ -46,13 +48,13 @@ export default function IntegrationSettings() {
   const [saved, setSaved] = useState<IntegrationConfiguration>();
   const [draft, setDraft] = useState<IntegrationConfig>();
   const [secrets, setSecrets] = useState(blankSecrets);
-  const [clearSecrets, setClearSecrets] = useState<SecretPath[]>([]);
+  const [clearSecrets, setClearSecrets] = useState<PlatformSecretPath[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [conflict, setConflict] = useState(false);
   const [notice, setNotice] = useState("");
-  const [probing, setProbing] = useState<IntegrationTarget | "all">();
+  const [probing, setProbing] = useState<PlatformTarget | "all">();
   const [probe, setProbe] = useState<IntegrationProbe>();
   const [probeError, setProbeError] = useState("");
   const [accounts, setAccounts] = useState<IntegrationAccount[]>([]);
@@ -74,14 +76,14 @@ export default function IntegrationSettings() {
   }
   useEffect(() => { void load(); }, []);
 
-  function setField<T extends IntegrationTarget, K extends keyof IntegrationConfig[T]>(target: T, key: K, value: IntegrationConfig[T][K]) {
+  function setField<T extends PlatformTarget, K extends keyof IntegrationConfig[T]>(target: T, key: K, value: IntegrationConfig[T][K]) {
     setDraft(current => current ? { ...current, [target]: { ...current[target], [key]: value } } : current);
     setNotice("");
   }
-  function setSecret(path: SecretPath, value: string) {
+  function setSecret(path: PlatformSecretPath, value: string) {
     setSecrets(current => ({ ...current, [path]: value })); setNotice("");
   }
-  function clearSecret(path: SecretPath, clear: boolean) {
+  function clearSecret(path: PlatformSecretPath, clear: boolean) {
     setClearSecrets(current => clear ? [...current.filter(value => value !== path), path] : current.filter(value => value !== path));
     if (clear) setSecrets(current => ({ ...current, [path]: "" }));
     setNotice("");
@@ -90,13 +92,13 @@ export default function IntegrationSettings() {
     event.preventDefault();
     if (!saved || !draft) return;
     setSaving(true); setError(""); setNotice("");
-    const config: Record<IntegrationTarget, Record<string, unknown>> = {
-      yyb: { ...draft.yyb }, math: { ...draft.math }, computer: { ...draft.computer },
+    const config: Record<PlatformTarget, Record<string, unknown>> = {
+      math: { ...draft.math }, computer: { ...draft.computer },
     };
     for (const path of secretPaths) {
       if (!secrets[path]) continue;
       const [target, field] = path.split(".");
-      config[target as IntegrationTarget][field] = secrets[path];
+      config[target as PlatformTarget][field] = secrets[path];
     }
     try {
       const value = await api<IntegrationConfiguration>("/api/admin/configuration", { method: "PUT", body: JSON.stringify({ revision: saved.revision, config, clearSecrets }) });
@@ -119,7 +121,7 @@ export default function IntegrationSettings() {
     } catch (cause) { setAccountsError(message(cause)); }
     finally { setAccountsLoading(false); }
   }
-  async function check(target: IntegrationTarget | "all") {
+  async function check(target: PlatformTarget | "all") {
     if (probing) return;
     setProbing(target); setProbeError(""); setProbe(undefined);
     try {
@@ -127,8 +129,8 @@ export default function IntegrationSettings() {
     } catch (cause) { setProbeError(message(cause)); }
     finally { setProbing(undefined); }
   }
-  const renderSecret = (path: SecretPath, label: string, help?: string) => <SecretField key={path} path={path} label={label} help={help} configured={!!saved?.secretStatus[path]} value={secrets[path]} clear={clearSecrets.includes(path)} disabled={busy} onChange={value => setSecret(path, value)} onClear={clear => clearSecret(path, clear)} />;
-  const probeButton = (target: IntegrationTarget) => <button className="btn btn-secondary integration-probe-link" type="button" disabled={!!probing || busy} onClick={() => void check(target)}>{probing === target ? <LoaderCircle size={15} className="spin" /> : <Link2 size={15} />}检查{labels[target]}</button>;
+  const renderSecret = (path: PlatformSecretPath, label: string, help?: string) => <SecretField key={path} path={path} label={label} help={help} configured={!!saved?.secretStatus[path]} value={secrets[path]} clear={clearSecrets.includes(path)} disabled={busy} onChange={value => setSecret(path, value)} onClear={clear => clearSecret(path, clear)} />;
+  const probeButton = (target: PlatformTarget) => <button className="btn btn-secondary integration-probe-link" type="button" disabled={!!probing || busy} onClick={() => void check(target)}>{probing === target ? <LoaderCircle size={15} className="spin" /> : <Link2 size={15} />}检查{labels[target]}</button>;
 
   if (!draft || !saved) return <section className="panel integration-initial-state">{loading ? <><LoaderCircle size={25} className="spin" /><p>正在读取平台配置…</p></> : <><CircleAlert size={26} /><p role="alert">{error || "配置暂时不可用"}</p><button className="btn btn-secondary" onClick={() => void load()}><RefreshCw size={15} />重新读取</button></>}</section>;
 
@@ -138,12 +140,6 @@ export default function IntegrationSettings() {
     {error && <div className="integration-error" role="alert"><CircleAlert size={18} /><div><p>{error}</p>{conflict && <button className="text-link" disabled={busy} onClick={() => void load()}>放弃当前编辑并读取最新配置</button>}</div></div>}
     <div className="integration-layout">
       <form className="integration-form" onSubmit={save}>
-        <section className="panel integration-card" aria-labelledby="integration-yyb-title">
-          <div className="integration-card-heading"><span className="integration-platform-icon yyb"><Link2 size={23} /></span><div><h2 id="integration-yyb-title">默认 YYB 服务</h2><p><a href="/admin/data">管理多个 YYB 服务与统一账号池</a></p></div><span className={`integration-state ${draft.yyb.baseUrl ? "is-enabled" : ""}`}>{draft.yyb.baseUrl ? "已填写地址" : "待配置"}</span></div>
-          <fieldset disabled={busy}><div className="integration-fields"><Field label="服务地址" help="填写 YYB 服务根地址，例如 https://yyb.example.com。" wide><input className="input" type="url" value={draft.yyb.baseUrl} placeholder="https://yyb.example.com" onChange={event => setField("yyb", "baseUrl", event.target.value)} autoComplete="url" spellCheck={false} /></Field>{renderSecret("yyb.apiKey", "API Key", "YYB 服务需要鉴权时填写。")}</div></fieldset>
-          <div className="integration-card-footer"><p>用于默认服务的启动配置；多个独立服务地址、密钥及启用状态在账号池页面维护。</p>{probeButton("yyb")}</div>
-        </section>
-
         <section className={`panel integration-card ${!draft.math.enabled ? "platform-disabled" : ""}`} aria-labelledby="integration-math-title">
           <div className="integration-card-heading"><span className="integration-platform-icon math"><Sigma size={24} /></span><div><h2 id="integration-math-title">考研数学</h2></div><label className="integration-toggle"><input type="checkbox" aria-label="启用考研数学" checked={draft.math.enabled} disabled={busy} onChange={event => setField("math", "enabled", event.target.checked)} /><span aria-hidden="true" /><strong>{draft.math.enabled ? "已启用" : "已停用"}</strong></label></div>
           <fieldset disabled={busy}><div className="integration-fields"><Field label="平台地址" wide><input className="input" type="url" required value={draft.math.baseUrl} onChange={event => setField("math", "baseUrl", event.target.value)} spellCheck={false} /></Field><Field label="微信 App ID" help="数学小程序在微信开放平台的 App ID。" wide><input className="input" value={draft.math.appId} onChange={event => setField("math", "appId", event.target.value)} required pattern="wx[0-9a-fA-F]{16}" maxLength={18} spellCheck={false} /></Field><Field label="站点 ID"><input className="input" type="number" min={1} step={1} required value={draft.math.stationId} onChange={event => setField("math", "stationId", Number(event.target.value))} /></Field><Field label="登录 ID"><input className="input" type="number" min={1} step={1} required value={draft.math.loginId} onChange={event => setField("math", "loginId", Number(event.target.value))} /></Field></div>
@@ -168,9 +164,9 @@ export default function IntegrationSettings() {
           <div className="integration-check-mode"><label className="field-label">实测学习账号<select className="input" value={accountRef} disabled={accountsLoading || !!probing || busy} onChange={event => setAccountRef(event.target.value)}><option value="">仅检查服务连接</option>{accounts.map(account => <option value={account.ref} key={account.ref}>{account.nickname || "微信学习账号"}{account.serviceName?` · ${account.serviceName}`:""}{account.routes&&account.routes.length>1?`（${account.routes.length}条路径）`:""}{account.status && account.status !== "alive" ? "（需检查会话）" : ""}</option>)}</select></label><button className="text-link" type="button" disabled={accountsLoading || !!probing || busy} onClick={() => void readAccounts()}>{accountsLoading ? <LoaderCircle size={13} className="spin" /> : <RefreshCw size={13} />}{accounts.length ? "刷新 YYB 账号" : "读取 YYB 账号"}</button></div>
           {accountsError && <p className="integration-probe-error" role="alert">{accountsError}</p>}
           {accounts.length === 0 && !accountsLoading && !accountsError && <p className="integration-probe-explanation">读取 YYB 账号后，可选择账号验证两个小程序的登录与本人资料接口。</p>}
-          <div className="integration-probe-scope"><Link2 size={15} /><p>{accountRef ? "将使用所选 YYB 账号登录目标小程序，并读取本人资料。" : "检查服务健康与公开接口，不建立学习账号登录。"}</p></div>
+          <div className="integration-probe-scope"><Link2 size={15} /><p>{accountRef ? "将使用所选资源池账号登录目标小程序，并读取本人资料。" : "检查两科学习平台的公开接口，不建立学习账号登录。"} YYB 服务在<a href="/admin/data">账号池与资源同步</a>中统一管理。</p></div>
           {dirty && <p className="integration-probe-unsaved"><CircleAlert size={14} />当前编辑尚未保存，检测仍使用配置版本 {saved.revision}。</p>}
-          <button className="btn btn-primary full-width" type="button" disabled={!!probing || busy} onClick={() => void check("all")}>{probing ? <LoaderCircle size={16} className="spin" /> : <Link2 size={16} />}{probing ? `正在检查${labels[probing]}…` : accountRef ? "完整检查所选账号" : "检查默认 YYB 与学习平台"}</button>
+          <button className="btn btn-primary full-width" type="button" disabled={!!probing || busy} onClick={() => void check("all")}>{probing ? <LoaderCircle size={16} className="spin" /> : <Link2 size={16} />}{probing ? `正在检查${labels[probing]}…` : accountRef ? "完整检查所选账号" : "检查学习平台连接"}</button>
           {probeError && <div className="integration-probe-error" role="alert"><CircleAlert size={17} /><p>{probeError}</p></div>}
           {probe && <div className="integration-probe-result" aria-live="polite"><div className={`integration-probe-summary ${probe.ok ? "is-success" : "is-failure"}`}><span>{probe.ok ? <Check size={17} /> : <CircleAlert size={17} />}{probe.ok ? "检查通过" : "检查发现问题"}</span><small>{labels[probe.target]}</small></div><p className="integration-probe-time"><Clock3 size={12} /><time dateTime={probe.checkedAt}>{dateTime(probe.checkedAt)}</time></p><ol className="integration-check-list">{probe.checks.map((item, index) => <li key={`${item.name}-${index}`} className={item.ok ? "is-success" : "is-failure"}>{item.ok ? <Check size={15} /> : <X size={15} />}<div><strong>{item.name}</strong><p>{item.message}</p>{item.durationMs !== undefined && <small>{Math.round(item.durationMs)} ms</small>}</div></li>)}</ol></div>}
         </section>
