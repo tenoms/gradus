@@ -2,17 +2,27 @@ import { appearanceModes, appearancePalettes } from '../../../shared/appearance.
 
 export const themePreferenceKey = 'study-theme-preference';
 export const themePreferenceEvent = 'study-theme-preference-updated';
-export const themePreferenceDefaults = () => ({ palette: 'managed', mode: 'managed' });
+export const themePreferenceDefaults = () => ({ mode: 'managed', math: { palette: 'managed' }, computer: { palette: 'managed' } });
+const palettes = ['managed', ...appearancePalettes.map(item => item.value)];
+const modes = ['managed', ...appearanceModes.map(item => item.value)];
+const subjectPreference = value => value && typeof value === 'object' && !Array.isArray(value)
+  && Object.keys(value).length === 1 && palettes.includes(value.palette);
 
 export function validateThemePreference(input) {
-  if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).length !== 2
-    || !['managed', ...appearancePalettes.map(item => item.value)].includes(input.palette)
-    || !['managed', ...appearanceModes.map(item => item.value)].includes(input.mode)) throw new Error('主题偏好格式不正确');
-  return { palette: input.palette, mode: input.mode };
+  if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).length !== 3
+    || !modes.includes(input.mode) || !subjectPreference(input.math)
+    || !subjectPreference(input.computer)) throw new Error('主题偏好格式不正确');
+  return { mode: input.mode, math: { palette: input.math.palette }, computer: { palette: input.computer.palette } };
 }
 
 export function parseThemePreference(value) {
-  try { return validateThemePreference(JSON.parse(value)); }
+  try {
+    const input = JSON.parse(value);
+    // The former shared palette must not override both subjects after this fix.
+    if (input && typeof input === 'object' && !Array.isArray(input) && Object.keys(input).length === 2
+      && palettes.includes(input.palette) && modes.includes(input.mode)) return { ...themePreferenceDefaults(), mode: input.mode };
+    return validateThemePreference(input);
+  }
   catch { return themePreferenceDefaults(); }
 }
 
@@ -27,7 +37,7 @@ export function writeThemePreference(preference, storage) {
   try {
     const target = storage || globalThis.localStorage;
     if (!target) return false;
-    if (value.palette === 'managed' && value.mode === 'managed') target.removeItem(themePreferenceKey);
+    if (value.math.palette === 'managed' && value.computer.palette === 'managed' && value.mode === 'managed') target.removeItem(themePreferenceKey);
     else target.setItem(themePreferenceKey, JSON.stringify(value));
     return true;
   } catch { return false; }
@@ -36,7 +46,7 @@ export function writeThemePreference(preference, storage) {
 export function effectiveTheme(configuration, space, preference = themePreferenceDefaults()) {
   if (space === 'admin') return { palette: 'violet', mode: configuration.mode };
   return {
-    palette: preference.palette === 'managed' ? configuration[space].palette : preference.palette,
+    palette: preference[space].palette === 'managed' ? configuration[space].palette : preference[space].palette,
     mode: preference.mode === 'managed' ? configuration.mode : preference.mode,
   };
 }

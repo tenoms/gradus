@@ -1,5 +1,6 @@
 import type { AppearanceConfig, AppearanceTheme, ThemeMode, ThemePalette } from '../../../shared/appearance.mjs';
-export interface ThemePreference { palette: 'managed' | ThemePalette; mode: 'managed' | ThemeMode }
+export interface SubjectThemePreference { palette: 'managed' | ThemePalette }
+export interface ThemePreference { mode: 'managed' | ThemeMode; math: SubjectThemePreference; computer: SubjectThemePreference }
 export const themePreferenceKey: string;
 export const themePreferenceEvent: string;
 export function themePreferenceDefaults(): ThemePreference;
