@@ -40,6 +40,10 @@ import ComputerQuestionTools, {
   ComputerInterviewRecorder,
 } from "./ComputerQuestionTools";
 import { ComputerExamReport } from "./ComputerReports";
+import ComputerKnowledgeTags from "./ComputerKnowledgeTags";
+import ComputerQuestionVideo from "./ComputerQuestionVideo";
+import { computerAnswerMode, computerChoiceAnswer, computerImmediateChoice } from "./question-workflow.mjs";
+import "./question-workflow.css";
 function Status({
   loading,
   error,
@@ -109,18 +113,22 @@ export default function ExerciseSession({
     [note, setNote] = useState(""),
     [noteVisible, setNoteVisible] = useState(false),
     [draftLoaded, setDraftLoaded] = useState(false),
+    [failedSubmission, setFailedSubmission] = useState(false),
     [ai, setAi] = useState<Record<string, R>>({});
   const started = useRef(Date.now()),
     questionStarted = useRef(Date.now()),
     lastActivity = useRef(Date.now()),
     progressRecord = useRef(String(launch.data.examRecordId || launch.recordId || "")),
-    recordedIds = useRef(new Set<string>());
+    recordedIds = useRef(new Set<string>()),
+    submissionPending = useRef(false);
+  const answerMode = computerAnswerMode(launch);
+  const isPaper = answerMode === "paper";
   const question = questions[current] || {},
     id = String(question.exerciseId || question.id || ""),
     type = Number(question.exerciseType),
     answer = answers[id] || "",
     isReadOnly = !!launch.readOnly,
-    hasSubmitted = !!submitted[id] || skipped.includes(id) || isReadOnly,
+    hasSubmitted = isReadOnly || (isPaper ? finished : !!submitted[id] || skipped.includes(id)),
     total = Number(launch.data.exerciseTotalNumber || questions.length),
     examId = launch.data.examId || launch.data.examinationId,
     score = Number(
@@ -129,6 +137,7 @@ export default function ExerciseSession({
   const isSequential =
       !!launch.redo || [3, 10, 18, 19].includes(launch.examType),
     category = launch.examCategory || 1;
+  const immediateChoice = computerImmediateChoice(launch, type);
   const storageKey = `study:computer:draft:${session.user?.id || session.account?.ref || "guest"}:${launch.majorId}:${category}:${examId || launch.chapterId || "random"}:${launch.examType}:${launch.examGroupId || ""}:${launch.redo ? `${launch.redo.kind}:${launch.redo.dateFlag}:${launch.redo.sort}` : ""}`;
   useEffect(() => {
     async function restore() {
@@ -161,11 +170,11 @@ export default function ExerciseSession({
   function setAnswer(value: string) {
     setAnswers((a) => ({ ...a, [id]: value }));
   }
-  function answerPayload(item: R, skip = false) {
+  function answerPayload(item: R, skip = false, currentAnswers = answers) {
     const itemId = String(item.exerciseId || item.id);
     return buildComputerAnswer({
       question: item,
-      answer: answers[itemId] || "",
+      answer: currentAnswers[itemId] || "",
       majorId: launch.majorId,
       chapterId: launch.chapterId,
       examType: launch.examType,
@@ -176,22 +185,27 @@ export default function ExerciseSession({
       aiResult: ai[itemId],
     });
   }
-  async function submit(skip = false, all = false) {
+  async function submit(skip = false, all = false, selectedAnswer?: string) {
+    if (submissionPending.current || isReadOnly || (isPaper && !all)) return;
+    const currentAnswers = selectedAnswer === undefined ? answers : { ...answers, [id]: selectedAnswer };
+    const currentAnswer = currentAnswers[id] || "";
     setError("");
     if (
       all &&
       questions.some(
         (q) =>
-          !answers[String(q.exerciseId || q.id)] &&
+          !currentAnswers[String(q.exerciseId || q.id)] &&
           !ai[String(q.exerciseId || q.id)],
       ) &&
       !window.confirm("还有未作答的题目，确认交卷？")
     )
       return;
-    if (!skip && !all && !answer.trim() && !ai[id]) {
+    if (!skip && !all && !currentAnswer.trim() && !ai[id]) {
       setError("请先选择或填写答案。");
       return;
     }
+    submissionPending.current = true;
+    setFailedSubmission(false);
     setLoading(true);
     try {
       const selected = all ? questions : [question];
@@ -199,7 +213,7 @@ export default function ExerciseSession({
       const payload = buildComputerSubmission({
         answers: selected.map(
           (q) =>
-            submitted[String(q.exerciseId || q.id)] || answerPayload(q, skip),
+            (!isPaper && submitted[String(q.exerciseId || q.id)]) || answerPayload(q, skip, currentAnswers),
         ),
         examinationId: examId,
         examType: launch.examType,
@@ -216,7 +230,7 @@ export default function ExerciseSession({
             majorId: question.majorId || launch.majorId,
             chapterId: question.chapterId || launch.chapterId,
           },
-          answer,
+          currentAnswer,
           launch.answerSource || 4,
           category,
           questionStarted.current,
@@ -237,9 +251,9 @@ export default function ExerciseSession({
         ...Object.fromEntries(payload.answers.map((a) => [a.exerciseId, a])),
       }));
       if (skip) setSkipped((ids) => [...new Set([...ids, id])]);
-      setNotice(
-        all ? "试卷已提交，学习记录已同步。" : "答案已保存至计算机学习记录。",
-      );
+      setNotice(all ? "试卷已提交，学习记录已同步。" : [1, 2, 5, 7].includes(type)
+        ? payload.answers[0]?.answerType === 1 ? "回答正确，答案已保存。" : "回答有误，已保存作答并显示解析。"
+        : "答案已保存至计算机学习记录。");
       const newlyRecorded = payload.answers.filter(
         (a) =>
           !recordedIds.current.has(a.exerciseId) &&
@@ -272,8 +286,10 @@ export default function ExerciseSession({
       questionStarted.current = Date.now();
       if (result?.score != null) setNotice(`已提交，得分 ${result.score}。`);
     } catch (e: any) {
+      setFailedSubmission(true);
       setError(e.message);
     } finally {
+      submissionPending.current = false;
       setLoading(false);
     }
   }
@@ -295,6 +311,8 @@ export default function ExerciseSession({
   async function move(index: number) {
     if (index < 0 || index >= total) return;
     setError("");
+    setNotice("");
+    setFailedSubmission(false);
     questionStarted.current = Date.now();
     if (!questions[index] && total > 1) {
       setLoading(true);
@@ -435,7 +453,12 @@ export default function ExerciseSession({
       next={current + 1 < total ? () => void move(current + 1) : undefined}
       disabled={loading || !!related}
     >
-    <section ref={sessionElement} className="computer-session panel">
+    <section ref={sessionElement} className="computer-session panel" onKeyDown={event => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && !hasSubmitted && !isPaper && !loading) {
+        event.preventDefault();
+        void submit();
+      }
+    }}>
       <div className="computer-session-top">
         <button className="computer-back" onClick={onClose}>
           <ArrowLeft size={18} />
@@ -527,6 +550,11 @@ export default function ExerciseSession({
         ).replace(/\$\*\$(\d+)\$\*\$/g, " （$1）________ ")}
         className="computer-question-stem"
       />
+      {!hasSubmitted && <p className="computer-answer-hint">{isPaper
+        ? "答案保留为草稿，交卷后显示解析。"
+        : immediateChoice
+          ? "点选答案即保存，并显示解析。"
+          : type === 2 ? "本题可多选，选好后提交。" : "完成后提交答案，也可按 Ctrl / ⌘ + Enter。"}</p>}
       {launch.voice ? (
         <ComputerInterviewRecorder
           key={`voice-${id}`}
@@ -544,28 +572,21 @@ export default function ExerciseSession({
             : question.questions || []
           ).map((option: R, index: number) => {
             const key = String(
-                option.questionStem || String.fromCharCode(65 + index),
+                option.questionStem ?? String.fromCharCode(65 + index),
               ),
               selected =
                 type === 2 ? answer.split(",").includes(key) : answer === key;
             return (
               <button
                 key={index}
-                className={`computer-option ${selected ? "active" : ""} ${hasSubmitted && String(question.exerciseAnswer).split(",").includes(key) ? "correct" : ""}`}
+                className={`computer-option ${selected ? "active" : ""} ${hasSubmitted && String(question.exerciseAnswer).split(",").includes(key) ? "correct" : ""} ${hasSubmitted && selected && !String(question.exerciseAnswer).split(",").includes(key) ? "incorrect" : ""}`}
                 disabled={hasSubmitted || loading}
                 aria-pressed={selected}
-                onClick={() =>
-                  setAnswer(
-                    type === 2
-                      ? (selected
-                          ? answer.split(",").filter((k) => k !== key)
-                          : [...answer.split(",").filter(Boolean), key]
-                        )
-                          .sort()
-                          .join(",")
-                      : key,
-                  )
-                }
+                onClick={() => {
+                  const selectedAnswer = computerChoiceAnswer(type, answer, key);
+                  setAnswer(selectedAnswer);
+                  if (immediateChoice) void submit(false, false, selectedAnswer);
+                }}
               >
                 <span className="computer-option-key">{key}</span>
                 <RichContent
@@ -693,15 +714,8 @@ export default function ExerciseSession({
               ""
             }
           />
-          {question.videoUrl && safeLink(question.videoUrl) && (
-            <a
-              href={safeLink(question.videoUrl)}
-              target="_blank"
-              rel="noreferrer"
-            >
-              查看题目视频
-            </a>
-          )}
+          <ComputerKnowledgeTags question={question} majorId={launch.majorId} />
+          <ComputerQuestionVideo key={id} question={question} majorId={question.majorId || launch.majorId} examCategory={category} schoolPermission={launch.data.schoolPermission || question.schoolPermission} />
           {submitted[id]?.llmAnswer && (
             <div>
               <h4>批阅反馈</h4>
@@ -724,11 +738,6 @@ export default function ExerciseSession({
                 }
               })()}
             </div>
-          )}
-          {question.exerciseProperty?.knowledgeTags && (
-            <p className="computer-dim">
-              知识点：{String(question.exerciseProperty.knowledgeTags)}
-            </p>
           )}
         </div>
       )}
@@ -777,7 +786,7 @@ export default function ExerciseSession({
         >
           记笔记
         </button>
-        {!hasSubmitted && !isReadOnly && (
+        {!hasSubmitted && !isReadOnly && !isPaper && (
           <>
             {[3, 10, 18, 19].includes(launch.examType) && !launch.redo && (
               <button
@@ -788,13 +797,13 @@ export default function ExerciseSession({
                 跳过
               </button>
             )}
-            <button
+            {(!immediateChoice || failedSubmission) && <button
               className="btn btn-primary"
-              disabled={loading}
+              disabled={loading || (!answer.trim() && !ai[id])}
               onClick={() => void submit()}
             >
-              提交答案
-            </button>
+              {failedSubmission ? "重试提交" : loading ? "保存中…" : "提交答案"}
+            </button>}
           </>
         )}
         <button
@@ -805,7 +814,7 @@ export default function ExerciseSession({
           下一题
           <ArrowRight size={16} />
         </button>
-        {!isReadOnly && !finished && !isSequential && (
+        {!isReadOnly && !finished && isPaper && (
           <button
             className="btn btn-primary"
             disabled={loading}

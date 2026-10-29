@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import RichContent from "../RichContent";
 import MathQuestionVideo from "./MathQuestionVideo";
+import MathQuestionStem from "./MathQuestionStem";
 import MathModelTraining from "./MathModelTraining";
 import {
   mathApi,
@@ -517,16 +518,7 @@ function AlbumContent({
       {rows.map((r, i) => (
         <article className="math-album-content" key={r.ID || i}>
           {r.Title && <h4>{r.Title}</h4>}
-          {r.QuestionTxt || r.Content ? (
-            <RichContent content={r.QuestionTxt || r.Content} />
-          ) : null}
-          {r.QuestionImg && (
-            <img
-              className="math-question-image"
-              src={mathImage(r.QuestionImg)}
-              alt="专辑题目"
-            />
-          )}
+          <MathQuestionStem content={r.QuestionTxt || r.Content} image={mathImage(r.QuestionImg)} emptyText="" />
           {(r.PlayVid || r.BusType === "视频") && (
             <MathQuestionVideo
               row={{ ...r, PolyvVID: r.PlayVid || r.BusValue }}

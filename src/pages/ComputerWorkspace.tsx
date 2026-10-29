@@ -569,8 +569,10 @@ function Exams({ launch }: { launch: (s: ExerciseLaunch) => void }) {
       const data = await request("/api/exam/wx/practice/examExercise", {
         examId: item.examId || item.id,
       });
+      const selectedSchool = source === "school" ? records(schools.data).find(item => identity(item) === school) : undefined;
+      const schoolPermission = selectedSchool?.permission ? `wx:school:${selectedSchool.permission}` : undefined;
       launch({
-        data,
+        data: schoolPermission ? { ...data, schoolPermission: data.schoolPermission || schoolPermission } : data,
         title: label(item),
         majorId: item.majorId || major,
         ...computerExamConfig(source),

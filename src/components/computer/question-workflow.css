@@ -1,0 +1,9 @@
+.computer-answer-hint { color: #80748e; font-size: 12px; margin: 0 0 12px; line-height: 1.6; }
+.computer-option.incorrect { border-color: #e4b4be; background: #fff5f6; }
+.computer-question-video-card { margin-top: 22px; border: 1px solid #e6e0ee; border-radius: 12px; overflow: hidden; background: #fcfaff; }
+.computer-question-video-card > h4 { display: flex; align-items: center; gap: 8px; padding: 14px 16px; margin: 0; color: #58416f; font-size: 14px; border-bottom: 1px solid #eee8f5; }
+.computer-question-video-card .learning-video video { display: block; width: 100%; max-height: 480px; aspect-ratio: 16 / 9; background: #18131f; }
+.computer-question-video-card .learning-video-controls { padding-inline: 14px; }
+.computer-question-video-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-height: 180px; padding: 24px 18px; color: #897a99; text-align: center; font-size: 12px; }
+.computer-question-video-state p { margin: 0; color: #65526f; font-size: 14px; }
+@media (max-width: 560px) { .computer-question-video-card { margin-top: 16px; } .computer-question-video-card > h4 { padding: 12px; } }

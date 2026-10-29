@@ -1,12 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { LoaderCircle, Play } from "lucide-react";
+import LearningVideo from "../LearningVideo";
 import { recordStudy } from "../../lib/store";
 import { loadMathPolyvSDK } from "./MathPolyv";
 import MathVideoFeedback from "./MathVideoFeedback";
 import type { MathRow } from "../../platforms/math";
+import { mathQuestionMedia } from "./math-question-presentation.mjs";
 
 export default function MathQuestionVideo({ row }: { row: MathRow }) {
-  const vid = String(row.PolyvVID || row.Vid || row.vid || row.BusValue || "");
+  const media = mathQuestionMedia(row);
+  if (media.kind === "video") return <div className="math-question-video"><LearningVideo src={media.url} controls preload="metadata" aria-label={row.Title || "数学题目视频解析"} /></div>;
+  return <MathPolyvQuestionVideo row={row} />;
+}
+function MathPolyvQuestionVideo({ row }: { row: MathRow }) {
+  const vid = String(row.PolyvVID || row.PlayVid || row.Vid || row.vid || row.BusValue || "");
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
@@ -72,13 +79,12 @@ export default function MathQuestionVideo({ row }: { row: MathRow }) {
   if (!vid) return null;
   if (!open)
     return (
-      <button
-        className="btn btn-secondary math-question-play"
-        onClick={() => setOpen(true)}
-      >
-        <Play size={16} />
-        {row.Title || "播放视频解析"}
-      </button>
+      <div className="math-question-video math-question-video-placeholder">
+        <button className="math-question-video-start" onClick={() => setOpen(true)}>
+          <Play size={28} />
+          <span>播放视频解析</span>
+        </button>
+      </div>
     );
   return (
     <div className="math-question-video">

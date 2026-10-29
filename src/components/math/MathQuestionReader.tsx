@@ -15,6 +15,8 @@ import {
   Star,
 } from "lucide-react";
 import RichContent from "../RichContent";
+import MathQuestionStem from "./MathQuestionStem";
+import { mathQuestionChoice, mathQuestionMedia, mathQuestionPrompt } from "./math-question-presentation.mjs";
 import LearningWorkbench, { LearningWorkbenchScope } from "../learning/LearningWorkbench";
 import MathNoteEditor from "./MathNoteEditor";
 import MathDiscussion from "./MathDiscussion";
@@ -192,6 +194,9 @@ function QuestionReader({
   const [answer, setAnswer] = useState(String(row.MyAnswer || ""));
   const [result, setResult] = useState<boolean>();
   const [saving, setSaving] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
+  const submissionPending = useRef(false);
+  const recordedPractice = useRef(false);
   const [notice, setNotice] = useState("");
   const q = mergeMathQuestion(row, remote.data?.question);
   const resolve = remote.data?.resolve || [];
@@ -200,7 +205,8 @@ function QuestionReader({
   const correctIds = options
     .filter((r) => Number(r.IsAnswer) === 1)
     .map((r) => String(r.ID));
-  const multiple = correctIds.length > 1;
+  const { multiple, immediate: immediateChoice } = mathQuestionChoice(options, q, { readOnly, lockAnalysis });
+  const prompt = mathQuestionPrompt(q, stem);
   const answerKey = String(q.TypeAnswer ?? q.Answer ?? "");
   const needsSelfAssessment =
     (!options.length && !answerKey) ||
@@ -264,18 +270,20 @@ function QuestionReader({
       setAnalysisLoading(false);
     }
   };
-  const submit = async (selfGrade?: boolean) => {
-    if (readOnly) return;
-    const graded = gradeMathAnswer(q, options, selected, answer);
+  const submit = async (selfGrade?: boolean, selection = selected) => {
+    if (readOnly || submissionPending.current) return;
+    const graded = gradeMathAnswer(q, options, selection, answer);
     const mine = graded.answer;
     const correct = selfGrade ?? graded.correct ?? result;
-    if (!mine && !(selfAssessmentOnly && correct !== undefined)) return;
+    if (!mine && !(correct !== undefined && (selfAssessmentOnly || selfGrade !== undefined))) return;
     if (onAnswered && correct === undefined) {
       setNotice("本题暂无自动评分信息，请查看解析后选择自评结果，再保存答案。");
       return;
     }
     const canGrade = correct !== undefined;
+    submissionPending.current = true;
     setSaving(true);
+    setSaveFailed(false);
     setNotice("");
     try {
       if (onAnswered)
@@ -290,7 +298,7 @@ function QuestionReader({
               : "这道题还需要巩固，可以打开解析复盘。"
             : "已记录作答，请对照解析核对答案。",
       );
-      if (!lockAnalysis)
+      if (!lockAnalysis && !recordedPractice.current) {
         recordStudy({
           platform: "math",
           type: "practice",
@@ -299,9 +307,13 @@ function QuestionReader({
           correct: canGrade ? Number(correct) : undefined,
           path: "/study/practice",
         });
+        recordedPractice.current = true;
+      }
     } catch (e) {
+      setSaveFailed(true);
       setNotice(`答案保存失败：${msg(e)}`);
     } finally {
+      submissionPending.current = false;
       setSaving(false);
     }
   };
@@ -394,41 +406,27 @@ function QuestionReader({
       <div className={`math-reader-panes ${compareAnalysis && tab === "解析" ? "is-split" : ""}`}>
       {!remote.loading && !remote.error && (tab === "题目" || (compareAnalysis && tab === "解析")) && (
         <div className="math-question-body math-question-prompt">
-          {stem.length ? (
-            stem.map((r, i) => <RichContent key={i} content={r.Content} />)
-          ) : (
-            <RichContent
-              content={
-                q.QuestionTxt || q.QuestionContent || q.Content || q.Title
-              }
-            />
-          )}
-          <QuestionImage value={q.QuestionImg} />
-          {!stem.length &&
-            !q.QuestionTxt &&
-            !q.QuestionContent &&
-            !q.Content &&
-            !q.QuestionImg && (
-              <p className="math-muted">当前题目未返回可显示的题干。</p>
-            )}
+          <MathQuestionStem {...prompt} />
           {options.length > 0 && (
             <div className="math-options">
               {options.map((o, i) => (
                 <button
                   key={o.ID || i}
                   className={selected.includes(String(o.ID)) ? "selected" : ""}
-                  disabled={readOnly}
+                  disabled={readOnly || saving}
                   aria-pressed={selected.includes(String(o.ID))}
                   onClick={() => {
-                    setSelected((v) =>
+                    const selection =
                       multiple
-                        ? v.includes(String(o.ID))
-                          ? v.filter((id) => id !== String(o.ID))
-                          : [...v, String(o.ID)]
-                        : [String(o.ID)],
-                    );
+                        ? selected.includes(String(o.ID))
+                          ? selected.filter((id) => id !== String(o.ID))
+                          : [...selected, String(o.ID)]
+                        : [String(o.ID)];
+                    if (immediateChoice && result !== undefined && selected[0] === selection[0] && !saveFailed) return;
+                    setSelected(selection);
                     setResult(undefined);
                     setNotice("");
+                    if (immediateChoice) void submit(undefined, selection);
                   }}
                 >
                   <span>{String.fromCharCode(65 + i)}</span>
@@ -443,12 +441,19 @@ function QuestionReader({
               我的答案
               <textarea
                 className="input"
-                disabled={readOnly}
+                disabled={readOnly || saving}
                 placeholder="写下你的答案或解题思路…"
                 value={answer}
                 onChange={(e) => {
                   setAnswer(e.target.value);
+                  setResult(undefined);
                   setNotice("");
+                }}
+                onKeyDown={(event) => {
+                  if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && !needsSelfAssessment) {
+                    event.preventDefault();
+                    void submit();
+                  }
                 }}
               />
             </label>
@@ -458,18 +463,20 @@ function QuestionReader({
               <span>本题需对照解析自评</span>
               <button
                 className={result === true ? "active" : ""}
+                disabled={saving}
                 onClick={() => {
-                  setResult(true);
-                  setNotice("");
+                  if (lockAnalysis) { setResult(true); setNotice(""); }
+                  else void submit(true);
                 }}
               >
                 回答正确
               </button>
               <button
                 className={result === false ? "active" : ""}
+                disabled={saving}
                 onClick={() => {
-                  setResult(false);
-                  setNotice("");
+                  if (lockAnalysis) { setResult(false); setNotice(""); }
+                  else void submit(false);
                 }}
               >
                 需要巩固
@@ -477,7 +484,7 @@ function QuestionReader({
             </div>
           )}
           <div className="math-answer-actions">
-            {(!selfAssessmentOnly || options.length > 0) && (
+            {!readOnly && (!selfAssessmentOnly || options.length > 0) && (!immediateChoice || saveFailed) && (!needsSelfAssessment || lockAnalysis) && (
               <button
                 className="btn btn-primary"
                 disabled={
@@ -485,7 +492,7 @@ function QuestionReader({
                 }
                 onClick={() => submit()}
               >
-                {saving ? "保存中…" : practice ? "保存本题答案" : "核对答案"}
+                {saving ? "保存中…" : saveFailed ? "重试保存答案" : practice ? "保存本题答案" : "核对答案"}
               </button>
             )}
             <button
@@ -496,6 +503,7 @@ function QuestionReader({
               {lockAnalysis ? "提交测试后解锁解析" : "查看解析"}
             </button>
           </div>
+          {immediateChoice && <p className="math-answer-hint">{saving ? "正在保存答案…" : onAnswered ? "选择选项后直接核对并保存答案。" : "选择选项后直接核对答案。"}</p>}
           {notice && (
             <div
               className={`math-notice ${result === true ? "success" : ""}`}
@@ -641,11 +649,11 @@ function QuestionReader({
         ))}
       {tab === "讨论" && <MathDiscussion qid={qid} stuid={stuid} />}
       <div className="math-question-footer">
-        <button className="btn btn-secondary" disabled={!prev} onClick={prev}>
+        <button className="btn btn-secondary" disabled={!prev || saving} onClick={prev}>
           <ArrowLeft size={15} />
           上一题
         </button>
-        <button className="btn btn-primary" disabled={!next} onClick={next}>
+        <button className="btn btn-primary" disabled={!next || saving} onClick={next}>
           下一题
           <ArrowRight size={15} />
         </button>
@@ -708,6 +716,11 @@ function AnalysisBlock({
     row.Context ||
     row.Contexts ||
     row.QuestionTxt;
+  const media = mathQuestionMedia(row);
+  if (media.kind === "video" || media.kind === "polyv") return <section className="math-analysis-block math-video-analysis">
+    {content && content !== media.url && <RichContent content={content} />}
+    <MediaFile row={row} />
+  </section>;
   return (
     <section className="math-analysis-block">
       <h4>{row.BusType || row.Type || row.Name || row.Title || "解题解析"}</h4>
@@ -733,32 +746,14 @@ function AnalysisBlock({
   );
 }
 function MediaFile({ row }: { row: MathRow }) {
-  if (
-    (row.BusType === "视频解析" || row.PolyvVID || row.Vid) &&
-    !safeUrl(row.BusValue)
-  )
-    return <MathQuestionVideo row={row} />;
-  const url = safeUrl(
-    row.FileUrl ||
-      row.FilePath ||
-      row.Url ||
-      row.VideoUrl ||
-      row.VLink ||
-      row.BusUrl ||
-      row.ContentUrl,
-  );
+  const media = mathQuestionMedia(row);
+  const { url } = media;
+  if (media.kind === "video" || media.kind === "polyv") return <section className="math-explanation-video" aria-label="视频解析">
+    <h4>{row.Title || row.Name || "视频解析"}</h4>
+    <MathQuestionVideo row={row} />
+  </section>;
   if (!url) return null;
-  if (/\.(mp4|m3u8|webm)(\?|$)/i.test(url) || row.Type === "视频")
-    return (
-      <div className="math-media">
-        <video controls preload="metadata" src={url} />
-        <a href={url} target="_blank" rel="noreferrer">
-          打开视频
-          <ArrowRight size={14} />
-        </a>
-      </div>
-    );
-  if (/\.(png|jpg|jpeg|gif|webp)(\?|$)/i.test(url))
+  if (media.kind === "image")
     return <QuestionImage value={url} />;
   return (
     <a className="math-file-link" href={url} target="_blank" rel="noreferrer">

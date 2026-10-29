@@ -16,6 +16,8 @@ import MathTeacherRecommendations from "./MathTeacherRecommendations";
 import MathExamReport, { MathReportDownloads } from "./MathExamReport";
 import { uploadMathAttachment } from "./MathQuestions";
 import RichContent from "../RichContent";
+import MathQuestionStem from "./MathQuestionStem";
+import { mathQuestionPrompt } from "./math-question-presentation.mjs";
 import { mathCommand, mathData, mathGet, mathPost } from "../../platforms/math";
 import { recordActivity } from "../../lib/store";
 import {
@@ -736,27 +738,7 @@ function PaperRunner({
               </span>
             )}
           </div>
-          {question.QuestionStem?.length ? (
-            question.QuestionStem.map((q: R, i: number) => (
-              <RichContent key={i} content={q.Content} />
-            ))
-          ) : (
-            <>
-              <RichContent
-                content={questionText(question)}
-                className="math-exam-question"
-              />
-              {safeUrl(question.QuestionImg) && (
-                <img
-                  className="math-exam-answer-image"
-                  src={safeUrl(
-                    String(question.QuestionImg).replaceAll(".png_yjs", ".png"),
-                  )}
-                  alt="题目图片"
-                />
-              )}
-            </>
-          )}
+          <MathQuestionStem {...mathQuestionPrompt({ ...question, QuestionTxt: questionText(question), QuestionImg: String(question.QuestionImg || "").replaceAll(".png_yjs", ".png") }, question.QuestionStem || [])} />
           {options.length ? (
             <div className="math-exam-options">
               {options.map((option, i) => {

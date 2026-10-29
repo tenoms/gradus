@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import RichContent from "../RichContent";
 import MathQuestionVideo from "./MathQuestionVideo";
+import MathQuestionStem from "./MathQuestionStem";
 import { mathApi, mathData, mathRows } from "../../platforms/math";
 import type { MathPaperContext, ExamRow as Row } from "./math-exams";
 import { loadMathReport } from "./math-report";
@@ -247,14 +248,7 @@ function QuestionPreview({ row, onBack }: { row: Row; onBack: () => void }) {
         </p>
       )}
       {error && <p className="mer-error">{error}</p>}
-      <RichContent
-        content={
-          data?.question?.QuestionTxt || data?.question?.Content || row.Content
-        }
-      />
-      {data?.question?.QuestionImg && (
-        <img src={data.question.QuestionImg} alt="推荐题目" />
-      )}
+      <MathQuestionStem content={data?.question?.QuestionTxt || data?.question?.Content || row.Content} image={data?.question?.QuestionImg} emptyText="" />
       {data?.analysis?.map((a: Row, i: number) => (
         <section key={a.ID || i}>
           <h4>{a.Title || a.BusType || "解析"}</h4>
@@ -292,8 +286,7 @@ function RecommendedAlbum({ row, onBack }: { row: Row; onBack: () => void }) {
     return items.map((item, index) => (
       <article key={`${item.ID}-${index}`} className="mer-album-block">
         <h4>{item.Title || item.Name || ""}</h4>
-        <RichContent content={item.Content || item.QuestionTxt} />
-        {item.QuestionImg && <img src={item.QuestionImg} alt="学习资料" />}
+        <MathQuestionStem content={item.Content || item.QuestionTxt} image={item.QuestionImg} emptyText="" />
         {(item.PlayVid || item.BusType === "视频") && (
           <MathQuestionVideo
             row={{

@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import RichContent from "../RichContent";
 import MathQuestionVideo from "./MathQuestionVideo";
+import MathQuestionStem from "./MathQuestionStem";
+import { mathQuestionChoice, mathQuestionPrompt } from "./math-question-presentation.mjs";
 import MathQuestionTools, { MathFeedbackButton } from "./MathQuestionTools";
 import {
   mathApi,
@@ -658,9 +660,11 @@ function ModuleQuestion({
   const resolve = remote.data ? mathRows(remote.data[1]) : [];
   const options = resolve.filter((r) => r.Type === "选项");
   const stems = resolve.filter((r) => r.Type === "题干");
-  const multi = options.filter((o) => Number(o.IsAnswer) === 1).length > 1;
-  const submit = async (self?: boolean) => {
-    const result = gradeMathAnswer(q, options, selection, text);
+  const choice = mathQuestionChoice(options, q, { readOnly: !!row.AnswerID });
+  const multi = choice.multiple;
+  const submit = async (self?: boolean, nextSelection = selection) => {
+    if (busy || row.AnswerID) return;
+    const result = gradeMathAnswer(q, options, nextSelection, text);
     const correct = self ?? result.correct;
     if (correct === undefined) {
       setError("请查看解析后，用“已掌握”或“需要巩固”记录本题。");
@@ -704,35 +708,22 @@ function ModuleQuestion({
             )}
           </div>
           <div className="math-question-body">
-            {stems.length ? (
-              stems.map((r, i) => <RichContent key={i} content={r.Content} />)
-            ) : (
-              <RichContent content={q.QuestionTxt || q.QuestionContent} />
-            )}
-            <img
-              className="math-question-image"
-              src={q.QuestionImg || undefined}
-              alt={q.QuestionImg ? "专项训练原题" : ""}
-              hidden={!q.QuestionImg}
-            />
+            <MathQuestionStem {...mathQuestionPrompt(q, stems)} />
             {options.length ? (
               <div className="math-options">
                 {options.map((o, i) => (
                   <button
                     key={o.ID || i}
-                    disabled={!!row.AnswerID}
+                    disabled={busy || !!row.AnswerID}
                     className={
                       selection.includes(String(o.ID)) ? "selected" : ""
                     }
-                    onClick={() =>
-                      setSelection((v) =>
-                        multi
-                          ? v.includes(String(o.ID))
-                            ? v.filter((id) => id !== String(o.ID))
-                            : [...v, String(o.ID)]
-                          : [String(o.ID)],
-                      )
-                    }
+                    onClick={() => {
+                      const value = String(o.ID);
+                      const nextSelection = multi ? selection.includes(value) ? selection.filter(id => id !== value) : [...selection, value] : [value];
+                      setSelection(nextSelection);
+                      if (choice.immediate) void submit(undefined, nextSelection);
+                    }}
                   >
                     <span>{String.fromCharCode(65 + i)}</span>
                     <RichContent content={o.Content} />
@@ -751,7 +742,7 @@ function ModuleQuestion({
               </label>
             )}
             <div className="math-answer-actions">
-              {options.length > 0 && (
+              {options.length > 0 && (!choice.immediate || error) && (
                 <button
                   className="btn btn-primary"
                   disabled={busy || !selection.length || !!row.AnswerID}

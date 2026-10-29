@@ -1413,3 +1413,17 @@
 .math-question-tabs > button {
   flex-shrink: 0;
 }
+
+.math-original-question { margin: 14px 0 20px; border: 1px solid var(--border); border-radius: 8px; background: #fcfbfe; }
+.math-original-question summary { padding: 10px 14px; cursor: pointer; color: var(--accent); font-size: 12px; }
+.math-original-question > .math-question-image { margin: 0; padding: 0 14px 14px; }
+.math-answer-hint { color: var(--muted); font-size: 12px; margin: 8px 0; }
+.math-explanation-video { margin: 18px 0; padding: 18px; border: 1px solid var(--border); border-radius: 12px; background: #faf9fd; }
+.math-explanation-video > h4 { margin: 0 0 14px; font-size: 14px; color: var(--ink); }
+.math-explanation-video .learning-video video { display: block; width: 100%; aspect-ratio: 16/9; max-height: 560px; background: #242238; border-radius: 8px; }
+.math-explanation-video .math-question-video { margin: 0; }
+.math-question-video-placeholder { width: 100%; aspect-ratio: 16/9; display: grid; place-items: center; background: #242238; border-radius: 8px; }
+.math-question-video-start { display: grid; justify-items: center; gap: 14px; padding: 24px; color: #fff; border: 0; background: transparent; }
+.math-question-video-start svg { box-sizing: content-box; padding: 18px; border: 1px solid #ffffff66; border-radius: 50%; background: #ffffff14; }
+.math-question-video-start:hover svg { background: #ffffff26; }
+@media(max-width:560px) { .math-explanation-video { padding: 12px; } }
