@@ -10,7 +10,7 @@ export const testLearner = (username, yybRef, extra = {}) => ({ username, passwo
 /** Test clients obtain both cookie and principal from the public authentication response. */
 export async function startHttpApp(overrides = {}) {
   const database = overrides.database || await createTestDatabase();
-  const app = await createApp({ configurationDefaults: platformConfigFixture(), ...overrides, database });
+  const app = await createApp({ configurationDefaults: platformConfigFixture(), configurationEnv: {}, ...overrides, database });
   const server = app.listen(0, "127.0.0.1");
   await once(server, "listening");
   const base = `http://127.0.0.1:${server.address().port}`;

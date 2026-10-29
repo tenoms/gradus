@@ -124,3 +124,53 @@ test("cleared credentials stay cleared while disabled sources preserve the Web l
     assert.equal(calls.length, afterDisable);
   } finally { await app.close(); }
 });
+
+test("environment-controlled platform and default YYB fields are visible, immutable and never copied into management rows", async () => {
+  const { createYybServices } = await import('../../server/modules/accounts/yyb-services.mjs');
+  const configurationDefaults = platformConfigFixture({ yyb: { baseUrl: 'https://managed-yyb.example.test', apiKey: 'managed-platform-key' } });
+  const configurationEnv = { YYB_BASE_URL: 'https://Environment-YYB.example.test', YYB_API_KEY: 'environment-only-key', MATH_ENABLED: 'false', MATH_STATION_ID: '27' };
+  const app = await startHttpApp({ configurationDefaults, configurationEnv, yybRequest: async () => { throw new Error('configuration edits must not contact YYB'); } });
+  try {
+    const admin = await app.setup();
+    const config = await (await app.request('/api/admin/configuration', { auth: admin })).json();
+    assert.equal(config.config.yyb.baseUrl, configurationEnv.YYB_BASE_URL);
+    assert.equal(config.config.math.enabled, false);
+    assert.equal(config.config.math.stationId, 27);
+    assert.deepEqual(config.environmentFields, ['yyb.baseUrl', 'yyb.apiKey', 'math.enabled', 'math.stationId']);
+    assert.equal(JSON.stringify(config).includes('environment-only-key'), false);
+    const update = body => app.request('/api/admin/configuration', { auth: admin, method: 'PUT', body });
+    assert.equal((await update({ revision: 0, config: { math: { enabled: false, stationId: 27 } } })).status, 200);
+    assert.equal((await update({ revision: 0, config: { math: { stationId: 28 } } })).status, 400);
+    assert.equal((await update({ revision: 0, config: {}, clearSecrets: ['yyb.apiKey'] })).status, 400);
+    const services = () => app.request('/api/admin/yyb-services', { auth: admin }).then(response => response.json());
+    let source = (await services()).services[0];
+    assert.equal(source.baseUrl, configurationEnv.YYB_BASE_URL);
+    assert.deepEqual(source.environmentFields, ['baseUrl', 'apiKey']);
+    const edit = body => app.request('/api/admin/yyb-services/default', { auth: admin, method: 'PATCH', body });
+    assert.equal((await edit({ revision: 0, name: 'Renamed', baseUrl: configurationEnv.YYB_BASE_URL, apiKey: configurationEnv.YYB_API_KEY })).status, 200);
+    const database = app.app.locals.database;
+    const row = (await database.query(`SELECT base_url,api_key FROM ${database.web('yyb_services')} WHERE id='default'`)).rows[0];
+    assert.deepEqual(row, { base_url: null, api_key: null });
+    assert.equal((await edit({ revision: 1, baseUrl: 'https://ignored.example.test' })).status, 400);
+    assert.equal((await edit({ revision: 1, apiKey: 'ignored-key' })).status, 400);
+    assert.equal((await edit({ revision: 1, clearApiKey: true })).status, 400);
+    // Existing explicit service columns remain managed fallback values beneath the environment.
+    await database.query(`UPDATE ${database.web('yyb_services')} SET base_url=$1,api_key=$2 WHERE id='default'`, ['https://saved-service.example.test', 'saved-service-key']);
+    assert.equal((await services()).services[0].baseUrl, configurationEnv.YYB_BASE_URL);
+    assert.equal((await edit({ revision: 1, name: 'Managed metadata' })).status, 200);
+    assert.deepEqual((await database.query(`SELECT base_url,api_key FROM ${database.web('yyb_services')} WHERE id='default'`)).rows[0], { base_url: 'https://saved-service.example.test', api_key: 'saved-service-key' });
+    const independent = await app.request('/api/admin/yyb-services', { auth: admin, body: { name: 'Independent', baseUrl: 'https://extra.example.test', apiKey: 'extra-key' } });
+    assert.equal(independent.status, 201);
+    const extra = (await independent.json()).services.find(item => item.id !== 'default');
+    assert.deepEqual(extra.environmentFields, []);
+    assert.equal((await app.app.locals.accountPool.services.all()).find(item => item.id === extra.id).apiKey, 'extra-key');
+    const restarted = await createYybServices({ database, service: { getConfig: () => configurationDefaults } });
+    source = (await restarted.all()).find(item => item.id === 'default');
+    assert.equal(source.baseUrl, 'https://saved-service.example.test');
+    assert.equal(source.apiKey, 'saved-service-key');
+    assert.deepEqual(source.environmentFields, []);
+    const managed = (await database.query(`SELECT config FROM ${database.web('platform_configuration')} WHERE id=1`)).rows[0].config;
+    assert.equal(managed.yyb.baseUrl, configurationDefaults.yyb.baseUrl);
+    assert.equal(managed.yyb.apiKey, 'managed-platform-key');
+  } finally { await app.close(); }
+});

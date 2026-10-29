@@ -30,12 +30,12 @@ export async function createApp(overrides = {}) {
   const runtimeConfig = overrides.runtimeConfig || readRuntimeConfig();
   const database = overrides.database || await createDatabase({ connectionString: runtimeConfig.database.url || undefined, schemaPrefix: runtimeConfig.database.schemaPrefix, max: runtimeConfig.database.maxConnections, connectionTimeoutMillis: runtimeConfig.database.connectionTimeoutMs });
   const identities = overrides.identityStore || await createIdentityStore(database);
-  const configuration = await (overrides.configuration || createPlatformConfigStore({ database, ...(overrides.configurationDefaults ? { defaults: overrides.configurationDefaults } : {}) }));
+  const configuration = await (overrides.configuration || createPlatformConfigStore({ database, env: overrides.configurationEnv ?? process.env, ...(overrides.configurationDefaults ? { defaults: overrides.configurationDefaults } : {}) }));
   const service = { ...createUpstreamClient(() => configuration.snapshot(), { requestTimeoutMs: runtimeConfig.upstream.requestTimeoutMs, ...(overrides.requestJson ? { requestJson: overrides.requestJson } : {}) }), ...overrides };
   const tokenLifecycle = createTokenLifecycle({ service });
   const connections = new Map();
   const operations = createRuntimeInsights(runtimeConfig.diagnostics);
-  const accountPool = await createAccountPool({ database, service, connections, identities, tokenLifecycle, timings: runtimeConfig.accounts });
+  const accountPool = await createAccountPool({ database, service, connections, identities, tokenLifecycle, environmentFields: configuration.publicConfig().environmentFields, timings: runtimeConfig.accounts });
   const resourceStore = await createResourceStore(database, runtimeConfig.resources);
   const resourceSync = createResourceSync({ store: resourceStore, service, connections, configuration, accountPool });
   const personalSync = await createPersonalSync({ database, service, identities, tokenLifecycle });

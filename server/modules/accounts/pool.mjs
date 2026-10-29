@@ -13,9 +13,9 @@ const routeKey=(source,ref)=>source.id==='default'?ref:`${source.id}::${ref}`;
 const publicAccount=account=>{const {_routes,aliases,...safe}=account;return safe;};
 
 /** Scheduling owns a WeChat identity; YYB services are interchangeable access routes. */
-export async function createAccountPool({database,service,connections,identities,tokenLifecycle,timings=readRuntimeConfig().accounts}){
+export async function createAccountPool({database,service,connections,identities,tokenLifecycle,environmentFields=[],timings=readRuntimeConfig().accounts}){
   const tokens=tokenLifecycle||createTokenLifecycle({service});
-  const services=await createYybServices({database,service});
+  const services=await createYybServices({database,service,environmentFields});
   // Learning bursts share a short-lived directory; management reads always refresh it.
   let directorySnapshot;
   const settings=database.web('account_pool'),assignments=database.web('account_assignments');

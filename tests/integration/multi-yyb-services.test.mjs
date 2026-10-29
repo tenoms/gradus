@@ -96,3 +96,32 @@ test('unknown WeChat identities remain service-scoped when raw refs collide',asy
     assert.ok(pool.accounts.every(account=>account.openid===''));
   }finally{await app.close();}
 });
+
+test('default YYB environment precedence applies independently to endpoint and API key', async () => {
+  const { createYybServices } = await import('../../server/modules/accounts/yyb-services.mjs');
+  const { createTestDatabase } = await import('../support/database.mjs');
+  const database = await createTestDatabase();
+  const config = platformConfigFixture({ yyb: { baseUrl: 'https://environment.example.test', apiKey: 'environment-key' } });
+  const service = { getConfig: () => config };
+  try {
+    const initial = await createYybServices({ database, service });
+    await initial.save({ revision: 0, name: 'Managed', baseUrl: 'https://managed.example.test', apiKey: 'managed-key' }, 'default');
+    const endpointOverride = await createYybServices({ database, service, environmentFields: ['yyb.baseUrl'] });
+    let row = (await endpointOverride.all())[0];
+    assert.equal(row.baseUrl, config.yyb.baseUrl);
+    assert.equal(row.apiKey, 'managed-key');
+    assert.deepEqual(row.environmentFields, ['baseUrl']);
+    await endpointOverride.save({ revision: 1, apiKey: 'editable-key' }, 'default');
+    const keyOverride = await createYybServices({ database, service, environmentFields: ['yyb.apiKey'] });
+    row = (await keyOverride.all())[0];
+    assert.equal(row.baseUrl, 'https://managed.example.test');
+    assert.equal(row.apiKey, 'environment-key');
+    await keyOverride.save({ revision: 2, baseUrl: 'https://changed-managed.example.test' }, 'default');
+    assert.equal((await keyOverride.all())[0].apiKey, 'environment-key');
+    const raw = (await database.query(`SELECT base_url,api_key FROM ${database.web('yyb_services')} WHERE id='default'`)).rows[0];
+    assert.deepEqual(raw, { base_url: 'https://changed-managed.example.test', api_key: '' });
+    assert.equal((await initial.all())[0].apiKey, '', 'removing the environment override cannot restore a key from the previous endpoint');
+    config.yyb.apiKey = '';
+    assert.equal((await keyOverride.all())[0].apiKey, '', 'an explicit empty environment key suppresses the managed key');
+  } finally { await database.close(); }
+});

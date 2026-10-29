@@ -47,8 +47,8 @@ test('independent configuration clients enforce PostgreSQL compare-and-swap and 
   const db = await createTestDatabase();
   try {
     const defaults = platformConfigFixture({ yyb: { apiKey: 'private-key' } });
-    const first = await createPlatformConfigStore({ database: db, defaults });
-    const second = await createPlatformConfigStore({ database: db, defaults });
+    const first = await createPlatformConfigStore({ database: db, defaults, env: {} });
+    const second = await createPlatformConfigStore({ database: db, defaults, env: {} });
     const outcomes = await Promise.allSettled([
       first.update({ revision: 0, config: { math: { stationId: 8 } } }),
       second.update({ revision: 0, config: { math: { stationId: 9 } } }),

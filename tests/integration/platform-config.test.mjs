@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createCipheriv, createDecipheriv, createHash } from "node:crypto";
-import { createPlatformConfigStore, initialPlatformConfig } from "../../server/integrations/platform-config.mjs";
+import { createPlatformConfigStore, initialPlatformConfig, readEnvironmentPlatformConfig } from "../../server/integrations/platform-config.mjs";
 import { ApiError } from "../../server/infrastructure/api-error.mjs";
 import { createUpstreamClient } from "../../server/integrations/upstream.mjs";
 import { createTestDatabase } from "../support/database.mjs";
@@ -10,7 +10,7 @@ import { platformConfigFixture } from "../support/platform-config.mjs";
 const defaults = () => platformConfigFixture({ yyb: { baseUrl: "https://yyb.test", apiKey: "yyb-test-secret" } });
 const memory = async () => {
   const database = await createTestDatabase();
-  const store = await createPlatformConfigStore({ database, defaults: defaults() });
+  const store = await createPlatformConfigStore({ database, env: {}, defaults: defaults() });
   return { ...store, database, close: () => database.close() };
 };
 
@@ -38,14 +38,14 @@ test("public configuration hides every credential while empty fields preserve an
 
 test("configuration updates persist and reject stale admin revisions across PostgreSQL clients", async () => {
   const database = await createTestDatabase();
-  let store = await createPlatformConfigStore({ database, defaults: defaults() });
+  let store = await createPlatformConfigStore({ database, env: {}, defaults: defaults() });
   try {
     const updated = await store.update({ revision: 0, config: { yyb: { baseUrl: "https://changed.test/" } } });
     assert.deepEqual(updated.affectedPlatforms, ["math", "computer"]);
     assert.equal(updated.config.yyb.baseUrl, "https://changed.test");
     await assert.rejects(() => store.update({ revision: 0, config: { math: { enabled: false } } }), { status: 409 });
     await store.close();
-    store = await createPlatformConfigStore({ database, defaults: { ...defaults(), yyb: { baseUrl: "https://ignored.test", apiKey: "ignored" } } });
+    store = await createPlatformConfigStore({ database, env: {}, defaults: { ...defaults(), yyb: { baseUrl: "https://ignored.test", apiKey: "ignored" } } });
     assert.equal(store.publicConfig().revision, 1);
     assert.equal(store.snapshot().yyb.baseUrl, "https://changed.test");
     assert.equal(store.snapshot().yyb.apiKey, "yyb-test-secret");
@@ -54,37 +54,87 @@ test("configuration updates persist and reject stale admin revisions across Post
   } finally { await database.close(); }
 });
 
-test("platform environment variables cannot seed or override managed configuration or restore cleared credentials", async () => {
+test("empty installations have no provider presets and can persist disabled empty platforms", async () => {
   const database = await createTestDatabase();
-  const environment = {
-    YYB_BASE_URL: "https://environment-source.test", YYB_API_KEY: "environment-key",
-    MATH_ENABLED: "false", MATH_BASE_URL: "https://math.environment.test", MATH_STATION_ID: "8", MATH_OCR_PASSWORD: "environment-password",
-    COMPUTER_BASE_URL: "https://computer.environment.test", COMPUTER_OAUTH_CLIENT_SECRET: "environment-secret", COMPUTER_VIDEO_KEY: "1234567890abcdef",
-  };
-  const previous = Object.fromEntries(Object.keys(environment).map(name => [name, process.env[name]]));
   try {
-    Object.assign(process.env, environment);
-    const first = await createPlatformConfigStore({ database });
-    assert.deepEqual(first.snapshot(), initialPlatformConfig());
-    await first.update({ revision: 0, config: {
-      yyb: { baseUrl: "https://managed-source.test", apiKey: "managed-key" },
-      math: { stationId: 7, ocrPassword: "managed-password" },
-      computer: { baseUrl: "https://computer.managed.test", oauthClientSecret: "managed-secret" },
-    } });
-    await first.update({ revision: 1, config: {}, clearSecrets: ["yyb.apiKey", "math.ocrPassword"] });
-    const managed = first.snapshot();
-    const restarted = await createPlatformConfigStore({ database });
-    assert.deepEqual(restarted.snapshot(), managed);
-    assert.equal(restarted.snapshot().yyb.apiKey, "");
-    assert.equal(restarted.snapshot().math.ocrPassword, "");
-    assert.equal(restarted.publicConfig().revision, 2);
-  } finally {
-    for (const [name, value] of Object.entries(previous)) {
-      if (value === undefined) delete process.env[name];
-      else process.env[name] = value;
+    const store = await createPlatformConfigStore({ database, env: {} });
+    assert.deepEqual(store.snapshot(), initialPlatformConfig());
+    assert.equal(store.snapshot().math.enabled, false);
+    assert.equal(store.snapshot().computer.enabled, false);
+    for (const name of ["math", "computer"]) {
+      assert.equal(store.snapshot()[name].baseUrl, "");
+      assert.equal(store.snapshot()[name].appId, "");
     }
-    await database.close();
-  }
+    const unchanged = await store.update({ revision: 0, config: { math: { baseUrl: "", appId: "" }, computer: { baseUrl: "", appId: "" } } });
+    assert.equal(unchanged.revision, 0);
+    await assert.rejects(store.update({ revision: 0, config: { math: { enabled: true } } }), { status: 400 });
+  } finally { await database.close(); }
+});
+
+test("explicit environment fields override managed values without being written to the database", async () => {
+  const database = await createTestDatabase();
+  const env = { MATH_ENABLED: "1", MATH_BASE_URL: "https://math.environment.example.test/", MATH_STATION_ID: "8", MATH_OCR_PASSWORD: "environment-password", YYB_API_KEY: "environment-key" };
+  try {
+    const store = await createPlatformConfigStore({ database, defaults: defaults(), env });
+    assert.equal(store.snapshot().math.enabled, true, "an enabled override can use the managed endpoint and application identity");
+    assert.equal(store.snapshot().math.baseUrl, "https://math.environment.example.test");
+    assert.equal(store.snapshot().math.appId, defaults().math.appId);
+    assert.equal(store.snapshot().math.stationId, 8);
+    assert.equal(store.snapshot().yyb.apiKey, "environment-key");
+    const first = store.publicConfig();
+    assert.deepEqual(first.environmentFields, ["yyb.apiKey", "math.enabled", "math.baseUrl", "math.stationId", "math.ocrPassword"]);
+    assert.equal(first.secretStatus["math.ocrPassword"], true);
+    assert.equal(JSON.stringify(first).includes("environment-password"), false);
+    const echoed = await store.update({ revision: 0, config: { math: { enabled: true, baseUrl: "https://math.environment.example.test/", stationId: 8, ocrPassword: "environment-password" }, yyb: { apiKey: "environment-key" } } });
+    assert.equal(echoed.revision, 0, "echoing effective environment values does not persist them");
+    for (const config of [{ math: { stationId: 9 } }, { math: { ocrPassword: "different" } }, { yyb: { apiKey: "different" } }])
+      await assert.rejects(store.update({ revision: 0, config }), { status: 400 });
+    await assert.rejects(store.update({ revision: 0, config: {}, clearSecrets: ["math.ocrPassword"] }), { status: 400 });
+    const saved = await store.update({ revision: 0, config: { math: { loginId: 7 }, computer: { baseUrl: "https://computer.managed.example.test" } } });
+    assert.equal(saved.revision, 1);
+    const managed = (await database.query(`SELECT config FROM ${database.web('platform_configuration')} WHERE id=1`)).rows[0].config;
+    assert.equal(managed.math.baseUrl, defaults().math.baseUrl);
+    assert.equal(managed.math.stationId, 1);
+    assert.equal(managed.math.ocrPassword, "");
+    assert.equal(managed.yyb.apiKey, "yyb-test-secret");
+    assert.equal(managed.math.loginId, 7);
+    const restarted = await createPlatformConfigStore({ database, env: {} });
+    assert.equal(restarted.snapshot().math.stationId, 1);
+    assert.equal(restarted.snapshot().math.baseUrl, defaults().math.baseUrl);
+    assert.equal(restarted.snapshot().yyb.apiKey, "yyb-test-secret");
+    assert.equal(restarted.snapshot().math.loginId, 7);
+    const changedEnvironment = await createPlatformConfigStore({ database, env: { MATH_STATION_ID: "27" } });
+    assert.equal(changedEnvironment.snapshot().math.stationId, 27);
+    await assert.rejects(changedEnvironment.update({ revision: 0, config: {} }), { status: 409 });
+    const enabledOnly = await createPlatformConfigStore({ database, env: { MATH_ENABLED: "1", YYB_API_KEY: "" } });
+    assert.equal(enabledOnly.snapshot().math.baseUrl, defaults().math.baseUrl);
+    assert.equal(enabledOnly.snapshot().yyb.apiKey, "", "an explicit empty environment value suppresses the managed secret");
+    assert.equal(enabledOnly.publicConfig().secretStatus["yyb.apiKey"], false);
+  } finally { await database.close(); }
+});
+
+test("environment-only provider settings leave the stored initial management configuration empty", async () => {
+  const database = await createTestDatabase();
+  const env = { YYB_BASE_URL: "https://yyb.environment.example.test", MATH_ENABLED: "true", MATH_BASE_URL: "https://math.environment.example.test", MATH_APP_ID: "wxaaaaaaaaaaaaaaaa", MATH_OCR_PASSWORD: "private-environment-value" };
+  try {
+    const store = await createPlatformConfigStore({ database, env });
+    assert.equal(store.snapshot().math.enabled, true);
+    const managed = (await database.query(`SELECT config FROM ${database.web('platform_configuration')} WHERE id=1`)).rows[0].config;
+    assert.deepEqual(managed, initialPlatformConfig());
+    assert.equal(JSON.stringify(managed).includes("private-environment-value"), false);
+    const restarted = await createPlatformConfigStore({ database, env: {} });
+    assert.deepEqual(restarted.snapshot(), initialPlatformConfig());
+  } finally { await database.close(); }
+});
+
+test("environment presence includes explicit empty values and rejects malformed field values", () => {
+  const parsed = readEnvironmentPlatformConfig({ YYB_BASE_URL: "", YYB_API_KEY: "", MATH_ENABLED: "0", MATH_APP_ID: "", MATH_STATION_ID: "19", COMPUTER_ENABLED: "false", COMPUTER_VIDEO_KEY: undefined });
+  assert.equal(parsed.config.yyb.baseUrl, "");
+  assert.equal(parsed.config.math.stationId, 19);
+  assert.deepEqual(parsed.environmentFields, ["yyb.baseUrl", "yyb.apiKey", "math.enabled", "math.appId", "math.stationId", "computer.enabled"]);
+  for (const env of [{ MATH_ENABLED: "yes" }, { MATH_STATION_ID: "" }, { MATH_STATION_ID: "0" }, { MATH_APP_ID: "invalid" }, { YYB_BASE_URL: "file:///tmp/config" }, { COMPUTER_VIDEO_KEY: "short" }])
+    assert.throws(() => readEnvironmentPlatformConfig(env), error => error.status === 400 && error.message.includes(Object.keys(env)[0]));
+  assert.equal(readEnvironmentPlatformConfig({ MATH_ENABLED: "1" }).config.math.enabled, true, "parsing a partial environment does not require managed fields yet");
 });
 
 test("invalid platform fields cannot partially save a configuration", async () => {
@@ -106,7 +156,7 @@ test("the same upstream client immediately uses saved endpoints, tenant settings
   const client = createUpstreamClient(() => store.snapshot(), { requestJson: async (url, options) => { seen.push({ url: String(url), options }); return { code: 200, data: [] }; } });
   try {
     await client.computerRequest("/api/test");
-    assert.match(seen.at(-1).url, /^https:\/\/teach\.computer-upstream\.invalid/);
+    assert.equal(new URL(seen.at(-1).url).host, "computer.example.test");
     await store.update({ revision: 0, config: { computer: { baseUrl: "https://computer.new", tenantCode: "changed" } } });
     await client.computerRequest("/api/test");
     assert.equal(new URL(seen.at(-1).url).host, "computer.new");
