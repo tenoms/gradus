@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { ApiError } from "../infrastructure/api-error.mjs";
+import { withMathStation } from "./math-request.mjs";
 const registries = Object.fromEntries(
   ["math", "computer"].map((name) => [
     name,
@@ -167,7 +168,8 @@ export function validatePlatformRequest(name, input) {
   }
   return { path: requestPath, method, data, query };
 }
-export function injectMathUser(input, platform, stationId = 1) {
+export function injectMathUser(input, platform, stationId) {
+  input = withMathStation(input, stationId);
   // This source API uses StuID as the recipient (comment author), not the actor.
   if (input.path === "/api/sys_comment/give")
     return { ...input, data: { ...input.data }, query: { ...input.query } };
@@ -191,7 +193,6 @@ export function injectMathUser(input, platform, stationId = 1) {
     if (params && typeof params === "object" && !Array.isArray(params))
       params = {
         StuID: userId,
-        System_Station_ID: stationId,
         ...assignActor({ ...params }),
       };
     data.data = typeof data.data === "string" ? JSON.stringify(params) : params;

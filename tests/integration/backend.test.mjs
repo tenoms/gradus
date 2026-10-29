@@ -172,7 +172,7 @@ test("source-compatible AES request and response use distinct response request-i
     { status: 403 },
   );
   assert.equal(
-    injectMathUser({ data: {}, query: { StuID: "other" } }, { stuId: "me" })
+    injectMathUser({ data: {}, query: { StuID: "other" } }, { stuId: "me" }, 7)
       .query.StuID,
     "me",
   );
@@ -268,13 +268,16 @@ test("comment reactions preserve the recipient author while other writes bind th
     query: {},
   };
   assert.equal(
-    injectMathUser(input, { stuId: "current-user" }).data.StuID,
+    injectMathUser(input, { stuId: "current-user" }, 7).data.StuID,
     "comment-author",
   );
+  assert.equal(injectMathUser(input, { stuId: "current-user" }, 7).data.System_Station_ID, 7);
+  assert.throws(() => injectMathUser(input, { stuId: "current-user" }), { status: 503 });
   assert.equal(
     injectMathUser(
       { ...input, path: "/api/sys_comment/Add" },
       { stuId: "current-user" },
+      7,
     ).data.StuID,
     "current-user",
   );

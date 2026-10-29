@@ -148,7 +148,7 @@ test("runtime math station overrides browser query and encrypted command station
   const client = createUpstreamClient(() => config, { requestJson: async (url, options) => { seen.push({ url: new URL(url), options }); return { SuccessResponse: true, data: [] }; } });
   const input = { method: "GET", query: { System_Station_ID: 1 }, data: { System_Station_ID: 1 } };
   await client.mathRequest("/api/example", input);
-  assert.deepEqual(seen[0].url.searchParams.getAll("System_Station_ID"), ["9", "9"]);
+  assert.deepEqual(seen[0].url.searchParams.getAll("System_Station_ID"), ["9"]);
   assert.equal(input.query.System_Station_ID, 1);
   const parameters = { System_Station_ID: 1, StuID: "student" };
   for (const data of [parameters, JSON.stringify(parameters)]) {
@@ -160,6 +160,41 @@ test("runtime math station overrides browser query and encrypted command station
     assert.equal(JSON.parse(JSON.parse(decoded)).System_Station_ID, 9);
   }
   assert.equal(parameters.System_Station_ID, 1);
+});
+
+test("saved math station is supplied to GET, form, encrypted and batch requests without browser defaults", async () => {
+  const store = await memory(), calls = [];
+  const client = createUpstreamClient(() => store.snapshot(), { requestJson: async (url, options) => {
+    calls.push({ url: new URL(url), options }); return { SuccessResponse: true, data: [] };
+  } });
+  try {
+    await store.update({ revision: 0, config: { math: { stationId: 13 } } });
+    const get = { query: { ID: 42 } };
+    await client.mathRequest("/api/question_list/GetQuestionByIDSoleDes", get);
+    assert.deepEqual(calls.at(-1).url.searchParams.getAll("System_Station_ID"), ["13"]);
+    assert.deepEqual(get, { query: { ID: 42 } });
+    const post = { method: "POST", data: { QuestionID: 42 } };
+    await client.mathRequest("/api/sys_user_book_question/Inner_sys_user_book_question", post);
+    assert.equal(calls.at(-1).options.body.get("System_Station_ID"), "13");
+    assert.deepEqual(post.data, { QuestionID: 42 });
+    for (const parameters of [{ ID: 42 }, JSON.stringify({ ID: 42 })]) {
+      await client.mathRequest("/api/Master/AutoModel", { method: "POST", data: { command: "GetQuestionNexts2", data: parameters } });
+      const encrypted = calls.at(-1).options.body.get("data");
+      const decipher = createDecipheriv("aes-256-cbc", Buffer.from(createHash("md5").update("D").digest("hex")), Buffer.from("59b87344b54f3197"));
+      const decoded = Buffer.concat([decipher.update(encrypted, "base64"), decipher.final()]).toString();
+      assert.equal(JSON.parse(JSON.parse(decoded)).System_Station_ID, 13);
+      assert.equal(calls.at(-1).options.body.has("System_Station_ID"), false, "commands put the station inside encrypted parameters");
+    }
+    const rows = [{ QuestionID: 42 }, { QuestionID: 43, System_Station_ID: 1 }];
+    for (const Content of [rows, JSON.stringify(rows)]) {
+      await client.mathRequest("/api/sys_user_record/InnerAll", { method: "POST", data: { Content } });
+      assert.ok(JSON.parse(calls.at(-1).options.body.get("Content")).every(row => row.System_Station_ID === 13));
+    }
+    assert.deepEqual(rows, [{ QuestionID: 42 }, { QuestionID: 43, System_Station_ID: 1 }]);
+    await store.update({ revision: 1, config: { math: { stationId: 17 } } });
+    await client.mathRequest("/api/question_list/GetQuestionByQuestionNew", { query: { ID: 42 } });
+    assert.equal(calls.at(-1).url.searchParams.get("System_Station_ID"), "17", "the saved configuration is read for each request");
+  } finally { await store.close(); }
 });
 
 test("math form requests serialize null and undefined as empty fields while preserving actual values and structured fields", async () => {

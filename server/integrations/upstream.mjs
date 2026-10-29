@@ -1,6 +1,9 @@
 import { ApiError } from "../infrastructure/api-error.mjs";
 import { createCipheriv, createDecipheriv, createHash } from "node:crypto";
 import { tokenMetadata } from "./token-lifecycle.mjs";
+import { withMathStation } from "./math-request.mjs";
+import { readRuntimeConfig } from "../infrastructure/runtime-config.mjs";
+import publicConfiguration from "../../config/public.json" with { type: "json" };
 const iv = Buffer.from("59b87344b54f3197");
 const key = (seed) => Buffer.from(createHash("md5").update(seed).digest("hex"));
 export function encryptMath(value) {
@@ -32,12 +35,12 @@ export function decodeMath(body) {
   }
   return { ...body, [field]: value };
 }
-export async function requestJson(url, options = {}) {
+export async function requestJson(url, options = {}, timeoutMs) {
   let response;
   try {
     response = await fetch(url, {
       ...options,
-      signal: options.signal || AbortSignal.timeout(25000),
+      signal: options.signal || AbortSignal.timeout(timeoutMs ?? readRuntimeConfig().upstream.requestTimeoutMs),
     });
   } catch (error) {
     throw new ApiError(
@@ -105,19 +108,8 @@ async function mathRequestWith(
 ) {
   if (!config.math.enabled) throw new ApiError("数学学习平台已停用，请联系管理员", 503);
   const url = new URL(path, config.math.baseUrl);
-  let payload = { ...data };
-  const requestQuery = { ...query };
-  for (const values of [payload, requestQuery])
-    if (Object.hasOwn(values, "System_Station_ID")) values.System_Station_ID = config.math.stationId;
-  if (payload.command && payload.data) {
-    const encoded = typeof payload.data === "string";
-    let parameters;
-    try { parameters = encoded ? JSON.parse(payload.data) : payload.data; } catch {}
-    if (parameters && typeof parameters === "object" && !Array.isArray(parameters) && Object.hasOwn(parameters, "System_Station_ID")) {
-      parameters = { ...parameters, System_Station_ID: config.math.stationId };
-      payload.data = encoded ? JSON.stringify(parameters) : parameters;
-    }
-  }
+  const configured = withMathStation({ method, data, query }, config.math.stationId);
+  const payload = configured.data, requestQuery = configured.query;
   const headers = { Accept: "application/json", DesEncryptModel: "PKCS7" };
   if (platform?.token) headers.Authorization = bearer(platform.token);
   addQuery(url, requestQuery);
@@ -262,7 +254,7 @@ async function loginPlatformWith(config, request, name, account) {
           name: account.nickname || "学习者",
           previewUrl: /^https?:\/\//.test(account.avatar || "")
             ? account.avatar
-            : "https://static.computer-upstream.invalid/images/wechat/avatar/logo.png",
+            : publicConfiguration.computer.defaultAvatarUrl,
         }),
       },
     );
@@ -350,7 +342,8 @@ function successful(body) {
 }
 
 /** Each call reads current settings; a login keeps one snapshot for its complete handshake. */
-export function createUpstreamClient(configuration, { requestJson: transport = requestJson } = {}) {
+export function createUpstreamClient(configuration, { requestJson: providedTransport, requestTimeoutMs = readRuntimeConfig().upstream.requestTimeoutMs } = {}) {
+  const transport = providedTransport || ((url, options) => requestJson(url, options, requestTimeoutMs));
   const getConfig = () => structuredClone(typeof configuration === "function" ? configuration() : configuration);
   const forYyb = override => {
     const config = getConfig();
