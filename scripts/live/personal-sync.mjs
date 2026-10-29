@@ -6,15 +6,15 @@ import {once} from 'node:events';
 import {createApp} from '../../server/app.mjs';
 import {createDatabase} from '../../server/infrastructure/database.mjs';
 import {requestJson as upstreamRequestJson} from '../../server/integrations/upstream.mjs';
-import {readManagedPlatformConfig} from './managed-config.mjs';
+import {readLivePlatformConfig} from './managed-config.mjs';
 
 const publicConfig=systemConfig.public;
-const configurationDefaults=await readManagedPlatformConfig();
+const configurationDefaults=await readLivePlatformConfig();
 const database=await createDatabase({schemaPrefix:`verify_${randomUUID().replaceAll('-','')}`});
 const close=database.close;database.close=async()=>{await database.drop();await close();};
 const calls=[],results=[];
 let sourceOffline=false;
-const app=await createApp({database,configurationDefaults,requestJson:async(url,options={})=>{
+const app=await createApp({database,configurationDefaults,configurationEnv:{},requestJson:async(url,options={})=>{
   const parsed=new URL(url),method=String(options.method||'GET').toUpperCase();
   const body=options.body instanceof URLSearchParams?Object.fromEntries(options.body):typeof options.body==='string'?(()=>{try{return JSON.parse(options.body);}catch{return {};}})():{};
   const control=['/accounts','/wxapp/getCode','/api/auth/wx/token','/api/OAuth2/Login'].includes(parsed.pathname)||/^\/api\/wx\/CheckCode/.test(parsed.pathname);

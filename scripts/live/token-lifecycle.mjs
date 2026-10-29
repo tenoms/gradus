@@ -4,13 +4,13 @@ import {createTestDatabase} from '../../tests/support/database.mjs';
 import {createPlatformConfigStore} from '../../server/integrations/platform-config.mjs';
 import {createUpstreamClient,requestJson,decodeMath} from '../../server/integrations/upstream.mjs';
 import {createTokenLifecycle} from '../../server/integrations/token-lifecycle.mjs';
-import {readManagedPlatformConfig} from './managed-config.mjs';
+import {readLivePlatformConfig} from './managed-config.mjs';
 
-const defaults=await readManagedPlatformConfig();
+const defaults=await readLivePlatformConfig();
 const database=await createTestDatabase(),calls=[],results=[],metadata={};
 const record=(name,evidence={})=>{results.push({name,passed:true,...evidence});console.log(JSON.stringify(results.at(-1)));};
 try{
-  const configuration=await createPlatformConfigStore({database,defaults});
+  const configuration=await createPlatformConfigStore({database,defaults,env:{}});
   const service=createUpstreamClient(()=>configuration.snapshot(),{requestJson:async(url,options={})=>{
     const path=new URL(url).pathname,method=String(options.method||'GET').toUpperCase();
     const profileRead=path==='/api/Master/AutoModel'&&options.body instanceof URLSearchParams&&options.body.get('command')==='GetUserInfoByStuID';

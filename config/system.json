@@ -42,10 +42,6 @@
     }
   },
   "public": {
-    "math": {
-      "externalBaseUrl": "https://web.math-upstream.invalid/External/",
-      "printStationId": 1
-    },
     "computer": {
       "subjects": [
         {
@@ -75,32 +71,9 @@
         }
       ]
     },
-    "media": {
-      "polyvSdkUrl": "https://player.polyv.net/resp/vod-player/latest/player.js"
-    },
     "catalogCache": {
       "maxAgeMs": 60000,
       "maxEntries": 80
-    }
-  },
-  "initialPlatforms": {
-    "yyb": {
-      "baseUrl": ""
-    },
-    "math": {
-      "enabled": true,
-      "baseUrl": "https://api.math-upstream.invalid",
-      "appId": "<math-app-id>",
-      "stationId": 1,
-      "loginId": 2,
-      "ocrUrl": "https://photo.math-upstream.invalid/predict"
-    },
-    "computer": {
-      "enabled": true,
-      "baseUrl": "https://teach.computer-upstream.invalid",
-      "appId": "<computer-app-id>",
-      "tenantCode": "1",
-      "oauthClientId": "web_app"
     }
   }
 }

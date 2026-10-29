@@ -101,6 +101,33 @@ test('platform secrets remain editable when no environment override is present',
   assert.match(html, /输入新值会替换原值/);
 });
 
+for (const enabled of ['math', 'computer']) {
+  test(`a new installation can enable ${enabled} while the other platform stays unconfigured and disabled`, async () => {
+    const complete = configuration([]);
+    const saved = configuration([]);
+    saved.config.math = { enabled: false, baseUrl: '', appId: '', stationId: 1, loginId: 2, ocrUrl: '' };
+    saved.config.computer = { enabled: false, baseUrl: '', appId: '', tenantCode: '', oauthClientId: '' };
+    const draft = structuredClone(saved.config);
+    draft[enabled] = complete.config[enabled];
+    const disabled = enabled === 'math' ? 'computer' : 'math';
+    prepareIntegration(saved, { draft });
+    const html = renderToStaticMarkup(React.createElement(IntegrationSettings));
+    const activeSection = html.match(new RegExp(`<section[^>]*aria-labelledby="integration-${enabled}-title"[\\s\\S]*?</section>`))?.[0];
+    const inactiveSection = html.match(new RegExp(`<section[^>]*aria-labelledby="integration-${disabled}-title"[\\s\\S]*?</section>`))?.[0];
+    assert.ok(activeSection);
+    assert.ok(inactiveSection);
+    assert.equal((activeSection.match(/\srequired=""/g) || []).length, 4, 'enabled platform still requires its connection fields');
+    assert.doesNotMatch(inactiveSection, /\srequired=""/, 'empty disabled-platform inputs cannot block native form submission');
+    prepareIntegration(saved, { draft });
+    const tree = IntegrationSettings();
+    const submit = elements(tree, element => element.type === 'button' && element.props.type === 'submit')[0];
+    assert.equal(submit.props.disabled, false);
+    await elements(tree, element => element.type === 'form')[0].props.onSubmit({ preventDefault() {} });
+    assert.equal(fixture.calls[0].body.config[enabled].enabled, true);
+    assert.deepEqual(fixture.calls[0].body.config[disabled], saved.config[disabled]);
+  });
+}
+
 function prepareService(current, editing, draft) {
   fixture.states = [current ? [current] : [], editing, draft, '', '', ''];
   fixture.cursor = 0;

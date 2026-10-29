@@ -2,7 +2,7 @@
 
 ## 环境与日常流程
 
-使用 `.node-version` 指定的 Node.js 24、`npm ci` 和 PostgreSQL 14+。复制 `.env.example` 为 `.env` 并填写 `DATABASE_URL`，通过 `npm run dev` 启动开发服务。首次创建管理员后，在管理空间保存实际平台和 YYB 配置。系统默认值统一放在 `config/system.json`，各入口职责见[系统配置](config/README.md)。
+使用 `.node-version` 指定的 Node.js 24、`npm ci` 和 PostgreSQL 14+。复制 `.env.example` 为 `.env` 并填写数据库与实际接口参数，通过 `npm run dev` 启动开发服务。未由环境接管的平台字段也可在首次创建管理员后通过管理空间维护。系统通用参数统一放在 `config/system.json`，各入口职责及覆盖规则见[系统配置](config/README.md)。
 
 提交前运行：
 
@@ -30,7 +30,7 @@ npm run build
 
 ## 真实接口验收
 
-这些命令通过 `.env` 的数据库连接读取已有的管理端平台配置快照，再注入独立临时 schema，使用真实账号验证。没有配置记录时，先在管理端完成配置；脚本不从文件或平台环境变量补齐配置，也不修改业务库配置。原始证据写入 Git 忽略的 `artifacts/`。
+这些命令按显式环境变量优先、否则使用管理端值的规则读取平台配置，再注入独立临时 schema，使用真实账号验证。完整 `.env` 可直接用于联调，无需先在管理端保存配置；脚本不修改业务库配置。原始证据写入 Git 忽略的 `artifacts/`。
 
 | 命令 | 范围 |
 | --- | --- |
@@ -46,4 +46,4 @@ npm run build
 
 `dist/`、`artifacts/`、`coverage/`、日志及 TypeScript 增量文件由工具生成，不提交。`npm run clean` 删除可重建的生产和类型构建产物；`npm run clean:reports` 还会删除原始本机验收产物，需保留的报告先另行归档。
 
-`.env`、本机旧状态、YYB 凭据与原小程序参考材料均不提交。`config/system.json` 的 `runtime`、`public` 和 `initialPlatforms` 均只保存非秘密值；实际平台参数和秘密通过管理端数据库维护。新增配置应使用现有入口并补充相应校验。开发资产不参与配置读取。清理历史材料时先确认运行时引用和数据归属，对唯一证据或状态做可恢复归档。现行说明放在 `docs/`，已完成的迁移和验收材料放在 `docs/history/<日期>/` 并由索引说明适用版本。
+`.env`、本机旧状态、YYB 凭据与原小程序参考材料均不提交。`config/system.json` 的 `runtime` 和 `public` 只保存通用非秘密参数，不存提供商域名或 App ID；实际平台参数和秘密由 `.env` 或管理端维护，环境字段优先且在界面标明来源。新增配置应使用现有入口并补充相应校验。开发资产不参与配置读取。清理历史材料时先确认运行时引用和数据归属，对唯一证据或状态做可恢复归档。现行说明放在 `docs/`，已完成的迁移和验收材料放在 `docs/history/<日期>/` 并由索引说明适用版本。

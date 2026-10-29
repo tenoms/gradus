@@ -6,7 +6,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createTestDatabase } from '../../tests/support/database.mjs';
-import { readManagedPlatformConfig } from './managed-config.mjs';
+import { readLivePlatformConfig } from './managed-config.mjs';
 
 const publicConfig = systemConfig.public;
 
@@ -16,7 +16,7 @@ const label = process.env.DIRECTORY_CHECK_LABEL || 'current';
 assert.match(label, /^[a-z0-9-]+$/);
 const { createApp } = await import(pathToFileURL(resolve(sourceRoot, 'server/app.mjs')));
 const { requestJson } = await import(pathToFileURL(resolve(sourceRoot, 'server/integrations/upstream.mjs')));
-const configurationDefaults = await readManagedPlatformConfig();
+const configurationDefaults = await readLivePlatformConfig();
 const database = await createTestDatabase();
 const calls = [], results = [];
 let queryCount = 0;
@@ -24,7 +24,7 @@ const originalQuery = database.query;
 database.query = (...args) => { queryCount++; return originalQuery(...args); };
 const commands = new Set(['GetBookPaperListOfVip', 'GetBookListCountAndLookCount_New', 'GetQuestionNexts2', 'GetUserInfoByStuID']);
 const authPaths = new Set(['/wxapp/getCode', '/api/OAuth2/Login', '/api/auth/wx/token']);
-const app = await createApp({ database, configurationDefaults, requestJson: async (url, options = {}) => {
+const app = await createApp({ database, configurationDefaults, configurationEnv: {}, requestJson: async (url, options = {}) => {
   const path = new URL(url).pathname, method = String(options.method || 'GET').toUpperCase();
   const command = options.body instanceof URLSearchParams ? options.body.get('command') : null;
   assert.ok(method === 'GET' || authPaths.has(path) || path.startsWith('/api/Master/') && commands.has(command), '性能验收只允许目录读取和认证');

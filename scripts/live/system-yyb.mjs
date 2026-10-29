@@ -7,10 +7,10 @@ import {mkdirSync,writeFileSync} from 'node:fs';
 import {createApp} from '../../server/app.mjs';
 import {createDatabase} from '../../server/infrastructure/database.mjs';
 import {createUpstreamClient,requestJson} from '../../server/integrations/upstream.mjs';
-import {readManagedPlatformConfig} from './managed-config.mjs';
+import {readLivePlatformConfig} from './managed-config.mjs';
 
 const publicConfig=systemConfig.public;
-const configurationDefaults=await readManagedPlatformConfig();
+const configurationDefaults=await readLivePlatformConfig();
 const database=await createDatabase({schemaPrefix:`verify_${randomUUID().replaceAll('-','')}`});
 const closeDb=database.close;
 database.close=async()=>{await database.drop();await closeDb();};
@@ -20,7 +20,7 @@ const transport=async(url,options={})=>{
   assert.ok(['GET','HEAD'].includes(method)||['/wxapp/getCode','/api/auth/wx/token','/api/OAuth2/Login'].includes(path),'live verification must not write source learning records');
   calls.push({path,method});return requestJson(url,options);
 };
-const app=await createApp({database,configurationDefaults,requestJson:transport});
+const app=await createApp({database,configurationDefaults,configurationEnv:{},requestJson:transport});
 const original=createUpstreamClient(()=>app.locals.configuration.snapshot(),{requestJson:transport});
 const aliases=new Map();let mirrorCodes=0;
 // This second local YYB address forwards real read/auth requests to the provided service.

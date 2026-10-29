@@ -6,15 +6,15 @@ import { once } from 'node:events';
 import { createApp } from '../../server/app.mjs';
 import { createDatabase } from '../../server/infrastructure/database.mjs';
 import { requestJson as upstreamRequestJson } from '../../server/integrations/upstream.mjs';
-import { readManagedPlatformConfig } from './managed-config.mjs';
+import { readLivePlatformConfig } from './managed-config.mjs';
 
 const publicConfig = systemConfig.public;
-const configurationDefaults = await readManagedPlatformConfig();
+const configurationDefaults = await readLivePlatformConfig();
 const database=await createDatabase({schemaPrefix:`verify_${randomUUID().replaceAll('-','')}`});
 const originalClose=database.close;
 database.close=async()=>{await database.drop();await originalClose();};
 const upstreamCalls=[];
-const app=await createApp({database,configurationDefaults,requestJson:async(url,options)=>{const parsed=new URL(url);upstreamCalls.push({path:parsed.pathname,number:parsed.searchParams.get('number')});return upstreamRequestJson(url,options);}});
+const app=await createApp({database,configurationDefaults,configurationEnv:{},requestJson:async(url,options)=>{const parsed=new URL(url);upstreamCalls.push({path:parsed.pathname,number:parsed.searchParams.get('number')});return upstreamRequestJson(url,options);}});
 assert.equal(upstreamCalls.length,0,'服务启动不发起同步请求');
 const server=app.listen(0,'127.0.0.1');await once(server,'listening');
 const base=`http://127.0.0.1:${server.address().port}`;
