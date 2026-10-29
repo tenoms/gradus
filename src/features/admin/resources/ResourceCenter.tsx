@@ -51,7 +51,7 @@ export default function ResourceCenter() {
   return <div className="resource-center">
     <header className="resource-center-intro"><span className="resource-center-icon"><FolderOpen size={25} /></span><div><h2>资源中心</h2><p>统一维护考研数学与计算机 408 的学习资源。</p></div></header>
     <section className="panel data-card resource-sync-card" aria-labelledby="resource-sync-title">
-      <div className="resource-sync-heading"><div><h2 id="resource-sync-title">小程序资源渐进同步</h2><p>公共内容优先读取有效缓存，缺失或需更新时向小程序获取。资源随实际学习逐步积累。</p></div><button className="btn btn-secondary" disabled={loading || pending} onClick={refresh}><RefreshCw size={15} />刷新状态</button></div>
+      <div className="resource-sync-heading"><h2 id="resource-sync-title">小程序资源渐进同步</h2><button className="btn btn-secondary admin-inline-refresh" aria-label="刷新状态" title="刷新资源同步状态与统计" aria-busy={loading} disabled={loading || pending} onClick={refresh}><RefreshCw size={15} className={loading ? "spin" : ""} /><span>刷新状态</span></button><p>公共内容优先读取有效缓存，缺失或需更新时向小程序获取。资源随实际学习逐步积累。</p></div>
       {loading && !sync && <p className="resource-sync-loading" role="status"><LoaderCircle className="spin" size={18} />正在读取同步状态…</p>}
       {error && <div className="error-banner" role="alert"><CircleAlert size={17} /><span>{error}</span><button className="text-link" disabled={loading || pending} onClick={refresh}>重试</button></div>}
       {notice && <p className="notice" role="status"><Check size={16} />{notice}</p>}

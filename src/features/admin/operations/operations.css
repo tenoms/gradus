@@ -1,8 +1,6 @@
 .operations-console { display: grid; gap: 22px; }
-.operations-intro { display: flex; align-items: center; justify-content: space-between; gap: 24px; color: var(--text-secondary); font-size: 12px; }
-.operations-intro .btn { flex-shrink: 0; }
+.operations-intro { color: var(--text-secondary); font-size: 12px; }
 .operations-table td { font-size: 12px; }
 .operations-table code { font: 11px ui-monospace, SFMono-Regular, monospace; }
 .operations-request-id { color: var(--text-secondary); user-select: all; }
 .operations-failed { color: var(--danger); background: var(--danger-soft); }
-@media(max-width:700px) { .operations-intro { align-items: start; flex-direction: column; gap: 14px; } }

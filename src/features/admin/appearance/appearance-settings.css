@@ -69,15 +69,16 @@
 .appearance-loading { display: grid; gap: 15px; align-content: center; justify-items: center; min-height: 300px; padding: 30px; color: var(--muted); }
 .appearance-save-bar { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px 22px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); position: sticky; bottom: 15px; z-index: 8; }
 .appearance-save-bar > div:first-child { min-width: 140px; }
+.appearance-save-status { display: flex; align-items: center; gap: 8px; }
+.appearance-save-status .admin-inline-refresh { flex-shrink: 0; color: var(--text-secondary); }
 .appearance-save-bar strong { display: flex; gap: 8px; align-items: center; font-weight: 550; font-size: 13px; color: var(--ink); }
 .appearance-save-bar strong > span { width: 7px; height: 7px; background: var(--success); border-radius: 50%; flex-shrink: 0; }
 .appearance-save-bar strong > span.is-dirty { background: var(--warning, var(--accent)); }
 .appearance-save-bar p { color: var(--muted); font-size: 11px; margin: 5px 0 0; }
 .appearance-save-actions { display: flex; gap: 9px; flex-wrap: wrap; justify-content: flex-end; }
 .appearance-save-actions .btn { font-size: 12px; white-space: nowrap; }
-.appearance-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 11px; color: var(--muted); }
+.appearance-footer { font-size: 11px; color: var(--muted); }
 .appearance-footer p { margin: 0; }
-.appearance-footer .text-link { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; white-space: nowrap; }
 @media (max-width: 1150px) { .appearance-platforms { grid-template-columns: 1fr; } .appearance-preview-layout { grid-template-columns: 108px minmax(0, 1fr); } .appearance-preview-nav-line { width: 72px; } .appearance-preview-nav-line.short { width: 50px; } }
 @media (max-width: 600px) { .appearance-settings { gap: 18px; } .appearance-heading h2 { font-size: 21px; } .appearance-heading > div { min-width: 190px; } .appearance-heading-icon { height: 44px; width: 44px; } .appearance-heading { gap: 11px; } .appearance-system-state { margin-left: 55px; } .appearance-explanation { gap: 10px; } .appearance-explanation > span { font-size: 11px; } .appearance-platform { padding: 18px; } .appearance-platform > header { margin-bottom: 19px; padding-bottom: 18px; } .appearance-palette-options { gap: 6px; } .appearance-palette { padding-inline: 2px; } .appearance-palette strong { font-size: 10px; } .appearance-mode-options { gap: 6px; } .appearance-mode { font-size: 11px; padding: 10px 4px; gap: 4px; } .appearance-mode > svg:first-of-type { width: 15px; } .appearance-preview-layout { grid-template-columns: 76px minmax(0, 1fr); } .appearance-preview-content { padding: 14px 10px; } .appearance-preview-content > strong { font-size: 11px; } .appearance-preview-nav-line { width: 48px; } .appearance-preview-nav-line.short { width: 33px; } .appearance-preview-layout aside > .is-active { font-size: 9px; gap: 3px; } .appearance-save-bar { flex-direction: column; align-items: stretch; padding: 15px; gap: 14px; bottom: 8px; } .appearance-save-actions { justify-content: stretch; gap: 7px; } .appearance-save-actions .btn { font-size: 11px; flex: 1; padding-inline: 9px; } .appearance-footer { flex-direction: column; align-items: flex-start; gap: 8px; } }
 

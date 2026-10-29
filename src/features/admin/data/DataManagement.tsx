@@ -25,14 +25,13 @@ export default function DataManagement() {
   }
   useEffect(() => { void load(); }, []);
   return <div className="data-management">
-    <div className="data-toolbar"><p>管理用户注册、资源访问服务与系统账号调度。</p><button className="btn btn-secondary" disabled={!!busy} onClick={() => void load()}><RefreshCw size={15} />刷新</button></div>
     {error && <div className="error-banner" role="alert"><CircleAlert size={17} />{error}</div>}
     {notice && <p className="notice" role="status"><Check size={16} />{notice}</p>}
     {busy === "load" && !pool && <p role="status"><LoaderCircle size={18} className="spin" />正在读取数据配置…</p>}
     <RegistrationSettings />
     <YybServices onChanged={async()=>{acceptPool(await api<AccountPool>("/api/admin/account-pool"));}} />
     <section className="panel data-card">
-      <div className="data-heading"><Users size={22} /><div><h2>系统 YYB 账号池</h2><p>多个用户可同时使用同一微信账号。跨服务相同 openid 只占一份调度权重与负载，可在多条访问路径间替代。</p></div></div>
+      <div className="data-heading data-pool-heading"><Users size={22} /><h2>系统 YYB 账号池</h2><button className="btn btn-secondary admin-inline-refresh" disabled={!!busy} aria-busy={busy === "load"} aria-label="刷新账号池" title="重新读取系统 YYB 账号池" onClick={() => void load()}><RefreshCw size={15} className={busy === "load" ? "spin" : ""} /><span>刷新</span></button><p>多个用户可同时使用同一微信账号。跨服务相同 openid 只占一份调度权重与负载，可在多条访问路径间替代。</p></div>
       {pool?.issues?.map(issue=><p key={issue.serviceId} className="data-sync-error" role="status">{issue.serviceName}：{issue.message}。其他可用服务仍可提供资源。</p>)}
       {pool && <form onSubmit={event => { event.preventDefault(); void action("pool", async () => {
         acceptPool(await api<AccountPool>("/api/admin/account-pool", { method: "PUT", body: JSON.stringify({ revision: pool.revision, algorithm, enabledRefs: refs }) }));
