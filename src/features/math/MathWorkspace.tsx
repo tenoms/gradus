@@ -29,6 +29,7 @@ import ImportedReportSummary from "../identity/ImportedReportSummary";
 import MathLearningPlan, { useMathLearningPlan } from "./preparation/MathLearningPlan";
 import { matchesMathSubject } from "./preparation/learning-plan-model.mjs";
 import MathBookshelf from "./library/MathBookshelf";
+import { loadBookPosition, saveBookPosition } from "./library/math-book-position";
 import MathLibraryTagFilter from "./library/MathLibraryTagFilter";
 import { mathLibraryTag, mathLibraryTagOptions, matchesMathLibraryTag } from "./library/math-library";
 import { useSession } from "../../shared/auth/session";
@@ -253,6 +254,7 @@ function Library({ stuid }: { stuid: string }) {
   if (book)
     return (
       <BookWorkspace
+        key={`${stuid}-${book.ID}`}
         book={book}
         stuid={stuid}
         back={() => setBook(undefined)}
@@ -273,9 +275,7 @@ function Library({ stuid }: { stuid: string }) {
         </div>
         <MathBookshelf
           stuid={stuid}
-          onOpenBook={(selected, lastQuestion) =>
-            setBook({ ...selected, _resumeQuestion: lastQuestion })
-          }
+          onOpenBook={setBook}
         />
       </div>
     );
@@ -422,17 +422,20 @@ function BookWorkspace({
     mathApi.bookCatalog(book.ID),
   );
   const [current, setCurrent] = useState<MathRow>();
+  const [resume, setResume] = useState<MathRow>();
+  const [resuming, setResuming] = useState(true);
   const [resumeError, setResumeError] = useState("");
   useEffect(() => {
-    if (!book._resumeQuestion) return;
     let active = true;
-    Promise.resolve(book._resumeQuestion).then((row: MathRow | undefined) => {
-      if (active && row) setCurrent(selected => selected || row);
+    loadBookPosition(stuid, book.ID).then((row) => {
+      if (active) setResume(row);
     }).catch(() => {
       if (active) setResumeError("上次阅读位置暂未读取，可直接从目录选题。");
+    }).finally(() => {
+      if (active) setResuming(false);
     });
     return () => { active = false; };
-  }, [book.ID, book._resumeQuestion]);
+  }, [stuid, book.ID]);
   const [searchPage, setSearchPage] = useState("");
   const [searchNumber, setSearchNumber] = useState("");
   const [searchResults, setSearchResults] = useState<MathRow[]>();
@@ -440,6 +443,12 @@ function BookWorkspace({
   const [searching, setSearching] = useState(false);
   const [filter, setFilter] = useState("");
   const rows = mathRows(catalog.data);
+  useEffect(() => {
+    if (!resume || !catalog.data) return;
+    const restored = rows.find((row) => String(mathQuestionId(row)) === String(mathQuestionId(resume)));
+    if (restored) setCurrent(selected => selected || restored);
+    else setResumeError("上次阅读的题目已不在当前目录，请从目录重新选题。");
+  }, [resume, catalog.data]);
   const shown = (searchResults || rows).filter(
     (r) =>
       !filter ||
@@ -456,7 +465,7 @@ function BookWorkspace({
     setCurrent(row);
     if (reveal) {
       const visibleIndex = shown.findIndex(
-        (item) => mathQuestionId(item) === mathQuestionId(row),
+        (item) => String(mathQuestionId(item)) === String(mathQuestionId(row)),
       );
       if (visibleIndex >= 0)
         catalogPagination.setPage(Math.floor(visibleIndex / catalogPagination.pageSize) + 1);
@@ -466,14 +475,25 @@ function BookWorkspace({
   useEffect(() => {
     if (!current) return;
     const currentIndex = shown.findIndex(
-      (item) => mathQuestionId(item) === mathQuestionId(current),
+      (item) => String(mathQuestionId(item)) === String(mathQuestionId(current)),
     );
     if (currentIndex >= 0)
       catalogPagination.setPage(Math.floor(currentIndex / catalogPagination.pageSize) + 1);
   }, [catalog.data, catalogPagination.pageSize, currentQuestionId]);
   const index = current
-    ? rows.findIndex((r) => mathQuestionId(r) === mathQuestionId(current))
+    ? rows.findIndex((r) => String(mathQuestionId(r)) === String(mathQuestionId(current)))
     : -1;
+  const [positionError, setPositionError] = useState("");
+  const [positionVersion, setPositionVersion] = useState(0);
+  useEffect(() => {
+    if (!current) return;
+    let active = true;
+    setPositionError("");
+    saveBookPosition(book.ID, current).catch(() => {
+      if (active) setPositionError("阅读位置未能保存，请重试。");
+    });
+    return () => { active = false; };
+  }, [book.ID, currentQuestionId, positionVersion]);
   const doSearch = async (event: React.FormEvent) => {
     event.preventDefault();
     setSearching(true);
@@ -581,7 +601,7 @@ function BookWorkspace({
               <button
                 key={`${mathQuestionId(r)}-${i}`}
                 className={
-                  current && mathQuestionId(current) === mathQuestionId(r)
+                  current && String(mathQuestionId(current)) === String(mathQuestionId(r))
                     ? "active"
                     : ""
                 }
@@ -611,6 +631,7 @@ function BookWorkspace({
           )}
         </aside>
         <main className="math-reader-area">
+          {positionError && <div className="error-banner" role="status"><span>{positionError}</span><button className="btn btn-secondary" onClick={() => setPositionVersion(value => value + 1)}>重试保存位置</button></div>}
           {current ? (
             <Suspense fallback={<State loading />}><QuestionReader
               row={current}
@@ -623,7 +644,7 @@ function BookWorkspace({
                   : undefined
               }
             /></Suspense>
-          ) : (
+          ) : resuming || (resume && catalog.loading) ? <State loading /> : (
             <div className="panel math-reader-welcome">
               <div className="math-reader-welcome-icon">
                 <BookOpen size={34} />

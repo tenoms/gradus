@@ -261,6 +261,14 @@ export async function createPrivatePlatformStore({ database, resourceStore, pers
     if (command) {
       let rows=await list(userId,'math',commandCollections[command] || `command:${command}`);
       for (const field of ['QuestionID','Type','BusType','BusID','BookID','CatalogID','ExanType']) if (p[field]!==undefined && p[field]!=='') rows=rows.filter(row=>String(row[field] ?? (field==='CatalogID'?0:''))===String(p[field]));
+      if(command==='GetUserLastViewByBook_math') {
+        const positiveId=value=>['number','string'].includes(typeof value) && /^\d+$/.test(String(value)) && Number.isSafeInteger(Number(value)) && Number(value)>0;
+        const positions=rows.flatMap(row=>{
+          const questionId=[row.qID,row.QuestionID,...(row.BusType==='02bf2d6b67684fce9d087e333cdcfcde'?[row.BusID]:[])].find(positiveId);
+          return questionId===undefined?[]:[{...row,QuestionID:Number(questionId),QuestionPage:row.QuestionPage ?? row.questionPage,QuestionSort:row.QuestionSort ?? row.questionID}];
+        });
+        return success('math',[positions.slice(0,1)]);
+      }
       if (/^GetQuestionLogInfo_rel/.test(command)) { const annotations=rows.filter(row=>row.Type!=='题目'), answers=rows.filter(row=>row.Type==='题目'); return success('math',[[],[],[],[],annotations,answers]); }
       if(command==='GetSysUserBookCatalog') {const notes=await list(userId,'math','sys_user_book_question');rows=rows.map(row=>({...row,counts:notes.filter(note=>String(note.CatalogID)===String(row.ID)).length}));}
       if(command==='GetSysUserQuestionBookList') {const books=new Map();for(const note of rows){const key=String(note.BookID || 0);const previous=books.get(key);books.set(key,{BookID:note.BookID || 0,bookName:note.bookName || note.BookName || `资料 ${key}`,counts:(previous?.counts || 0)+1});}rows=[...books.values()];}

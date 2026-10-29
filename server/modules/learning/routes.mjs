@@ -36,6 +36,22 @@ export function createLearningRouter({service,identities,connections,auth,accoun
   router.get('/study/data',authenticated,async(req,res)=>res.json(await identities.studyData(req.studySession.user.id)));
   router.put('/study/data',authenticated,async(req,res)=>res.json(await identities.saveStudyData(req.studySession.user.id,req.body?.data,req.body?.revision)));
   router.get('/announcements',authenticated,async(req,res)=>res.json({announcements:await identities.listAnnouncements()}));
+  const positionId = value => {
+    if (!['string','number'].includes(typeof value) || !/^\d+$/.test(String(value)) || !Number.isSafeInteger(Number(value)) || Number(value)<=0) throw new ApiError('书籍和题目标识需为正整数',400);
+    return Number(value);
+  };
+  router.get('/platform/math/books/:bookId/position',authenticated,async(req,res)=>{
+    const bookId=positionId(req.params.bookId);
+    const rows=await privatePlatform.list(req.studySession.user.id,'math','book-reading-position');
+    res.json({position:rows.find(row=>Number(row.BookID)===bookId) || null});
+  });
+  router.put('/platform/math/books/:bookId/position',authenticated,async(req,res)=>{
+    const bookId=positionId(req.params.bookId),questionId=positionId(req.body?.QuestionID);
+    const metadata={};
+    for(const field of ['QuestionPage','QuestionSort']) metadata[field]=req.body[field] ?? null;
+    const saved=await privatePlatform.put(req.studySession.user.id,'math','book-reading-position',String(bookId),{BookID:bookId,QuestionID:questionId,...metadata});
+    res.json({position:saved});
+  });
   router.post('/platform/math/first-score',authenticated,async(req,res)=>{
     const score=req.body?.score;
     if(!score||typeof score!=='object'||Array.isArray(score))throw new ApiError('成绩数据格式不正确',400);

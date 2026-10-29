@@ -91,6 +91,8 @@ test("resume normalizes actual question ID separately from book page and printed
   assert.equal(last.QuestionPage, 42);
   assert.equal(last.QuestionSort, 7);
   assert.equal(adapter.shelfLastQuestion(undefined), undefined);
+  assert.equal(adapter.shelfLastQuestion({ ID: 12, BusID: 999 }).QuestionID, 999);
+  assert.equal(adapter.shelfLastQuestion({ ID: 12 }).QuestionID, undefined, "record IDs are not question IDs");
 });
 test("bookshelf update uses the original user-ID and single-field UpdateColumns contract", async () => {
   let call;

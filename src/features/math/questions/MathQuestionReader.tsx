@@ -293,12 +293,13 @@ function QuestionReader({
       setSaving(false);
     }
   };
+  const navigationDisabled = saving || remote.loading || !!noteKind || newQa;
   return (
     <LearningWorkbench
       title={`第 ${row.QuestionSort || q.QuestionID || qid} 题`}
       previous={prev}
       next={next}
-      disabled={saving || remote.loading || !!noteKind || newQa}
+      disabled={navigationDisabled}
       tools={(
         <button
           type="button"
@@ -615,11 +616,11 @@ function QuestionReader({
         ))}
       {tab === "讨论" && <MathDiscussion qid={qid} stuid={stuid} />}
       <div className="math-question-footer">
-        <button className="btn btn-secondary" disabled={!prev || saving} onClick={prev}>
+        <button className="btn btn-secondary" disabled={!prev || navigationDisabled} onClick={prev}>
           <ArrowLeft size={15} />
           上一题
         </button>
-        <button className="btn btn-primary" disabled={!next || saving} onClick={next}>
+        <button className="btn btn-primary" disabled={!next || navigationDisabled} onClick={next}>
           下一题
           <ArrowRight size={15} />
         </button>

@@ -52,7 +52,7 @@ export function shelfLastQuestion(
   return row
     ? {
         ...row,
-        QuestionID: row.qID || row.QuestionID || row.ID,
+        QuestionID: row.qID || row.QuestionID || row.BusID,
         QuestionPage: row.questionPage || row.QuestionPage,
         QuestionSort: row.questionID || row.QuestionSort,
       }

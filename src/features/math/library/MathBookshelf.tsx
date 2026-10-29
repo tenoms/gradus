@@ -24,8 +24,6 @@ import {
   shelfField,
   shelfIds,
   shelfProgress,
-  shelfRows,
-  shelfLastQuestion,
 } from "./math-bookshelf";
 import type { ShelfRow as R } from "./math-bookshelf";
 import "./math-bookshelf.css";
@@ -35,7 +33,7 @@ export default function MathBookshelf({
   onOpenBook,
 }: {
   stuid: string;
-  onOpenBook: (book: R, lastQuestion?: Promise<R | undefined>) => void;
+  onOpenBook: (book: R) => void;
 }) {
   const catalogRef = useRef<HTMLDivElement>(null);
   const { subject } = useMathLearningPlan();
@@ -178,9 +176,7 @@ export default function MathBookshelf({
     }
   }
   function read(book: R) {
-    onOpenBook(book, bookshelfApi.lastQuestion(stuid, book.ID).then(response =>
-      shelfLastQuestion(shelfRows(response)[0]),
-    ));
+    onOpenBook(book);
   }
   return (
     <div className="math-bookshelf">
