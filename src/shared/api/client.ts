@@ -1,3 +1,5 @@
+import type { Platform } from "../../../shared/study-data.mjs";
+export type { Platform } from "../../../shared/study-data.mjs";
 export type ApiSpace = "admin" | "learning";
 let apiSpace: ApiSpace = "learning";
 export function configureApiSpace(space: ApiSpace) { apiSpace = space; }
@@ -7,7 +9,6 @@ export function resolveApiPath(path: string): string {
   return path;
 }
 
-export type Platform = "math" | "computer";
 export interface PlatformState {
   available?: boolean;
   connected: boolean;

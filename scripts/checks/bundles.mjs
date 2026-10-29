@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const evidenceFile = path.join(root, "artifacts/space-bundle-graph.json");
 const chunks = new Map();
 const relativeModule = (id) => {
@@ -14,18 +14,13 @@ const relativeModule = (id) => {
 };
 const forbidden = {
   admin: [
-    /^src\/(?:App\.tsx|main\.tsx)$/,
-    /^src\/lib\/(?:store\.ts|study-sync\.)/,
-    /^src\/platforms\//,
-    /^src\/pages\/(?:MathWorkspace|ComputerWorkspace)\./,
-    /^src\/components\/(?:math|computer|learning)\//,
-    /^src\/components\/identity\/(?:ConnectionDialog|Announcements|StudySyncIndicator|LegacyStudyImport)\./,
+    /^src\/app\/learning\//,
+    /^src\/features\/(?:math|computer|learning)\//,
+    /^src\/features\/identity\/(?:PersonalCenter|AccountConnection|PersonalImportedRecords|Announcements|StudySyncIndicator)\./,
   ],
   learning: [
-    /^src\/admin-main\.tsx$/,
-    /^src\/apps\/AdminApp\./,
-    /^src\/pages\/AdminWorkspace\./,
-    /^src\/pages\/admin(?:\/|\.css$)/,
+    /^src\/app\/admin\//,
+    /^src\/features\/admin\//,
   ],
 };
 
@@ -80,11 +75,11 @@ function staticClosure(file, reached = new Set()) {
 }
 const learningInitial = staticClosure(entries.learning.entryFile);
 function inspectDirectory(name) {
-  const entry = [...chunks.entries()].find(([, chunk]) => chunk.modules.includes(`src/pages/${name}Workspace.tsx`));
+  const entry = [...chunks.entries()].find(([, chunk]) => chunk.modules.includes(`src/features/${name.toLowerCase()}/${name}Workspace.tsx`));
   if (!entry) throw new Error(`当前生产构建缺少 ${name} 目录入口。`);
   const reached = staticClosure(entry[0]);
   const modules = [...new Set([...reached].flatMap(file => chunks.get(file).modules))].sort();
-  const forbiddenDependencies = modules.filter(module => /^src\/components\/(?:RichContent\.tsx|math\/(?:MathQuestionReader|MathCourses|MathExams)\.tsx|computer\/(?:ComputerExerciseSession|ComputerCourses|ComputerSchools)\.tsx)$/.test(module));
+  const forbiddenDependencies = modules.filter(module => /^src\/(?:shared\/content\/RichContent\.tsx|features\/math\/(?:questions\/MathQuestionReader|courses\/MathCourses|exams\/MathExams)\.tsx|features\/computer\/(?:practice\/ComputerExerciseSession|courses\/ComputerCourses|schools\/ComputerSchools)\.tsx)$/.test(module));
   const incremental = [...reached].filter(file => !learningInitial.has(file));
   return {
     entryFile: entry[0], chunks: [...reached].sort(), modules,

@@ -1,4 +1,4 @@
-import type { StudyData } from "./store";
+import type { StudyData } from "../../../../shared/study-data.mjs";
 export type StudyChange = ({ kind: "task.add"; task: StudyData["tasks"][number] } | { kind: "task.done"; taskId: string; done: boolean } | { kind: "task.delete"; taskId: string } | { kind: "activity.add"; activity: StudyData["activities"][number] } | { kind: "goal.set"; goalMinutes: number } | { kind: "math-plan.set"; mathPlan: NonNullable<StudyData["mathPlan"]> } | { kind: "replace"; data: StudyData }) & { id: string };
 export interface SyncStatus { state: "loading" | "saving" | "synced" | "error" | "local"; pending: number; message?: string }
 export interface StudyEnvelope { data: StudyData; revision: number }

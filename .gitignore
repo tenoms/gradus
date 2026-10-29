@@ -10,3 +10,5 @@ dist/
 .data/
 *.tsbuildinfo
 artifacts/
+coverage/
+*.log

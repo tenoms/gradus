@@ -7,10 +7,18 @@
     "dev": "concurrently -k -n api,web -c cyan,magenta \"node --env-file-if-exists=.env --watch server/index.mjs\" \"vite --host 127.0.0.1\"",
     "build": "tsc -b && vite build",
     "start": "node --env-file-if-exists=.env server/index.mjs",
-    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "test": "node --experimental-strip-types --test \"tests/**/*.test.mjs\"",
     "typecheck": "tsc -b",
-    "verify:spaces": "node scripts/verify-spaces.mjs",
-    "verify:directories": "node --experimental-strip-types scripts/verify-directory-loading-live.mjs"
+    "verify:spaces": "node scripts/checks/bundles.mjs",
+    "verify:directories": "node --experimental-strip-types scripts/live/directory-loading.mjs",
+    "check": "npm run verify:repo && npm run typecheck && npm test && npm run verify:spaces",
+    "verify:repo": "node scripts/checks/repository.mjs",
+    "verify:data-architecture": "node --experimental-strip-types scripts/live/data-architecture.mjs",
+    "verify:personal-sync": "node --experimental-strip-types scripts/live/personal-sync.mjs",
+    "verify:system-yyb": "node --experimental-strip-types scripts/live/system-yyb.mjs",
+    "verify:tokens": "node --experimental-strip-types scripts/live/token-lifecycle.mjs",
+    "clean": "node scripts/maintenance/clean.mjs",
+    "clean:reports": "node scripts/maintenance/clean.mjs --reports"
   },
   "dependencies": {
     "cookie-parser": "^1.4.7",

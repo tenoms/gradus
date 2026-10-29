@@ -1,34 +1,10 @@
 import { useSyncExternalStore } from "react";
 import { api } from "../../../shared/api/client";
-import type { Platform } from "../../../shared/api/client";
 import { applyStudyChange, createStudySync, emptyStudyData } from "./study-sync.mjs";
 import type { StudyChange, SyncStatus } from "./study-sync.mjs";
 import { validateStudyData } from "../../../../shared/study-data.mjs";
-export interface StudyTask {
-  id: string;
-  title: string;
-  platform: Platform;
-  date: string;
-  done: boolean;
-  createdAt: string;
-}
-export interface Activity {
-  id: string;
-  at: string;
-  platform: Platform;
-  type: string;
-  title: string;
-  correct?: number;
-  total?: number;
-  durationSeconds?: number;
-  path?: string;
-}
-export interface StudyData {
-  tasks: StudyTask[];
-  activities: Activity[];
-  goalMinutes: number;
-  mathPlan?: { subject: string; stage: string };
-}
+import type { StudyTask, Activity, StudyData } from "../../../../shared/study-data.mjs";
+export type { StudyTask, Activity, StudyData } from "../../../../shared/study-data.mjs";
 const defaultData = emptyStudyData();
 let scope = "guest";
 let current: StudyData = defaultData;
