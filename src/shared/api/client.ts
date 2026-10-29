@@ -1,5 +1,6 @@
 import type { Platform } from "../../../shared/study-data.mjs";
 import { publicConfig } from "../config/public.mjs";
+import type { BrowserConfig } from "../config/public.mjs";
 export type { Platform } from "../../../shared/study-data.mjs";
 export type ApiSpace = "admin" | "learning";
 let apiSpace: ApiSpace = "learning";
@@ -24,6 +25,7 @@ export interface YybConnection {
 }
 export interface Session {
   authenticated: boolean;
+  browserConfig?: BrowserConfig;
   space?: ApiSpace;
   user?: {
     id: string;

@@ -1,6 +1,19 @@
 import configuration from "../../../config/system.json" with { type: "json" };
 
-export const publicConfig = configuration.public;
+export const publicConfig = {
+  ...configuration.public,
+  math: { externalUrl: "", printStationId: 1 },
+  media: { polyvSdkUrl: "" },
+};
+
+export function configureBrowserConfig(configuration) {
+  if (!configuration) return;
+  publicConfig.math.externalUrl = configuration.math.externalUrl;
+  publicConfig.math.printStationId = configuration.math.printStationId;
+  publicConfig.media.polyvSdkUrl = configuration.media.polyvSdkUrl;
+}
+
 export function mathExternalUrl(filename) {
-  return new URL(filename, publicConfig.math.externalBaseUrl.replace(/\/?$/, "/"));
+  if (!publicConfig.math.externalUrl) return null;
+  return new URL(filename, publicConfig.math.externalUrl.replace(/\/?$/, "/"));
 }

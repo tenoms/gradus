@@ -175,6 +175,7 @@ export function courseReportPrintLinks(context, meta, papers = []) {
     return [];
   const fixed = (filename, paper, legacy = false) => {
     const url = mathExternalUrl(filename);
+    if (!url) return undefined;
     for (const [key, value] of Object.entries(
       legacy
         ? {
@@ -218,6 +219,6 @@ export function courseReportPrintLinks(context, meta, papers = []) {
     });
   }
   return links.filter(
-    (row, index) => links.findIndex((item) => item.url === row.url) === index,
+    (row, index) => row.url && links.findIndex((item) => item.url === row.url) === index,
   );
 }

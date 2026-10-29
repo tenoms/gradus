@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { configureBrowserConfig } from "../../../src/shared/config/public.mjs";
 import {
   moveNotesPayload,
   noteExportLinks,
@@ -7,6 +8,7 @@ import {
   noteRecordId,
   sortCatalogPayload,
 } from "../../../src/features/math/notebook/notebook-model.mjs";
+configureBrowserConfig({ math: { externalUrl: "https://print.example.test/External/", printStationId: 1 }, media: { polyvSdkUrl: "" } });
 test("book notes and question-bank notes preserve separate record and question identities", () => {
   assert.equal(noteRecordId({ ID: 1, RelD: 9 }, "book"), "1");
   assert.equal(noteRecordId({ ID: 1, RelD: 9 }, "bank"), "9");

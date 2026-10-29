@@ -448,6 +448,7 @@ export default function MathCourseRecommendations({
     }
   }
   function materials(group: R) {
+    const printUrl = recommendationPrintUrl(context, group);
     const links = reportFileLinks({
       Files: group.Files,
       AnswerFiles: group.AnswerFiles,
@@ -475,15 +476,15 @@ export default function MathCourseRecommendations({
             </button>
           </span>
         ))}
-        <a
+        {printUrl && <a
           className="btn btn-secondary"
-          href={recommendationPrintUrl(context, group)}
+          href={printUrl}
           target="_blank"
           rel="noreferrer"
         >
           <Printer size={14} />
           题目打印与下载
-        </a>
+        </a>}
         <button
           className="btn btn-secondary"
           onClick={() => setVideos(group.LinkSort)}

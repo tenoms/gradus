@@ -41,6 +41,7 @@ export function noteExportLinks(
   { origin = "book", kind = "错题", stuid },
 ) {
   if (!rows.length) throw new Error("请先选择需要导出的记录。");
+  if (!publicConfig.math.externalUrl) return [];
   const groups = new Map();
   for (const row of rows) {
     const key = origin === "bank" ? "" : String(row.CatalogID || 0);

@@ -44,6 +44,7 @@ import { setUserScope } from "../../features/learning/state/store";
 import type { Platform, Session } from "../../shared/api/client";
 import { emptySession, getSession, setApiIdentity } from "../../shared/api/client";
 import { SessionContext, useSession } from "../../shared/auth/session";
+import { configureBrowserConfig } from "../../shared/config/public.mjs";
 import { extraItems, libraryItems, navItems, sectionTitles } from "./navigation";
 const PersonalCenter = lazy(() => import("../../features/identity/PersonalCenter"));
 const MathWorkspace = lazy(() => import("../../features/math/MathWorkspace"));
@@ -141,6 +142,7 @@ export default function LearningApp() {
   const location = useLocation();
   const navigate = useNavigate();
   function acceptSession(value: Session) {
+      configureBrowserConfig(value.browserConfig);
       const normalized = {
         ...emptySession,
         ...value,

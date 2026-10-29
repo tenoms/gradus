@@ -1,8 +1,9 @@
-// Official VOD SDK: https://help.polyv.net/vod/js/video_player/integration/
 // Protected playback requires a playsafe credential supplied by the content owner.
 import { publicConfig } from "../../../shared/config/public.mjs";
 let sdkPromise: Promise<void> | undefined;
 export function loadMathPolyvSDK(): Promise<void> {
+  if (!(window as any).polyvPlayer && !publicConfig.media.polyvSdkUrl)
+    return Promise.reject(new Error("当前未配置录播播放器，暂时无法播放此视频。"));
   return (sdkPromise ||= new Promise<void>((resolve, reject) => {
     if ((window as any).polyvPlayer) {
       resolve();

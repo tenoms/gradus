@@ -1,5 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { configureBrowserConfig } from "../../../src/shared/config/public.mjs";
+configureBrowserConfig({ math: { externalUrl: "https://print.example.test/External/", printStationId: 1 }, media: { polyvSdkUrl: "" } });
 import {
   reportTables,
   reportFileLinks,
@@ -122,7 +124,7 @@ test("explicit course print links preserve the three actual legacy paths and exa
   });
   assert.ok(
     links.every(
-      (row) => new URL(row.url).origin === "https://web.math-upstream.invalid",
+      (row) => new URL(row.url).origin === "https://print.example.test",
     ),
   );
   assert.deepEqual(

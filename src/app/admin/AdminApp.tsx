@@ -4,6 +4,7 @@ import { Activity, ArrowUpRight, Bell, CircleAlert, Database, LayoutDashboard, L
 import { api, emptySession, getSession, setApiIdentity } from "../../shared/api/client";
 import type { Session } from "../../shared/api/client";
 import { SessionContext } from "../../shared/auth/session";
+import { configureBrowserConfig } from "../../shared/config/public.mjs";
 import AuthScreen from "../../features/identity/AuthScreen";
 import PasswordSettings from "../../features/identity/PasswordSettings";
 import "../../features/admin/admin.css";
@@ -28,6 +29,7 @@ export default function AdminApp() {
   const [compact, setCompact] = useState(() => matchMedia("(max-width: 850px)").matches);
   const location = useLocation();
   function accept(value: Session) {
+    configureBrowserConfig(value.browserConfig);
     const normalized = { ...emptySession, ...value, platforms: { ...emptySession.platforms, ...value.platforms } };
     setApiIdentity(value.authenticated ? value.user?.id : undefined);
     setSession(normalized); setError("");

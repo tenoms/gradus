@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import RichContent from "../../../shared/content/RichContent";
+import { publicConfig } from "../../../shared/config/public.mjs";
 import {
   mathFreshCommand as mathCommand,
   mathGet,
@@ -695,10 +696,11 @@ export default function MathNotebook({
             className="icon-button"
             disabled={
               !selectedRows.length ||
+              !publicConfig.math.externalUrl ||
               busy
             }
             aria-label="导出所选记录PDF"
-            title="导出所选记录PDF"
+            title={publicConfig.math.externalUrl ? "导出所选记录PDF" : "当前未配置 PDF 导出服务"}
             onClick={exportNotes}
           >
             <FileDown size={17} />

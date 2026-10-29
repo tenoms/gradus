@@ -235,6 +235,7 @@ export function recommendationPrintUrl(context, group) {
     if (["https:", "http:"].includes(direct.protocol)) return direct.href;
   } catch {}
   const url = mathExternalUrl("RecommendPaperPrintSpecial.html");
+  if (!url) return "";
   for (const [key, value] of Object.entries({
     courseID: context.CourseID,
     calendarID: context.CalendarID,

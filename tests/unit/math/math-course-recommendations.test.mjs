@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
 import * as model from "../../../src/features/math/courses/course-recommendations-model.mjs";
+import { configureBrowserConfig } from "../../../src/shared/config/public.mjs";
+
+configureBrowserConfig({ math: { externalUrl: "https://print.example.test/External/", printStationId: 1 }, media: { polyvSdkUrl: "" } });
 
 const context = {
   stuid: "student",
@@ -224,7 +227,7 @@ test("print link prioritizes returned files and otherwise uses only the exact so
       Files: "javascript:alert(1)",
     }),
   );
-  assert.equal(url.origin, "https://web.math-upstream.invalid");
+  assert.equal(url.origin, "https://print.example.test");
   assert.equal(url.pathname, "/External/RecommendPaperPrintSpecial.html");
   assert.deepEqual(Object.fromEntries(url.searchParams), {
     courseID: "202",
