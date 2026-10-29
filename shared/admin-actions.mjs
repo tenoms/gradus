@@ -6,6 +6,7 @@ export const adminActions = {
   "account_pool.updated": "更新共享账号池", "resource_sync.updated": "更新资源同步",
   "resource.updated": "编辑资源", "resource.invalidated": "标记资源需更新", "resource.deleted": "删除资源缓存",
   "yyb.updated": "更新个人 YYB 配置",
+  "user.profile_updated": "更新个人资料",
   "auth.registered": "注册学习账号", "registration.updated": "更新用户注册设置",
   "personal_sync.linked": "关联个人学习账号",
   "yyb_service.created": "添加 YYB 服务", "yyb_service.updated": "更新 YYB 服务", "yyb_service.deleted": "移除 YYB 服务", "yyb_service.probed": "检查 YYB 服务",

@@ -372,6 +372,7 @@ svg {
   color: var(--accent);
   border-color: #f8f5fd;
 }
+.avatar > img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 .avatar > i {
   width: 8px;
   height: 8px;

@@ -582,6 +582,7 @@ export default function ExerciseSession({
             return (
               <button
                 key={index}
+                data-choice-mode={type === 2 ? "multiple" : "single"}
                 className={`computer-option ${selected ? "active" : ""} ${feedback}`}
                 disabled={hasSubmitted || loading}
                 aria-pressed={selected}
@@ -610,6 +611,7 @@ export default function ExerciseSession({
                   {options.map((option, j) => (
                     <button
                       key={j}
+                      data-choice-mode="single"
                       className={`computer-option ${answer.split(",")[index] === String(option.questionStem) ? "active" : ""}`}
                       disabled={hasSubmitted || loading}
                       onClick={() => {

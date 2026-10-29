@@ -741,6 +741,7 @@ function PaperRunner({
                   feedback = mathOptionFeedback(option, options, selected, finished);
                 return (
                   <button
+                    data-choice-mode={multiple ? "multiple" : "single"}
                     disabled={finished || loading}
                     className={`math-exam-option ${selected ? "active" : ""} ${feedback}`}
                     key={option.ID || i}

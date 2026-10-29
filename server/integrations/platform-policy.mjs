@@ -26,8 +26,6 @@ const safeKeys = {
     "HeadImg",
     "SubjectType",
     "ChoiceType",
-    "SchoolName",
-    "TargetSchool",
     "VipEndTime",
     "EBookIDs",
     "PaperIDs",

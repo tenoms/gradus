@@ -1,7 +1,7 @@
 import express from 'express';
 import { ApiError } from '../../infrastructure/api-error.mjs';
 
-export function createAdminRouter({ service, identities, connections, configuration, operations, auth, accountPool, resourceSync }) {
+export function createAdminRouter({ service, identities, connections, configuration, operations, auth, accountPool, resourceSync, mathProfile }) {
   const router = express.Router();
   router.use('/auth', auth.router);
   router.use(auth.require);
@@ -12,6 +12,7 @@ export function createAdminRouter({ service, identities, connections, configurat
   });
   router.get('/operations', (req,res) => res.json({ ...operations.snapshot(), configurationRevision:configuration.publicConfig().revision }));
   router.get('/users', async (req,res) => res.json(await identities.userPage(req.query)));
+  router.get('/users/:id/profile/math', async (req,res) => res.json(await mathProfile.read(req.params.id)));
   router.post('/users', async (req,res) => res.status(201).json({user:await identities.createUser(req.body,req.studySession.user)}));
   router.patch('/users/:id', async (req,res) => {
     const previous=await identities.user(req.params.id);

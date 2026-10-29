@@ -104,6 +104,13 @@ export async function createPrivatePlatformStore({ database, resourceStore, pers
     const { ID: localId, id, _importShelfRemoved, _importId, _imported, _sourceRecordId, _key, ...fields } = data;
     return { ...identity,...fields, ...(name === 'math' ? { ID: baseUser.ID, StuID:baseUser.StuID } : { userId:baseUser.userId }) };
   }
+  async function saveMathProfile(userId, account, details) {
+    const removed = ['UserName','SchoolName','TargetSchool','IsCrossCourse','TargetScore','QQ','ElseQuestion','UseRestsApp','IsRealizeCourse','IsInActivities','IsJoinCourse','isJoinCourse','Source'];
+    await database.query(`UPDATE ${table} SET data=data-$2::text[] WHERE user_id=$1 AND platform='math' AND collection='profile'`, [userId, removed]);
+    await put(userId, 'math', 'profile', 'profile', account);
+    await database.query(`DELETE FROM ${table} WHERE user_id=$1 AND platform='math' AND collection='sys_users_info'`, [userId]);
+    await put(userId, 'math', 'sys_users_info', 'profile', details);
+  }
   async function rememberQuestions(userId,name,response,sourceId,input) {
     // A book outline contains question references, not visits to every question.
     if(name==='math'&&input?.data?.command==='GetQuestionNexts2')return;
@@ -390,5 +397,5 @@ export async function createPrivatePlatformStore({ database, resourceStore, pers
     }
     return safe;
   }
-  return { handle,profile,list,put,rememberQuestions };
+  return { handle,profile,list,put,rememberQuestions,saveMathProfile };
 }

@@ -11,6 +11,7 @@ import { useSession } from "../../shared/auth/session";
 import { useDialogFocus } from "../../shared/lib/focus";
 import Pagination from "../../shared/ui/pagination/Pagination";
 import { adminActions } from "../../../shared/admin-actions.mjs";
+import UserLearningProfile from "./users/UserLearningProfile";
 import "./admin.css";
 const OperationsConsole = lazy(() => import("./operations/OperationsConsole"));
 const DataManagement = lazy(() => import("./data/DataManagement"));
@@ -156,6 +157,7 @@ function UserEditor({ user, accounts, accountsError, onSaved, onClose }: {
   }
   return <aside className="panel admin-user-editor" aria-label={user ? `编辑用户 ${user.displayName}` : "创建用户"}>
     <div className="admin-section-heading"><div><span className="admin-kicker">{user ? "用户详情" : "添加学习成员"}</span><h2>{user ? user.displayName : "创建用户"}</h2></div><button className="icon-button" onClick={onClose} disabled={pending} aria-label="关闭用户编辑"><X size={18} /></button></div>
+    {user && <UserLearningProfile userId={user.id} />}
     <form onSubmit={save}>
       <label className="field-label">登录用户名<input className="input" value={draft.username} onChange={(event) => set("username", event.target.value)} autoComplete="off" required minLength={3} maxLength={40} pattern="[A-Za-z0-9][A-Za-z0-9._-]{2,39}" disabled={!!user || pending} placeholder="例如 learner_01" /><small>3–40 位字母、数字、点、下划线或短横线。</small></label>
       <label className="field-label">显示名称<input className="input" value={draft.displayName} onChange={(event) => set("displayName", event.target.value)} required maxLength={60} disabled={pending} placeholder="学习者的名字" /></label>

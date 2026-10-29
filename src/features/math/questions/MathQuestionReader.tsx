@@ -386,6 +386,7 @@ function QuestionReader({
                 return (
                 <button
                   key={o.ID || i}
+                  data-choice-mode={multiple ? "multiple" : "single"}
                   className={`${isSelected ? "selected" : ""} ${feedback}`}
                   disabled={readOnly || saving}
                   aria-pressed={selected.includes(String(o.ID))}

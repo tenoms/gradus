@@ -1,308 +1,79 @@
-import { studyFetch } from "../../../shared/api/client";
 import { useEffect, useState } from "react";
 import { Camera, LoaderCircle, Save, UserRound } from "lucide-react";
+import { api } from "../../../shared/api/client";
 import { useSession } from "../../../shared/auth/session";
-import {
-  mathCommand,
-  mathData,
-  mathGet,
-  mathPost,
-  mathRows,
-} from "../api/math";
+import { retryStudySync } from "../../learning/state/store";
+import { createProfileAvatar } from "./profile-avatar";
+import type { MathProfile } from "../../../../shared/math-profile.mjs";
 import type { MathRow } from "../api/math";
-import { studyProfilePayload } from "./account-model.mjs";
 import "./math-account.css";
-import { useMathLearningPlan } from "../preparation/MathLearningPlan";
-import { initialMathSubject } from "../preparation/learning-plan-model.mjs";
 
 export default function MathStudyProfile({ user }: { user: MathRow }) {
-  const { subject: targetSubject, setSubject: setTargetSubject } = useMathLearningPlan();
-  const { refresh } = useSession(),
-    [form, setForm] = useState<MathRow>({}),
-    [provinces, setProvinces] = useState<MathRow[]>([]),
-    [schools, setSchools] = useState<string[]>([]),
-    [majors, setMajors] = useState<string[]>([]),
-    [busy, setBusy] = useState(true),
-    [saving, setSaving] = useState(false),
-    [notice, setNotice] = useState(""),
-    [error, setError] = useState("");
-  const [nickname, setNickname] = useState(String(user.UserNick || "")),
-    [avatar, setAvatar] = useState(String(user.HeadImg || "")),
-    [subject, setSubject] = useState(targetSubject || initialMathSubject(user.SubjectType));
-  const stuid = String(user.StuID || "");
+  const { refresh } = useSession();
+  const [form, setForm] = useState<MathProfile>();
+  const [busy, setBusy] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const [version, setVersion] = useState(0);
   useEffect(() => {
     let active = true;
-    mathGet("/api/sys_users_info/GetListByAll", { StuID: stuid })
-      .then(profile => {
-        if (!active) return;
-        setForm({
-          UserName: user.UserNick || "",
-          IsCrossCourse: 1,
-          IsRealizeCourse: -1,
-          IsInActivities: -1,
-          ...mathRows(profile)[0],
-        });
-      })
+    setBusy(true);
+    setError("");
+    api<{ profile: MathProfile }>("/api/learning/profile/math")
+      .then(value => { if (active) setForm(value.profile); })
       .catch(cause => { if (active) setError(cause.message); })
       .finally(() => { if (active) setBusy(false); });
-    Promise.allSettled([
-      mathCommand("GetSysProvinceList"),
-      mathCommand("GetDryRunInfoList", { yuanxiao: "", neirong: "" }),
-    ]).then(results => {
-      if (!active) return;
-      if (results[0].status === "fulfilled") setProvinces(mathRows(results[0].value));
-      if (results[1].status === "fulfilled") {
-        setSchools([...new Set(mathRows(results[1].value).map(row => String(row.f_xuexiao || "")).filter(Boolean))]);
-        setMajors([...new Set(mathRows(results[1].value, 1).map(row => String(row.neirong || "")).filter(Boolean))]);
-      }
-    });
-    return () => {
-      active = false;
-    };
-  }, [stuid]);
-  const set = (key: string, value: any) =>
-    setForm((f) => ({ ...f, [key]: value }));
-  const upload = async (file?: File) => {
+    return () => { active = false; };
+  }, [user.StuID, version]);
+  function set<K extends keyof MathProfile>(key: K, value: MathProfile[K]) {
+    setForm(previous => previous ? { ...previous, [key]: value } : previous);
+  }
+  async function upload(file?: File) {
     if (!file) return;
     setSaving(true);
     setNotice("");
+    setError("");
     try {
-      const data = new FormData();
-      data.append("file", file);
-      const response = await studyFetch(
-          "/api/platform/math/upload?path=/api/sys_attachment/LayuiUpImg",
-          { method: "POST", credentials: "same-origin", body: data },
-        ),
-        result = await response.json();
-      if (!response.ok) throw new Error(result.error || "头像上传失败");
-      const raw = mathData(result),
-        url =
-          typeof raw === "string"
-            ? raw
-            : raw?.src || raw?.Path || raw?.path || raw?.url;
-      if (typeof url !== "string" || !/^https?:\/\//.test(url))
-        throw new Error("平台没有返回可用头像地址");
-      setAvatar(url);
-      setNotice("头像已上传，保存资料后生效。");
-    } catch (e) {
-      setNotice(e instanceof Error ? e.message : String(e));
-    } finally {
-      setSaving(false);
-    }
-  };
-  const save = async (e: React.FormEvent) => {
-    e.preventDefault();
+      set("avatar", await createProfileAvatar(file));
+      setNotice("头像已选好，保存资料后生效。");
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "头像读取失败，请重试。"); }
+    finally { setSaving(false); }
+  }
+  async function save(event: React.FormEvent) {
+    event.preventDefault();
+    if (!form || saving) return;
     setSaving(true);
     setNotice("");
+    setError("");
     try {
-      await mathPost("/api/sys_users/UpdateUserNickName", {
-        StuID: stuid,
-        UserNick: nickname.trim(),
-        HeadImg: avatar,
-      });
-      await mathPost("/api/sys_users/Inner_sys_users", {
-        ID: user.ID,
-        StuID: stuid,
-        UserNick: nickname.trim(),
-        HeadImg: avatar,
-        SubjectType: subject,
-        UpdateColumns: "ID,UserNick,HeadImg,SubjectType",
-      });
-      await mathPost(
-        "/api/sys_users_info/Inner_sys_users_info",
-        studyProfilePayload(form, stuid),
-      );
-      setTargetSubject(subject);
+      const value = await api<{ profile: MathProfile }>("/api/learning/profile/math", { method: "PUT", body: JSON.stringify(form) });
+      setForm(value.profile);
+      await retryStudySync();
       await refresh();
-      setNotice(
-        "个人资料与考研档案已保存到当前学习账号。",
-      );
-    } catch (e) {
-      setNotice(e instanceof Error ? e.message : String(e));
-    } finally {
-      setSaving(false);
-    }
-  };
-  if (busy)
-    return (
-      <div className="math-state">
-        <LoaderCircle className="spin" />
-        <p>正在读取个人档案…</p>
-      </div>
-    );
-  if (error) return <p className="math-error-text">{error}</p>;
-  const years = [
-    ...new Set(
-      [
-        String(form.Score2 || ""),
-        ...Array.from({ length: 4 }, (_, i) =>
-          String(new Date().getFullYear() - 1 + i),
-        ),
-        "其他",
-      ].filter(Boolean),
-    ),
-  ];
-  const text = (key: string, label: string, list?: string) => (
-    <label className="math-field" key={key}>
-      {label}
-      <input
-        className="input"
-        value={form[key] ?? ""}
-        maxLength={key === "ElseQuestion" ? 1000 : 100}
-        list={list}
-        onChange={(e) => set(key, e.target.value)}
-      />
-    </label>
-  );
-  return (
-    <form className="math-study-profile" onSubmit={save}>
-      <div className="math-profile-head">
-        <div className="math-connect-icon">
-          {/^https?:/.test(avatar) ? (
-            <img src={avatar} alt="个人头像" />
-          ) : (
-            <UserRound size={30} />
-          )}
-        </div>
-        <div>
-          <h4>{nickname || "数学学习者"}</h4>
-          <label className="btn btn-secondary macc-upload">
-            <Camera size={14} />
-            更换头像
-            <input
-              type="file"
-              accept="image/*"
-              disabled={saving}
-              onChange={(e) => upload(e.target.files?.[0])}
-            />
-          </label>
-        </div>
-      </div>
-      <div className="macc-grid">
-        <label className="math-field">
-          昵称
-          <input
-            className="input"
-            required
-            maxLength={30}
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-          />
-        </label>
-        <label className="math-field">
-          数学类别
-          <select
-            className="input"
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-          >
-            {["数一", "数二", "数三"].map((v) => (
-              <option key={v}>{v}</option>
-            ))}
-          </select>
-        </label>
-        <label className="math-field">
-          考研年份
-          <select
-            className="input"
-            value={form.Score2 || ""}
-            onChange={(e) => set("Score2", e.target.value)}
-          >
-            <option value="">请选择</option>
-            {years.map((v) => (
-              <option key={v}>{v}</option>
-            ))}
-          </select>
-        </label>
-        <label className="math-field">
-          所在省份
-          <select
-            className="input"
-            value={form.Province || ""}
-            onChange={(e) => set("Province", e.target.value)}
-          >
-            <option value="">请选择</option>
-            {form.Province &&
-              !provinces.some((r) => r.Value === form.Province) && (
-                <option>{form.Province}</option>
-              )}
-            {provinces.map((r) => (
-              <option key={r.Key} value={r.Value}>
-                {r.Value}
-              </option>
-            ))}
-          </select>
-        </label>
-        {text("SchoolName", "本科学校", "macc-schools")}
-        {text("TargetSchool", "目标院校", "macc-schools")}
-        {text("CourseName", "报考专业", "macc-majors")}
-        <label className="math-field">
-          备考状态
-          <select
-            className="input"
-            value={form.IsWorkStudy || ""}
-            onChange={(e) => set("IsWorkStudy", e.target.value)}
-          >
-            <option value="">请选择</option>
-            {["在职", "应届", "脱产"].map((v) => (
-              <option key={v}>{v}</option>
-            ))}
-          </select>
-        </label>
-        <label className="math-field">
-          开始复习月份
-          <select
-            className="input"
-            value={form.GoOverTime || ""}
-            onChange={(e) => set("GoOverTime", e.target.value)}
-          >
-            <option value="">请选择</option>
-            {Array.from({ length: 12 }, (_, i) => `${i + 1}月`).map((v) => (
-              <option key={v}>{v}</option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <details className="macc-more">
-        <summary>补充备考资料</summary>
-        <div className="macc-grid">
-          {text("UserName", "姓名")}
-          {text("QQ", "QQ")}
-          {text("TargetScore", "目标分数")}
-          <label className="math-field">
-            跨专业报考
-            <select
-              className="input"
-              value={form.IsCrossCourse ?? 1}
-              onChange={(e) => set("IsCrossCourse", Number(e.target.value))}
-            >
-              <option value={1}>是</option>
-              <option value={0}>否</option>
-            </select>
-          </label>
-          {text("UseRestsApp", "同时使用的学习应用")}
-        </div>
-        {text("ElseQuestion", "其他备考问题")}
-      </details>
-      <datalist id="macc-schools">
-        {schools.map((s) => (
-          <option key={s} value={s} />
-        ))}
-      </datalist>
-      <datalist id="macc-majors">
-        {majors.map((s) => (
-          <option key={s} value={s} />
-        ))}
-      </datalist>
-      <button className="btn btn-primary" disabled={saving}>
-        <Save size={15} />
-        {saving ? "正在同步…" : "保存个人资料与档案"}
-      </button>
-      {notice && (
-        <p role="status" className="math-account-notice">
-          {notice}
-        </p>
-      )}
-    </form>
-  );
+      setNotice("个人资料已保存，下次登录可继续使用。");
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "资料保存失败，请重试。"); }
+    finally { setSaving(false); }
+  }
+  if (busy) return <div className="math-state" role="status"><LoaderCircle className="spin" /><p>正在读取个人资料…</p></div>;
+  if (!form) return <div className="math-state"><p className="math-error-text" role="alert">{error || "个人资料暂不可用"}</p><button className="btn btn-secondary" onClick={() => setVersion(value => value + 1)}>重新读取</button></div>;
+  const years = [...new Set([form.examYear, ...Array.from({ length: 4 }, (_, index) => String(new Date().getFullYear() - 1 + index)), "其他"].filter(Boolean))];
+  return <form className="math-study-profile" onSubmit={save}>
+    <div className="math-profile-head">
+      <div className="math-connect-icon">{form.avatar ? <img src={form.avatar} alt="个人头像" /> : <UserRound size={30} />}</div>
+      <div><h4>{form.nickname || "数学学习者"}</h4><label className="btn btn-secondary macc-upload"><Camera size={14} />更换头像<input type="file" accept="image/png,image/jpeg,image/webp" disabled={saving} onChange={event => void upload(event.target.files?.[0])} /></label></div>
+    </div>
+    <fieldset className="macc-grid" disabled={saving}>
+      <label className="math-field">昵称<input className="input" required maxLength={80} value={form.nickname} onChange={event => set("nickname", event.target.value)} /></label>
+      <label className="math-field">数学类别<select className="input" value={form.subject} onChange={event => set("subject", event.target.value as MathProfile["subject"])}>{["数一", "数二", "数三"].map(value => <option key={value}>{value}</option>)}</select></label>
+      <label className="math-field">考研年份<select className="input" value={form.examYear} onChange={event => set("examYear", event.target.value)}><option value="">请选择</option>{years.map(value => <option key={value}>{value}</option>)}</select></label>
+      <label className="math-field">所在省份<input className="input" maxLength={100} placeholder="例如：浙江省" value={form.province} onChange={event => set("province", event.target.value)} /></label>
+      <label className="math-field">报考专业<input className="input" maxLength={100} value={form.major} onChange={event => set("major", event.target.value)} /></label>
+      <label className="math-field">备考状态<select className="input" value={form.preparationStatus} onChange={event => set("preparationStatus", event.target.value)}><option value="">请选择</option>{["在职", "应届", "脱产"].map(value => <option key={value}>{value}</option>)}</select></label>
+      <label className="math-field">开始复习月份<select className="input" value={form.reviewMonth} onChange={event => set("reviewMonth", event.target.value)}><option value="">请选择</option>{Array.from({ length: 12 }, (_, index) => `${index + 1}月`).map(value => <option key={value}>{value}</option>)}</select></label>
+    </fieldset>
+    <button className="btn btn-primary" disabled={saving}><Save size={15} />{saving ? "正在保存…" : "保存个人资料"}</button>
+    {notice && <p role="status" className="math-account-notice">{notice}</p>}
+    {error && <p role="alert" className="math-error-text">{error}</p>}
+  </form>;
 }

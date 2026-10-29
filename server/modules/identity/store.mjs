@@ -237,6 +237,13 @@ export async function createIdentityStore(db) {
     setup: (input) => createUser(input, null, true),
     registerUser: (input) => createUser({username:input.username,displayName:input.displayName,password:input.password,role:'learner',yybRef:''}),
     createUser, updateUser, login, issueSession, sessionUser, revokeSession,
+    async updateOwnDisplayName(userId, displayName) {
+      const value = text(displayName, 80, '昵称');
+      const user = await rowFor(userId, true);
+      if (!user) fail('未找到该用户', 404);
+      await db.query(`UPDATE ${table('users')} SET display_name=$1 WHERE id=$2`, [value, userId]);
+      return userValue(await rowFor(userId));
+    },
     user: async (id) => userValue(await rowFor(id)),
     users: async () => Promise.all((await db.query(`SELECT * FROM ${table('users')} ORDER BY created_at,id`)).rows.map(userValue)),
     yybSettings, saveYybSettings, selectYybAccount, userPage, auditPage, announcementPage,

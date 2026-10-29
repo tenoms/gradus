@@ -1,3 +1,8 @@
+.math-workspace .math-options > button[data-choice-mode="single"] > span,
+.math-workspace button.computing-option[data-choice-mode="single"] > span,
+.math-workspace button.math-exam-option[data-choice-mode="single"] > span {
+  border-radius: 50%;
+}
 .math-workspace .math-options > button.math-choice-incorrect,
 .math-workspace button.computing-option.math-choice-incorrect,
 .math-workspace button.math-exam-option.math-choice-incorrect {

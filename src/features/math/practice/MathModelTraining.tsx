@@ -694,6 +694,7 @@ function ModuleQuestion({
                   return (
                   <button
                     key={o.ID || i}
+                    data-choice-mode={multi ? "multiple" : "single"}
                     disabled={busy || !!row.AnswerID}
                     className={`${selected ? "selected" : ""} ${feedback}`}
                     onClick={() => {

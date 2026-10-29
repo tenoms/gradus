@@ -7,6 +7,10 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
 }
 .macc-grid .math-field {
   margin: 0;
@@ -23,19 +27,6 @@
   opacity: 0;
   cursor: pointer;
   width: 100%;
-}
-.macc-more {
-  padding: 17px;
-  border: 1px solid #e5eaf1;
-  border-radius: 10px;
-}
-.macc-more summary {
-  color: #657a99;
-  font-size: 13px;
-  cursor: pointer;
-}
-.macc-more[open] .macc-grid {
-  margin: 22px 0;
 }
 .macc-benefits .math-account-subtabs {
   flex-wrap: wrap;

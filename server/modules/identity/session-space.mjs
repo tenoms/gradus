@@ -17,7 +17,7 @@ export function createSessionSpace({ space, identities, connections, learningPro
       const base=name==='math'?{ID:user.id,StuID:user.id,UserNick:user.displayName}:{userId:user.id,nickName:user.displayName};
       platforms[name]={available:true,connected:false,identityMode:'web',stuId:user.id,user:learningProfile?await learningProfile(user,name):base};
     }
-    return {user,account:yyb.ref?{ref:yyb.ref}:null,platforms,identityMode:'web',webOwned:true,yybMode:yyb.mode,yybRevision:yyb.revision,yybBaseUrl:yyb.mode==='custom'?yyb.baseUrl:''};
+    return {user:{...user,avatar:platforms.math.user?.HeadImg || ''},account:yyb.ref?{ref:yyb.ref}:null,platforms,identityMode:'web',webOwned:true,yybMode:yyb.mode,yybRevision:yyb.revision,yybBaseUrl:yyb.mode==='custom'?yyb.baseUrl:''};
   }
   async function read(req) { return stateFor(await identities.sessionUser(req.cookies[cookieName], space)); }
   function publicValue(session) {

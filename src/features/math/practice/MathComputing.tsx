@@ -420,6 +420,7 @@ function ComputingPaper({
               return (
                 <button
                   key={option.ID || i}
+                  data-choice-mode={multiple ? "multiple" : "single"}
                   className={`computing-option ${selected ? "active" : ""} ${feedback}`}
                   disabled={
                     loading || finished || (context.mistakes && !!record)

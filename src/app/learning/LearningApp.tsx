@@ -387,7 +387,7 @@ export default function LearningApp() {
                 onClick={() => navigate("/profile")}
                 aria-label="个人中心"
               >
-                {session.authenticated ? (
+                {session.user?.avatar ? <img src={session.user.avatar} alt="" /> : session.authenticated ? (
                   <GraduationCap size={23} />
                 ) : (
                   <span>知</span>

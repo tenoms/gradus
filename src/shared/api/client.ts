@@ -31,6 +31,7 @@ export interface Session {
     id: string;
     username: string;
     displayName: string;
+    avatar?: string;
     role: "admin" | "learner";
     status: "active" | "disabled";
     yyb?: YybConnection;
