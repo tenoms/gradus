@@ -1,4 +1,4 @@
-import publicConfig from "../../config/public.json" with { type: "json" };
+import systemConfig from "../../config/system.json" with { type: "json" };
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { once } from 'node:events';
@@ -6,7 +6,9 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createTestDatabase } from '../../tests/support/database.mjs';
-import { readPlatformDefaults } from '../../server/integrations/platform-config.mjs';
+import { readManagedPlatformConfig } from './managed-config.mjs';
+
+const publicConfig = systemConfig.public;
 
 // The optional source root lets the same real, read-only workload measure a Git baseline.
 const sourceRoot = resolve(process.env.DIRECTORY_SOURCE_ROOT || '.');
@@ -14,6 +16,7 @@ const label = process.env.DIRECTORY_CHECK_LABEL || 'current';
 assert.match(label, /^[a-z0-9-]+$/);
 const { createApp } = await import(pathToFileURL(resolve(sourceRoot, 'server/app.mjs')));
 const { requestJson } = await import(pathToFileURL(resolve(sourceRoot, 'server/integrations/upstream.mjs')));
+const configurationDefaults = await readManagedPlatformConfig();
 const database = await createTestDatabase();
 const calls = [], results = [];
 let queryCount = 0;
@@ -21,7 +24,7 @@ const originalQuery = database.query;
 database.query = (...args) => { queryCount++; return originalQuery(...args); };
 const commands = new Set(['GetBookPaperListOfVip', 'GetBookListCountAndLookCount_New', 'GetQuestionNexts2', 'GetUserInfoByStuID']);
 const authPaths = new Set(['/wxapp/getCode', '/api/OAuth2/Login', '/api/auth/wx/token']);
-const app = await createApp({ database, configurationDefaults: readPlatformDefaults(), requestJson: async (url, options = {}) => {
+const app = await createApp({ database, configurationDefaults, requestJson: async (url, options = {}) => {
   const path = new URL(url).pathname, method = String(options.method || 'GET').toUpperCase();
   const command = options.body instanceof URLSearchParams ? options.body.get('command') : null;
   assert.ok(method === 'GET' || authPaths.has(path) || path.startsWith('/api/Master/') && commands.has(command), '性能验收只允许目录读取和认证');
