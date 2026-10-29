@@ -4,15 +4,16 @@ import { ApiError } from '../../infrastructure/api-error.mjs';
 import { stripSharedPersonalState } from '../../integrations/shared-account-policy.mjs';
 import { publicPlatformResponse } from '../../integrations/platform-policy.mjs';
 import { resourceKey, resourceRows, resourceMedia, resourceScope, publicResourceResponse } from './catalog.mjs';
+import { readRuntimeConfig } from '../../infrastructure/runtime-config.mjs';
 
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const iso = value => value instanceof Date ? value.toISOString() : value;
 const safeSource = row => ({ id: row.id, platform: row.platform, accountRef: row.account_ref, scope:row.metadata?.scope||'account', createdAt: iso(row.created_at), lastSeenAt: iso(row.last_seen_at) });
 const summary = row => ({sourceId:row.source_id,platform:row.platform,key:row.request_key,scope:row.scope,kind:row.kind,path:row.request?.path||'',command:row.request?.data?.command||'',title:row.title||row.request?.data?.command||row.request?.path||'',revision:row.revision,syncedAt:iso(row.synced_at),changedAt:iso(row.changed_at),expiresAt:iso(row.expires_at)||null,expired:!row.expires_at||new Date(row.expires_at).getTime()<=Date.now()});
-const defaultExpiry = scope => scope==='public'?new Date(Date.now()+6*60*60*1000).toISOString():null;
 const expires = value => {if(value===null)return null;const date=new Date(value);if(Number.isNaN(date.getTime()))throw new ApiError('资源更新期限格式不正确',400);return date.toISOString();};
 const safeSettings = row => ({ enabled: row.enabled, revision: row.revision, updatedAt: iso(row.updated_at) });
-export async function createResourceStore(database) {
+export async function createResourceStore(database, { publicTtlMs } = readRuntimeConfig().resources) {
+  const defaultExpiry = scope => scope==='public'?new Date(Date.now()+publicTtlMs).toISOString():null;
   const resources = database.upstream('resources'), sources = database.upstream('resource_sources');
   const media = database.upstream('resource_media'), entities = database.upstream('resource_entities'), settings = database.web('resource_sync_settings');
   await database.query(`CREATE TABLE IF NOT EXISTS ${sources} (id text PRIMARY KEY, platform text NOT NULL, account_ref text NOT NULL, metadata jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), last_seen_at timestamptz NOT NULL DEFAULT now())`);

@@ -34,6 +34,7 @@ function specifiers(source, filename) {
   return found;
 }
 function checkDependency(from, to) {
+  if (/^(?:src|shared)\//.test(from) && to.startsWith('config/') && to !== 'config/public.json') return '浏览器及跨端模块只能导入公开配置';
   if (from.startsWith('src/shared/') && /^src\/(?:app|features)\//.test(to)) return '前端共享模块不能反向依赖业务或应用入口';
   if (from.startsWith('src/features/') && to.startsWith('src/app/')) return '业务模块不能反向依赖应用装配';
   if (from.startsWith('src/') && /^(?:server|tests|scripts)\//.test(to)) return '浏览器源码不能依赖服务端或验证工具';
@@ -49,7 +50,9 @@ for (const file of sourceFiles) {
 }
 for (const file of codeFiles) {
   const from = relative(file);
-  for (const specifier of specifiers(readFileSync(file, 'utf8'), file)) {
+  const source = readFileSync(file, 'utf8');
+  if (/(?:yyb\.txt|wx[a-z\d]{16}-(?:math|computer))/i.test(source)) failures.push(`${from}: 运行时代码不能依赖开发资产`);
+  for (const specifier of specifiers(source, file)) {
     if (!specifier.startsWith('.')) continue;
     const target = resolveImport(file, specifier);
     if (!target) { failures.push(`${from}: 无法解析 ${specifier}`); continue; }
@@ -64,7 +67,7 @@ for (const [file, entry] of [['learn.html', 'src/app/learning/main.tsx'], ['admi
 const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8' }).split('\0').filter(Boolean);
 for (const file of tracked) {
   if (!existsSync(path.join(root, file))) continue;
-  if (/^(?:node_modules|dist|artifacts|\.data)\//.test(file) || /(?:^|\/)\.DS_Store$|\.(?:sqlite(?:3)?|log|tsbuildinfo)$/.test(file) || /(?:^|\/)\.env(?:$|\.(?!example$))/.test(file)) failures.push(`${file}: 生成物、本机状态及凭据不应进入版本库`);
+  if (/^(?:node_modules|dist|artifacts|\.data)\//.test(file) || file === 'config/local.json' || /(?:^|\/)\.DS_Store$|\.(?:sqlite(?:3)?|log|tsbuildinfo)$/.test(file) || /(?:^|\/)\.env(?:$|\.(?!example$))/.test(file)) failures.push(`${file}: 生成物、本机状态及凭据不应进入版本库`);
 }
 const markdown = [path.join(root, 'README.md'), path.join(root, 'CONTRIBUTING.md'), ...filesIn(path.join(root, 'docs')).filter(file => file.endsWith('.md'))].filter(existsSync);
 for (const file of markdown) {

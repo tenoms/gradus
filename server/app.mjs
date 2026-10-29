@@ -21,25 +21,27 @@ import { createSessionSpace } from "./modules/identity/session-space.mjs";
 import { createAdminRouter } from "./modules/admin/routes.mjs";
 import { createLearningRouter } from "./modules/learning/routes.mjs";
 import { createRuntimeInsights } from "./infrastructure/runtime-insights.mjs";
+import { readRuntimeConfig } from "./infrastructure/runtime-config.mjs";
 export { injectMathUser, validatePlatformRequest, publicPlatformResponse } from "./integrations/platform-policy.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 export async function createApp(overrides = {}) {
-  const database = overrides.database || await createDatabase({ schemaPrefix: process.env.STUDY_SCHEMA_PREFIX || "study" });
+  const runtimeConfig = overrides.runtimeConfig || readRuntimeConfig();
+  const database = overrides.database || await createDatabase({ connectionString: runtimeConfig.database.url || undefined, schemaPrefix: runtimeConfig.database.schemaPrefix, max: runtimeConfig.database.maxConnections, connectionTimeoutMillis: runtimeConfig.database.connectionTimeoutMs });
   const identities = overrides.identityStore || await createIdentityStore(database);
   const configuration = await (overrides.configuration || createPlatformConfigStore({ database, ...(overrides.configurationDefaults ? { defaults: overrides.configurationDefaults } : {}) }));
-  const service = { ...createUpstreamClient(() => configuration.snapshot(), overrides.requestJson ? { requestJson: overrides.requestJson } : {}), ...overrides };
+  const service = { ...createUpstreamClient(() => configuration.snapshot(), { requestTimeoutMs: runtimeConfig.upstream.requestTimeoutMs, ...(overrides.requestJson ? { requestJson: overrides.requestJson } : {}) }), ...overrides };
   const tokenLifecycle = createTokenLifecycle({ service });
   const connections = new Map();
-  const operations = createRuntimeInsights();
-  const accountPool = await createAccountPool({ database, service, connections, identities, tokenLifecycle });
-  const resourceStore = await createResourceStore(database);
+  const operations = createRuntimeInsights(runtimeConfig.diagnostics);
+  const accountPool = await createAccountPool({ database, service, connections, identities, tokenLifecycle, timings: runtimeConfig.accounts });
+  const resourceStore = await createResourceStore(database, runtimeConfig.resources);
   const resourceSync = createResourceSync({ store: resourceStore, service, connections, configuration, accountPool });
   const personalSync = await createPersonalSync({ database, service, identities, tokenLifecycle });
   const privatePlatform = await createPrivatePlatformStore({ database, resourceStore, personalSync });
-  const adminAuth = createSessionSpace({ space: "admin", identities, connections });
-  const learningAuth = createSessionSpace({ space: "learning", identities, connections, learningProfile: (user,name) => privatePlatform.profile(user.id,name,name === "math" ? { ID:user.id,StuID:user.id } : { userId:user.id },user.displayName) });
+  const adminAuth = createSessionSpace({ space: "admin", identities, connections, settings: runtimeConfig.session });
+  const learningAuth = createSessionSpace({ space: "learning", identities, connections, settings: runtimeConfig.session, learningProfile: (user,name) => privatePlatform.profile(user.id,name,name === "math" ? { ID:user.id,StuID:user.id } : { userId:user.id },user.displayName) });
   const registration = await createRegistrationStore({ database, identities });
   const app = express();
   app.disable("x-powered-by");
@@ -56,7 +58,7 @@ export async function createApp(overrides = {}) {
     }
     next();
   });
-  app.use(express.json({ limit: "3mb" }));
+  app.use(express.json({ limit: runtimeConfig.http.jsonBodyLimit }));
   app.get("/api/health", (req, res) => res.json({ ok: true, service: "study-web", spaces: ["admin", "learning"] }));
   app.get("/api/system/setup", async (req, res) => res.json({ setupRequired: await identities.setupRequired() }));
   app.post("/api/system/setup", async (req, res) => {
@@ -67,12 +69,12 @@ export async function createApp(overrides = {}) {
   app.use("/api/admin", createAdminRouter({ service, identities, connections, configuration, operations, accountPool, resourceSync, auth: adminAuth }));
   app.use(createRegistrationRouter({ registration, adminAuth, learningAuth }));
   app.use("/api/learning/personal-sync", createPersonalSyncRouter({ auth: learningAuth, personalSync }));
-  app.use("/api/learning", createLearningRouter({ service, identities, connections, accountPool, privatePlatform, resourceSync, personalSync, auth: learningAuth }));
+  app.use("/api/learning", createLearningRouter({ service, identities, connections, accountPool, privatePlatform, resourceSync, personalSync, runtimeConfig, auth: learningAuth }));
   app.use("/api", (req, res) => res.status(404).json({ error: "接口不存在" }));
   const dist = path.join(root, "dist");
   if (existsSync(path.join(dist, "index.html"))) {
     // Vite includes a content hash in asset names, so returning learners can reuse them.
-    app.use("/assets", express.static(path.join(dist, "assets"), { index: false, immutable: true, maxAge: "1y" }));
+    app.use("/assets", express.static(path.join(dist, "assets"), { index: false, immutable: true, maxAge: runtimeConfig.http.assetMaxAgeMs }));
     app.use(express.static(dist, { index: false }));
     app.get("/", (req, res) => res.redirect("/learn/"));
     app.get(["/admin", "/admin/{*path}"], (req, res) => res.sendFile(path.join(dist, "admin.html")));

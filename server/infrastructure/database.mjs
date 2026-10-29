@@ -1,5 +1,6 @@
 import pg from "pg";
 import { AsyncLocalStorage } from "node:async_hooks";
+import { readRuntimeConfig } from "./runtime-config.mjs";
 
 const identifier = (value) => {
   if (typeof value !== "string" || !/^[a-z][a-z0-9_]{0,62}$/.test(value)) throw new Error("数据库 schema 或表名格式不正确");
@@ -7,10 +8,12 @@ const identifier = (value) => {
 };
 
 /** One pool owns two explicit data domains. Transactions pin all nested queries to one connection. */
-export async function createDatabase({ connectionString = process.env.DATABASE_URL, schemaPrefix = "study", ...options } = {}) {
+export async function createDatabase(input = {}) {
+  const configured = readRuntimeConfig().database;
+  const { connectionString = configured.url || undefined, schemaPrefix = configured.schemaPrefix, ...options } = input;
   if (typeof schemaPrefix !== "string" || !/^[a-z][a-z0-9_]{0,53}$/.test(schemaPrefix)) throw new Error("数据库 schema 前缀需要 1–54 位小写字母、数字或下划线，并以字母开头");
   const webSchema = `${schemaPrefix}_web`, upstreamSchema = `${schemaPrefix}_upstream`;
-  const pool = new pg.Pool({ ...(connectionString ? { connectionString } : {}), max: 10, connectionTimeoutMillis: 5000, ...options });
+  const pool = new pg.Pool({ ...(connectionString ? { connectionString } : {}), max: configured.maxConnections, connectionTimeoutMillis: configured.connectionTimeoutMs, ...options });
   // Idle sockets should not turn a transient database outage into an unhandled process error.
   pool.on("error", () => {});
   const context = new AsyncLocalStorage();

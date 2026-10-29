@@ -7,8 +7,8 @@
 使用 Node.js 24（最低 22.13）及 PostgreSQL 14+。运行时版本记录在 `.node-version`，依赖由 `package-lock.json` 锁定。
 
 ```sh
-cp .env.example .env
-# 填写 .env 中的 DATABASE_URL
+cp config/local.example.json config/local.json
+# 填写 runtime.database.url、YYB 地址及所需平台秘密
 npm ci
 npm run dev
 ```
@@ -23,7 +23,7 @@ npm run build
 npm start
 ```
 
-生产构建由同源 Express 服务提供，默认地址为 [http://127.0.0.1:3001/learn/](http://127.0.0.1:3001/learn/)。可用 `HOST`、`PORT` 配置监听地址；HTTPS 部署设置 `COOKIE_SECURE=1`，反向代理保留原 Host。
+生产构建由同源 Express 服务提供，默认地址为 [http://127.0.0.1:3001/learn/](http://127.0.0.1:3001/learn/)。监听、数据库池、会话、缓存与超时从配置文件读取；`HOST`、`PORT` 等环境覆盖继续有效。HTTPS 部署设置安全 cookie，反向代理保留原 Host。文件用途、优先级和更新方式见[系统配置](config/README.md)。
 
 ## 主要能力
 
@@ -46,7 +46,7 @@ PostgreSQL 分为两个数据域：默认 `study_web` 保存 Web 用户、会话
 
 个人中心可关联本人微信账号，明确选择同步范围后导入已有记录。个人同步与公共资源同步使用独立开关，均从小程序接口向 Web 读取；Web 答案、笔记和进度不回写小程序。
 
-平台配置首次从 `.env` 及可选的本机参考材料建立初值，随后以数据库中的管理配置为准。凭据只在服务端保存。现有 `yyb.txt` 和原小程序目录属于未提交的本机参考材料，首次配置读取仍可能使用它们。
+平台初值从 `config/defaults.json`、本机 `config/local.json`（或 `STUDY_CONFIG_FILE` 指定的文件）及环境变量读取，随后以数据库中的管理配置为准。公开地址与默认学科等集中在 `config/public.json`，秘密只在服务端保存。原小程序目录与 `yyb.txt` 属于开发资产，启动、构建和真实验收均不读取它们。
 
 ## 源码组织
 
@@ -59,6 +59,7 @@ server/modules/      身份、账号池、资源、学习、个人同步与管�
 server/integrations/ YYB 与两科平台协议、配置和策略
 server/infrastructure/ PostgreSQL、错误类型及运行诊断
 shared/              两端共用的领域校验
+config/              默认配置、公开配置与本机部署模板
 tests/unit/          按业务分类的单元与交互契约测试
 tests/integration/   使用独立 PostgreSQL schema 的集成测试
 tests/support/       测试数据库与 HTTP 应用夹具

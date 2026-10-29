@@ -1,3 +1,4 @@
+import publicConfig from "../../config/public.json" with { type: "json" };
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { once } from 'node:events';
@@ -67,9 +68,9 @@ try {
   const platform = async (auth, name, body) => (await request(`/api/learning/platform/${name}`, { auth, body })).data;
   const command = (auth, command, data, model = false) => platform(auth, 'math', { path: model ? '/api/Master/Model' : '/api/Master/AutoModel', method: 'POST', data: { command, data: JSON.stringify(data) } });
   const get = (auth, name, path, query = {}) => platform(auth, name, { path, query });
-  const books = auth => command(auth, 'GetBookPaperListOfVip', { IsValid: 1, System_Station_ID: 1, IsBook: 1, IsBeta: 0, IsRecommend: '' }, true);
-  const papers = auth => command(auth, 'GetBookListCountAndLookCount_New', { IsValid: 1, System_Station_ID: 1, BusType: '试卷', IsBook: 1, IsBeta: 0, IsRecommend: '' }, true);
-  const chapters = auth => get(auth, 'computer', '/api/exam/wx/practice/knowledge', { majorId: '701769479767592960', examType: 3 });
+  const books = auth => command(auth, 'GetBookPaperListOfVip', { IsValid: 1, IsBook: 1, IsBeta: 0, IsRecommend: '' }, true);
+  const papers = auth => command(auth, 'GetBookListCountAndLookCount_New', { IsValid: 1, BusType: '试卷', IsBook: 1, IsBeta: 0, IsRecommend: '' }, true);
+  const chapters = auth => get(auth, 'computer', '/api/exam/wx/practice/knowledge', { majorId: publicConfig.computer.subjects[0].id, examType: 3 });
   const courses = auth => get(auth, 'computer', '/api/exam/wx/course/courseList');
   let sync = (await request('/api/admin/resource-sync', { auth: admin })).data;
   await request('/api/admin/resource-sync', { auth: admin, method: 'PUT', body: { revision: sync.settings.revision, enabled: true } });
@@ -92,6 +93,16 @@ try {
   const simultaneous = await measure('失效目录的八个并发读取', () => Promise.all(Array.from({ length: 8 }, (_, index) => catalog(index % 2 ? a : b))));
   simultaneous.forEach(response => assert.deepEqual(response, simultaneous[0]));
   assert.equal(results.at(-1).calls.filter(call => call.command === 'GetQuestionNexts2').length, 1, '同一公共目录并发只读取一次上游');
+  const questionId = rows(tree)[0].QuestionID || rows(tree)[0].ID;
+  const questionResources = auth => Promise.all([
+    get(auth, 'math', '/api/question_list/GetQuestionByQuestionNew', { ID: questionId }),
+    get(auth, 'math', '/api/question_list/GetQuestionByIDSoleDes', { ID: questionId, SortDesc: 'Sort' }),
+  ]);
+  const content = await measure('题干与解析通过服务端站点读取', () => questionResources(a));
+  content.forEach(response => assert.ok(rows(response).length, '当前题目及解析应返回实际内容'));
+  const sharedContent = await measure('另一用户复用题干与解析', () => questionResources(b));
+  assert.deepEqual(sharedContent, content);
+  assert.equal(results.at(-1).upstreamRequests, 0, '题目及解析应正常保存供其他用户复用');
   sync = (await request('/api/admin/resource-sync', { auth: admin })).data;
   await request('/api/admin/resource-sync', { auth: admin, method: 'PUT', body: { revision: sync.settings.revision, enabled: false } });
   await measure('同步关闭后已有目录仍从本地读取', () => catalog(a));

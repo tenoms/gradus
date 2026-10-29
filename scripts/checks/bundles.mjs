@@ -10,15 +10,17 @@ const chunks = new Map();
 const relativeModule = (id) => {
   const clean = id.replace(/^\0/, "").split("?")[0];
   const relative = path.relative(root, clean).replaceAll(path.sep, "/");
-  return /^(?:src|shared)\//.test(relative) ? relative : null;
+  return /^(?:src|shared|config)\//.test(relative) ? relative : null;
 };
 const forbidden = {
   admin: [
+    /^config\/(?!public\.json$)/,
     /^src\/app\/learning\//,
     /^src\/features\/(?:math|computer|learning)\//,
     /^src\/features\/identity\/(?:PersonalCenter|AccountConnection|PersonalImportedRecords|Announcements|StudySyncIndicator)\./,
   ],
   learning: [
+    /^config\/(?!public\.json$)/,
     /^src\/app\/admin\//,
     /^src\/features\/admin\//,
   ],

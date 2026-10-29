@@ -1,3 +1,4 @@
+import publicConfig from "../../config/public.json" with { type: "json" };
 import assert from 'node:assert/strict';
 import { randomUUID, randomBytes } from 'node:crypto';
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
@@ -52,7 +53,7 @@ try {
   assert.equal(upstreamCalls.length,callsBeforeEnable);assert.equal(enabledState.resources.total,0);assert.equal(enabledState.sources.length,0);
   record('开启开关、闲置与管理状态读取不拉取资源',{passed:true,additionalUpstreamRequests:0});
   const callsBeforeCatalogues=upstreamCalls.length;
-  const [books,papers]=await Promise.all([command(a,'GetBookPaperListOfVip',{IsValid:1,System_Station_ID:1,IsBook:1,IsBeta:0,IsRecommend:''},true),command(b,'GetBookListCountAndLookCount_New',{IsValid:1,System_Station_ID:1,BusType:'试卷',IsBook:1,IsBeta:0,IsRecommend:''},true)]);
+  const [books,papers]=await Promise.all([command(a,'GetBookPaperListOfVip',{IsValid:1,IsBook:1,IsBeta:0,IsRecommend:''},true),command(b,'GetBookListCountAndLookCount_New',{IsValid:1,BusType:'试卷',IsBook:1,IsBeta:0,IsRecommend:''},true)]);
   assert.ok(rows(books).length);assert.ok(rows(papers).length);
   const catalogueCalls=upstreamCalls.slice(callsBeforeCatalogues).filter(call=>call.path==='/api/Master/Model');
   assert.equal(catalogueCalls.length,2,'两个目录请求不预抓题目/解析');
@@ -80,9 +81,9 @@ try {
   assert.equal((await request('/api/learning/auth/session',{auth:b})).value.authenticated,true);
   record('账号池停用后公共资源仍可学且Web会话有效',{passed:true,additionalUpstreamRequests:0});
   pool=(await request('/api/admin/account-pool',{auth:admin,method:'PUT',body:{revision:pool.revision,algorithm:pool.algorithm,enabledRefs:[account.ref]}})).value;
-  await get(b,'math','/api/question_list/GetQuestionByIDSoleDes',{ID:questionId,System_Station_ID:1,SortDesc:'Sort'});
+  await get(b,'math','/api/question_list/GetQuestionByIDSoleDes',{ID:questionId,SortDesc:'Sort'});
   record('真实数学目录题目与解析',{passed:true,questions:rows(catalog).length});
-  const chapters=await get(a,'computer','/api/exam/wx/practice/knowledge',{majorId:'701769479767592960',examType:3});
+  const chapters=await get(a,'computer','/api/exam/wx/practice/knowledge',{majorId:publicConfig.computer.subjects[0].id,examType:3});
   assert.ok(rows(chapters).length);
   await get(b,'computer','/api/exam/wx/course/courseList');
   await get(a,'computer','/api/exam/wx/school/cs/search',{pageNum:1,pageSize:5});
@@ -94,7 +95,7 @@ try {
     if(rows(groups).length){chosenChapter=chapter;chosenGroup=rows(groups)[0];break;}
   }
   assert.ok(chosenGroup,'需要至少一个真实章节练习组');
-  const practiceQuery={majorId:'701769479767592960',chapterId:chosenChapter.id,examGroupId:chosenGroup.id,examExerciseType:1,examType:3,examCategory:1,number:1};
+  const practiceQuery={majorId:publicConfig.computer.subjects[0].id,chapterId:chosenChapter.id,examGroupId:chosenGroup.id,examExerciseType:1,examType:3,examCategory:1,number:1};
   const beforePractice=upstreamCalls.length;
   const exercise=await get(a,'computer','/api/exam/wx/practice/exerciseList',practiceQuery);
   assert.equal(rows(exercise).length,1);

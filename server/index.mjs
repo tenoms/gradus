@@ -1,9 +1,10 @@
 import { createApp } from "./app.mjs";
-const port = Number(process.env.PORT || 3001);
-const host = process.env.HOST || "127.0.0.1";
-const app = await createApp();
+import { readRuntimeConfig } from "./infrastructure/runtime-config.mjs";
+const runtimeConfig = readRuntimeConfig();
+const { port, host } = runtimeConfig.http;
+const app = await createApp({ runtimeConfig });
 const server = app.listen(port, host, () =>
-  console.log(`Study Web API: http://${host}:${port}`),
+  console.log(`Study Web API: http://${host.includes(":") ? `[${host}]` : host}:${server.address().port}`),
 );
 const stop = () => server.close(async () => {
   await app.locals.close();

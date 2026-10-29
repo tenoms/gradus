@@ -2,7 +2,7 @@
 
 ## 环境与日常流程
 
-使用 `.node-version` 指定的 Node.js 24、`npm ci` 和 PostgreSQL 14+。复制 `.env.example` 并配置 `DATABASE_URL`，开发服务通过 `npm run dev` 启动。
+使用 `.node-version` 指定的 Node.js 24、`npm ci` 和 PostgreSQL 14+。复制 `config/local.example.json` 为 `config/local.json` 并填写数据库及平台配置；也可通过 `.env` 覆盖。开发服务通过 `npm run dev` 启动，优先级见[系统配置](config/README.md)。
 
 提交前运行：
 
@@ -46,4 +46,4 @@ npm run build
 
 `dist/`、`artifacts/`、`coverage/`、日志及 TypeScript 增量文件由工具生成，不提交。`npm run clean` 删除可重建的生产和类型构建产物；`npm run clean:reports` 还会删除原始本机验收产物，需保留的报告先另行归档。
 
-`.env`、本机旧状态、YYB 凭据与原小程序参考材料均不提交。清理历史材料时先确认运行时引用和数据归属，对唯一证据或状态做可恢复归档。现行说明放在 `docs/`，已完成的迁移和验收材料放在 `docs/history/<日期>/` 并由索引说明适用版本。
+`config/local.json`、`.env`、本机旧状态、YYB 凭据与原小程序参考材料均不提交。开发资产不参与配置读取；新配置项需归入默认/公开文件并补充相应校验。清理历史材料时先确认运行时引用和数据归属，对唯一证据或状态做可恢复归档。现行说明放在 `docs/`，已完成的迁移和验收材料放在 `docs/history/<日期>/` 并由索引说明适用版本。

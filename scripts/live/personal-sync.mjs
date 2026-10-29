@@ -1,3 +1,4 @@
+import publicConfig from "../../config/public.json" with { type: "json" };
 import assert from 'node:assert/strict';
 import {randomUUID,randomBytes,createHash} from 'node:crypto';
 import {mkdirSync,writeFileSync,existsSync} from 'node:fs';
@@ -32,7 +33,7 @@ async function login(username){const {response,value:session}=await request('/ap
 const record=(name,evidence={})=>{const item={name,passed:true,...evidence};results.push(item);console.log(JSON.stringify(item));};
 const records=(auth,platform,scope)=>value(`${ROOT}/records?${new URLSearchParams({platform,scope})}`,{auth});
 const refresh=(auth,platform,scope,extra={})=>value(`${ROOT}/refresh`,{auth,body:{platform,scope,page:1,pageSize:20,...extra}});
-const context={majorId:'701769479767592960',examType:3,examCategory:1,dateFlag:1};
+const context={majorId:publicConfig.computer.subjects[0].id,examType:3,examCategory:1,dateFlag:1};
 try{
   const setup=await request('/api/system/setup',{expected:201,body:{username:'sync.admin',displayName:'个人同步验收',password}});
   const admin={cookie:setup.response.headers.get('set-cookie').split(';')[0],id:setup.value.user.id};
@@ -88,7 +89,7 @@ try{
   assert.equal(mathAnswers.status,'ready');record('真实数学个人答案按题目上下文读取',{added:mathAnswers.added,count:mathAnswers.count});
   assert.equal((await records(a,'math','reports')).records.length,0);
   const beforeOnDemand=calls.length;
-  const reports=await value('/api/learning/platform/math',{auth:a,body:{path:'/api/Master/AutoModel',method:'POST',data:{command:'GetCatalogHistoryList',data:JSON.stringify({BusType:'数一',Type:'精选10题',ExanType:'真题模式',CatalogCode:0,CodeLength:1,System_Station_ID:1})}}});
+  const reports=await value('/api/learning/platform/math',{auth:a,body:{path:'/api/Master/AutoModel',method:'POST',data:{command:'GetCatalogHistoryList',data:JSON.stringify({BusType:'数一',Type:'精选10题',ExanType:'真题模式',CatalogCode:0,CodeLength:1})}}});
   assert.ok((await records(a,'math','reports')).records.length>0,'访问个人历史页面自动导入对应范围');
   assert.equal(calls.slice(beforeOnDemand).filter(call=>call.command==='GetCatalogHistoryList').length,1);
   record('真实数学历史页面触发单向按需更新',{imported:(await records(a,'math','reports')).records.length,returned:Array.isArray(reports.data?.[0])?reports.data[0].length:null});

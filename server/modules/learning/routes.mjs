@@ -4,9 +4,10 @@ import { bearer } from "../../integrations/upstream.mjs";
 import { publicPlatformResponse,validatePlatformRequest,injectMathUser,cleanAccount } from "../../integrations/platform-policy.mjs";
 import { stripSharedPersonalState } from "../../integrations/shared-account-policy.mjs";
 import { publicYybSettings,userYybOverride } from "../accounts/user-yyb.mjs";
+import { readRuntimeConfig } from "../../infrastructure/runtime-config.mjs";
 
 /** Web sessions own learning; a source account is acquired only for a cache miss or explicit upload. */
-export function createLearningRouter({service,identities,connections,auth,accountPool,privatePlatform,resourceSync,personalSync}) {
+export function createLearningRouter({service,identities,connections,auth,accountPool,privatePlatform,resourceSync,personalSync,runtimeConfig=readRuntimeConfig()}) {
   const router=express.Router(),authenticated=auth.require;
   router.use('/auth',auth.router);
   router.get('/account/yyb',authenticated,async(req,res)=>res.json(publicYybSettings(await identities.yybSettings(req.studySession.user.id),req.studySession.user.yybRef)));
@@ -28,7 +29,7 @@ export function createLearningRouter({service,identities,connections,auth,accoun
   router.get('/auth/avatar/:ref',authenticated,async(req,res)=>{
     const settings=await identities.yybSettings(req.studySession.user.id);
     if(settings.mode!=='custom')throw new ApiError('此来源头像不可用',404);
-    const response=await fetch(`${settings.baseUrl}/accounts/avatar?ref=${encodeURIComponent(req.params.ref)}`,{headers:settings.apiKey?{Authorization:`Bearer ${settings.apiKey}`}:{},signal:AbortSignal.timeout(15000)});
+    const response=await fetch(`${settings.baseUrl}/accounts/avatar?ref=${encodeURIComponent(req.params.ref)}`,{headers:settings.apiKey?{Authorization:`Bearer ${settings.apiKey}`}:{},signal:AbortSignal.timeout(runtimeConfig.upstream.avatarTimeoutMs)});
     if(!response.ok||!response.headers.get('content-type')?.startsWith('image/'))throw new ApiError('头像暂不可用',404);
     res.type(response.headers.get('content-type')).send(Buffer.from(await response.arrayBuffer()));
   });
@@ -41,7 +42,7 @@ export function createLearningRouter({service,identities,connections,auth,accoun
     const saved=await privatePlatform.put(req.studySession.user.id,'math','first-score','score',score);
     res.json({SuccessResponse:true,data:saved.ID,storage:'web'});
   });
-  router.post('/platform/math/photo',authenticated,express.raw({type:'multipart/form-data',limit:'20mb'}),async(req,res)=>{
+  router.post('/platform/math/photo',authenticated,express.raw({type:'multipart/form-data',limit:runtimeConfig.http.uploadBodyLimit}),async(req,res)=>{
     if(!Buffer.isBuffer(req.body)||!req.body.length)throw new ApiError('请选择要搜索的题目图片',400);
     const config=service.getConfig().math;
     if(!config.enabled)throw new ApiError('数学资源来源已停用',503);
@@ -55,7 +56,7 @@ export function createLearningRouter({service,identities,connections,auth,accoun
     try{res.json(publicPlatformResponse(await service.requestJson(config.ocrUrl,{method:'POST',body:payload})));}
     catch(error){if(error.status===401)throw new ApiError('图片识别来源认证失败，请联系管理员检查设置',502);throw error;}
   });
-  router.post('/platform/:platform/upload',authenticated,express.raw({type:'multipart/form-data',limit:'20mb'}),async(req,res)=>{
+  router.post('/platform/:platform/upload',authenticated,express.raw({type:'multipart/form-data',limit:runtimeConfig.http.uploadBodyLimit}),async(req,res)=>{
     const name=req.params.platform,allowed={computer:['/api/user/v1/attachment/upload/','/api/exam/wx/searchExercise/photo','/api/exam/wx/searchExercise/text/similarity'],math:['/api/sys_attachment/SearchUploadImg','/api/sys_attachment/LayuiUpImg','/api/sys_attachment/UpFile']},requestPath=req.query.path;
     if(!allowed[name]?.includes(requestPath))throw new ApiError('未启用此上传操作',403);
     if(!Buffer.isBuffer(req.body)||!req.body.length)throw new ApiError('请选择要上传的图片或文件',400);

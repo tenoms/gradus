@@ -1,3 +1,4 @@
+import publicConfig from "../../config/public.json" with { type: "json" };
 import assert from 'node:assert/strict';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {createServer} from 'node:http';
@@ -88,7 +89,7 @@ try{
   record('单个YYB目录故障保留其他来源和统一账号',{issues:pool.issues.length});
   const sync=(await api('/api/admin/resource-sync',{auth:admin})).value;
   await api('/api/admin/resource-sync',{auth:admin,method:'PUT',body:{enabled:true,revision:sync.settings.revision}});
-  const input={path:'/api/exam/wx/practice/knowledge',query:{majorId:'701769479767592960',examType:3}};
+  const input={path:'/api/exam/wx/practice/knowledge',query:{majorId:publicConfig.computer.subjects[0].id,examType:3}};
   const first=(await api('/api/learning/platform/computer',{auth:a,body:input})).value;assert.equal(first.code,200);
   const b=credentials(await api('/api/learning/auth/register',{body:{username:'verify.second',password},expected:201}));
   const before=calls.length,second=(await api('/api/learning/platform/computer',{auth:b,body:input})).value;

@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
+import { readRuntimeConfig } from "./runtime-config.mjs";
 
 /** Bounded operational metadata; request bodies, query strings and credentials are never collected. */
-export function createRuntimeInsights() {
+export function createRuntimeInsights({ recentRequests } = readRuntimeConfig().diagnostics) {
   const startedAt = new Date().toISOString();
   let requests = 0, failures = 0;
   const recent = [];
@@ -20,7 +21,7 @@ export function createRuntimeInsights() {
         const prefix = space === "system" ? "" : `/api/${space}${req.originalUrl.startsWith(`/api/${space}/auth/`) && !matched.startsWith("/auth/") ? "/auth" : ""}`;
         const route = matched ? (matched.startsWith("/api/") ? matched : `${prefix}${matched}`) : "未匹配接口";
         recent.unshift({ id, at: new Date().toISOString(), space, method: req.method, route, status: res.statusCode, durationMs: Math.round(performance.now() - started), ...(["math", "computer"].includes(req.params?.platform) ? { platform: req.params.platform } : {}) });
-        recent.length = Math.min(recent.length, 100);
+        recent.length = Math.min(recent.length, recentRequests);
       });
       next();
     },

@@ -1,0 +1,73 @@
+{
+  "runtime": {
+    "http": {
+      "host": "127.0.0.1",
+      "port": 3001,
+      "jsonBodyLimit": "3mb",
+      "uploadBodyLimit": "20mb",
+      "assetMaxAgeMs": 31536000000
+    },
+    "development": {
+      "host": "127.0.0.1",
+      "port": 5173,
+      "fsDeny": [
+        ".env",
+        ".env.*",
+        "*.{crt,pem}",
+        "**/.git/**",
+        "**/config/defaults.json",
+        "**/config/local*.json"
+      ]
+    },
+    "database": {
+      "url": "",
+      "schemaPrefix": "study",
+      "maxConnections": 10,
+      "connectionTimeoutMs": 5000
+    },
+    "session": {
+      "lifetimeMs": 86400000,
+      "secureCookies": false
+    },
+    "resources": {
+      "publicTtlMs": 21600000
+    },
+    "accounts": {
+      "directoryCacheTtlMs": 30000,
+      "assignmentTtlMs": 86400000
+    },
+    "upstream": {
+      "requestTimeoutMs": 25000,
+      "avatarTimeoutMs": 15000
+    },
+    "diagnostics": {
+      "recentRequests": 100
+    }
+  },
+  "platforms": {
+    "yyb": {
+      "baseUrl": "",
+      "apiKey": ""
+    },
+    "math": {
+      "enabled": true,
+      "baseUrl": "https://api.math-upstream.invalid",
+      "appId": "<math-app-id>",
+      "stationId": 1,
+      "loginId": 2,
+      "ocrUrl": "https://photo.math-upstream.invalid/predict",
+      "ocrUsername": "",
+      "ocrPassword": ""
+    },
+    "computer": {
+      "enabled": true,
+      "baseUrl": "https://teach.computer-upstream.invalid",
+      "appId": "<computer-app-id>",
+      "tenantCode": "1",
+      "oauthClientId": "web_app",
+      "oauthClientSecret": "",
+      "videoKey": "",
+      "videoIv": ""
+    }
+  }
+}

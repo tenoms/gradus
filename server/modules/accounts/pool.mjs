@@ -4,6 +4,7 @@ import { cleanAccount } from '../../integrations/platform-policy.mjs';
 import { userYybOverride } from './user-yyb.mjs';
 import { createYybServices } from './yyb-services.mjs';
 import { createTokenLifecycle } from '../../integrations/token-lifecycle.mjs';
+import { readRuntimeConfig } from '../../infrastructure/runtime-config.mjs';
 
 export const accountAlgorithms = ['round_robin','least_loaded','sticky'];
 const rawRef=account=>String(account.id??account.ref??'');
@@ -12,7 +13,7 @@ const routeKey=(source,ref)=>source.id==='default'?ref:`${source.id}::${ref}`;
 const publicAccount=account=>{const {_routes,aliases,...safe}=account;return safe;};
 
 /** Scheduling owns a WeChat identity; YYB services are interchangeable access routes. */
-export async function createAccountPool({database,service,connections,identities,tokenLifecycle}){
+export async function createAccountPool({database,service,connections,identities,tokenLifecycle,timings=readRuntimeConfig().accounts}){
   const tokens=tokenLifecycle||createTokenLifecycle({service});
   const services=await createYybServices({database,service});
   // Learning bursts share a short-lived directory; management reads always refresh it.
@@ -31,7 +32,7 @@ export async function createAccountPool({database,service,connections,identities
     }
     const snapshot={key};directorySnapshot=snapshot;
     const pending=loadDirectory(sources);snapshot.pending=pending;
-    try{const value=await pending;snapshot.value=value;snapshot.expiresAt=Date.now()+30000;return value;}
+    try{const value=await pending;snapshot.value=value;snapshot.expiresAt=Date.now()+timings.directoryCacheTtlMs;return value;}
     finally{delete snapshot.pending;}
   }
   async function loadDirectory(sources){
@@ -89,7 +90,7 @@ export async function createAccountPool({database,service,connections,identities
     if(fixedRef){
       if(requestedRef&&(match(accounts,requestedRef)?.ref||requestedRef)!==(fixed||fixedRef))throw new ApiError('此学习账号未分配给当前用户',403);
       if(!fixed)throw new ApiError('分配的学习账号在 YYB 中不可用，请联系管理员',404);
-      await database.query(`INSERT INTO ${assignments}(user_id,account_ref,expires_at) VALUES($1,$2,$3) ON CONFLICT(user_id) DO UPDATE SET account_ref=excluded.account_ref,expires_at=excluded.expires_at`,[userId,fixed,Date.now()+86400000]);return fixed;
+      await database.query(`INSERT INTO ${assignments}(user_id,account_ref,expires_at) VALUES($1,$2,$3) ON CONFLICT(user_id) DO UPDATE SET account_ref=excluded.account_ref,expires_at=excluded.expires_at`,[userId,fixed,Date.now()+timings.assignmentTtlMs]);return fixed;
     }
     return database.transaction(async tx=>{
       const row=(await tx.query(`SELECT * FROM ${settings} WHERE id=1 FOR UPDATE`)).rows[0];
@@ -107,7 +108,7 @@ export async function createAccountPool({database,service,connections,identities
         }else ref=refs[Number(BigInt(row.cursor)%BigInt(refs.length))];
         await tx.query(`UPDATE ${settings} SET cursor=cursor+1 WHERE id=1`);
       }
-      await tx.query(`INSERT INTO ${assignments}(user_id,account_ref,expires_at) VALUES($1,$2,$3) ON CONFLICT(user_id) DO UPDATE SET account_ref=excluded.account_ref,expires_at=excluded.expires_at`,[userId,ref,Date.now()+86400000]);return ref;
+      await tx.query(`INSERT INTO ${assignments}(user_id,account_ref,expires_at) VALUES($1,$2,$3) ON CONFLICT(user_id) DO UPDATE SET account_ref=excluded.account_ref,expires_at=excluded.expires_at`,[userId,ref,Date.now()+timings.assignmentTtlMs]);return ref;
     });
   }
   const loginPlatform=(name,account,yyb,force=false,invalidToken)=>tokens.acquire(name,account,yyb,{force,invalidToken});

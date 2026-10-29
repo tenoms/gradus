@@ -1,0 +1,22 @@
+{
+  "runtime": {
+    "database": {
+      "url": "postgresql://study:change-me@127.0.0.1:5432/study"
+    }
+  },
+  "platforms": {
+    "yyb": {
+      "baseUrl": "http://127.0.0.1:8080",
+      "apiKey": ""
+    },
+    "math": {
+      "ocrUsername": "",
+      "ocrPassword": ""
+    },
+    "computer": {
+      "oauthClientSecret": "",
+      "videoKey": "",
+      "videoIv": ""
+    }
+  }
+}

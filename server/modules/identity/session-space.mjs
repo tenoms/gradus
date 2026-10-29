@@ -1,10 +1,10 @@
 import express from "express";
 import { publicSession } from "../../integrations/platform-policy.mjs";
-
-const lifetime = 24 * 60 * 60 * 1000;
+import { readRuntimeConfig } from "../../infrastructure/runtime-config.mjs";
 
 /** A session is issued to one application space; neither cookie nor token crosses spaces. */
-export function createSessionSpace({ space, identities, connections, learningProfile }) {
+export function createSessionSpace({ space, identities, connections, learningProfile, settings = readRuntimeConfig().session }) {
+  const lifetime = settings.lifetimeMs;
   const cookieName = `study_${space}_session`;
   const cookiePath = `/api/${space}`;
   async function stateFor(user) {
@@ -27,7 +27,7 @@ export function createSessionSpace({ space, identities, connections, learningPro
   async function save(req, res, user) {
     await identities.revokeSession(req.cookies[cookieName]);
     const token = await identities.issueSession(user.id, lifetime, space);
-    res.cookie(cookieName, token, { httpOnly: true, sameSite: "lax", secure: process.env.COOKIE_SECURE === "1" || req.secure, maxAge: lifetime, path: cookiePath });
+    res.cookie(cookieName, token, { httpOnly: true, sameSite: "lax", secure: settings.secureCookies || req.secure, maxAge: lifetime, path: cookiePath });
     return publicValue(await stateFor(user));
   }
   async function requireSession(req, res, next) {
