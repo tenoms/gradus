@@ -31,7 +31,7 @@ export function createStudyClock({ report, now = Date.now, makeId = () => crypto
     for (const entry of session.days.values()) {
       const seconds = Math.floor(entry.milliseconds / 1000);
       if (seconds <= entry.reported) continue;
-      report({ id: entry.id, at: entry.at, platform: session.platform, type: "study-time", title: session.title, path: session.path, durationSeconds: seconds });
+      report({ id: entry.id, at: entry.at, platform: session.platform, type: "study-time", title: session.title, path: session.path, durationSeconds: seconds, studyMode: session.mode });
       entry.reported = seconds;
     }
   }

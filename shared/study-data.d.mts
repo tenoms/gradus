@@ -14,8 +14,10 @@ export interface Activity {
   type: string;
   title: string;
   correct?: number;
+  graded?: number;
   total?: number;
   durationSeconds?: number;
+  studyMode?: "reading" | "media";
   path?: string;
 }
 export interface StudyData {

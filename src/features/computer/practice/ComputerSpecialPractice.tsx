@@ -10,6 +10,7 @@ import {
 import type { ComputerRecord as R } from "../api/computer";
 import { computerLearningApi } from "./computer-learning";
 import type { ComputerExerciseLaunch } from "./computer-learning";
+import { ComputerResetDialog, ComputerResetNotice, ComputerResetToolbar, useComputerRecordReset } from "./ComputerRecordReset";
 
 export default function ComputerSpecialPractice({
   launch,
@@ -22,9 +23,15 @@ export default function ComputerSpecialPractice({
     [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [version, setVersion] = useState(0),
-    [selected, setSelected] = useState<string[]>([]),
-    [notice, setNotice] = useState("");
+    [version, setVersion] = useState(0);
+  const reset = useComputerRecordReset({
+    scope: `${kind}:${major}`,
+    records: kind.startsWith("interview") ? rows.map(item => ({ id: String(item.examinationRecordId || ""), title: label(item), answered: Number(item.correctNumber || 0) + Number(item.incorrectNumber || 0) })) : [],
+    refresh: async () => {
+      setRows(records(await computerLearningApi.specialList(kind, major)).sort((a, b) => Number(a.examSort || 0) - Number(b.examSort || 0)));
+      setError("");
+    },
+  });
   useEffect(() => {
     let active = true;
     if (kind === "hot") {
@@ -94,20 +101,6 @@ export default function ComputerSpecialPractice({
       setBusy(false);
     }
   }
-  async function reset() {
-    setBusy(true);
-    setError("");
-    try {
-      await computerLearningApi.resetRecords(selected);
-      setNotice("重置请求已提交，请刷新查看进度。");
-      setSelected([]);
-      setVersion((v) => v + 1);
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setBusy(false);
-    }
-  }
   async function hot() {
     setBusy(true);
     setError("");
@@ -141,10 +134,9 @@ export default function ComputerSpecialPractice({
           <button
             className={kind === id ? "active" : ""}
             key={id}
+            disabled={reset.busy}
             onClick={() => {
               setKind(id);
-              setSelected([]);
-              setNotice("");
             }}
           >
             {name}
@@ -156,6 +148,7 @@ export default function ComputerSpecialPractice({
           className="input computer-select"
           aria-label="选择简答科目"
           value={major}
+          disabled={reset.busy}
           onChange={(e) => setMajor(e.target.value)}
         >
           {computerSubjects.map((s) => (
@@ -172,11 +165,7 @@ export default function ComputerSpecialPractice({
             正在读取专项练习…
           </p>
         )}
-        {notice && (
-          <p className="computer-notice" role="status">
-            {notice}
-          </p>
-        )}
+        <ComputerResetNotice reset={reset} />
         {error && (
           <p className="computer-error" role="alert">
             {error}
@@ -207,9 +196,10 @@ export default function ComputerSpecialPractice({
         {kind !== "hot" && !loading && !error && !rows.length && (
           <div className="empty-state">当前没有可用专项练习</div>
         )}
+        <ComputerResetToolbar reset={reset} disabled={loading || busy || !!error} />
         {!loading &&
           rows.map((item, i) => (
-            <div className="computer-list-row" key={identity(item) || i}>
+            <div className={`computer-list-row ${reset.selecting && reset.selected.includes(String(item.examinationRecordId)) ? "computer-reset-selected" : ""}`} key={identity(item) || i}>
               <div className="computer-grow">
                 <h3>{label(item)}</h3>
                 <p>
@@ -225,30 +215,23 @@ export default function ComputerSpecialPractice({
                     : ""}
                 </p>
               </div>
-              {kind !== "short" && item.examinationRecordId && (
-                <label className="computer-toolbar">
+              {reset.selecting && kind !== "short" && item.examinationRecordId && (
+                <label className="computer-reset-choice">
                   <input
                     type="checkbox"
                     aria-label={`选择重置${label(item)}`}
-                    checked={selected.includes(
+                    checked={reset.selected.includes(
                       String(item.examinationRecordId),
                     )}
-                    onChange={(e) =>
-                      setSelected((a) =>
-                        e.target.checked
-                          ? [...a, String(item.examinationRecordId)]
-                          : a.filter(
-                              (id) => id !== String(item.examinationRecordId),
-                            ),
-                      )
-                    }
+                    disabled={reset.busy || loading}
+                    onChange={() => reset.toggle(String(item.examinationRecordId))}
                   />
-                  选择重置
+                  选择此组
                 </label>
               )}
               <button
                 className="btn btn-primary"
-                disabled={busy}
+                disabled={busy || reset.busy || reset.selecting}
                 onClick={() => void begin(item)}
               >
                 {kind === "short" ? "开始练习" : "录音作答"}
@@ -256,23 +239,7 @@ export default function ComputerSpecialPractice({
               </button>
             </div>
           ))}
-        {kind.startsWith("interview") &&
-          rows.some((r) => r.examinationRecordId) && (
-            <button
-              className="btn btn-secondary"
-              disabled={busy || !selected.length}
-              onClick={() => {
-                if (
-                  window.confirm(
-                    `重置所选 ${selected.length} 组复试已有答题记录？此操作会清除对应练习进度。`,
-                  )
-                )
-                  void reset();
-              }}
-            >
-              重置所选复试记录
-            </button>
-          )}
+        <ComputerResetDialog reset={reset} />
       </div>
     </div>
   );

@@ -503,10 +503,8 @@ function RelatedCollection({
       setNotice(`已提交 ${drafts.length} 道题，结果已保存到当前学习账号`);
       recordStudy({
         platform: "math",
-        type: "test",
+        type: "test-submission",
         title: collection.name,
-        total: drafts.length,
-        correct: drafts.filter((r) => r.State === 1).length,
         path: "/study/practice",
       });
       logs.reload();

@@ -27,8 +27,8 @@ const deferred = () => {
   return { promise, resolve, reject };
 };
 
-function session({ data = {}, launch = {}, cache = new Map(), load, save = async () => true, report = { examRecord: { id: "own-record" }, answerList: [] } } = {}) {
-  const hooks = [], loads = [], saves = [], studyTimers = [];
+function session({ data = {}, launch = {}, cache = new Map(), load, save = async () => true, report = { examRecord: { id: "own-record" }, answerList: [] }, buildAnswer } = {}) {
+  const hooks = [], loads = [], saves = [], studyTimers = [], activities = [];
   let cursor = 0, dirty = true, pending = [], tree;
   const scope = {
     ...workflow,
@@ -36,9 +36,9 @@ function session({ data = {}, launch = {}, cache = new Map(), load, save = async
     element: (type, props, ...children) => ({ type, props: { ...props, children } }),
     useSession: () => ({ session: { user: { id: "web-student" } } }),
     useStudyTimer: options => studyTimers.push(options),
-    buildComputerAnswer: ({ question, answer }) => ({ exerciseId: question.exerciseId, answer, answerType: 1 }),
+    buildComputerAnswer: buildAnswer || (({ question, answer, skip }) => ({ exerciseId: question.exerciseId, answer, answerType: skip ? 4 : 1 })),
     buildComputerSubmission: ({ answers }) => ({ answers }),
-    recordActivity: () => {},
+    recordActivity: activity => activities.push(activity),
     window: { confirm: () => true },
     useState(initial) {
       const index = cursor++;
@@ -103,7 +103,9 @@ function session({ data = {}, launch = {}, cache = new Map(), load, save = async
   }
   render();
   return {
-    loads, saves, render, settle, cache,
+    loads, saves, render, settle, cache, activities,
+    answer: value => elements(node => node.type === "textarea" && node.props?.["aria-label"] === "填写答案")[0].props.onChange({ target: { value } }),
+    answerInput: () => elements(node => node.type === "textarea" && node.props?.["aria-label"] === "填写答案")[0]?.props,
     studyTimer: () => studyTimers.at(-1),
     related: data => elements(node => node.type === "ComputerQuestionTools")[0].props.onRelated(data),
     closeRelated: () => elements(node => node.props?.launch && node.props?.onClose)[0].props.onClose(),
@@ -253,5 +255,47 @@ test("editing a note blocks mouse, answer-sheet and keyboard navigation consiste
   view.button("记笔记").onClick(); view.render();
   assert.equal(view.workbench().disabled, false);
   assert.equal(view.button("下一题").disabled, false);
+  view.unmount();
+});
+
+test("skipping an unanswered question does not create a counted answer activity", async () => {
+  const view = session(); await view.settle();
+  view.button("跳过").onClick(); await view.settle();
+  assert.equal(view.activities.length, 0);
+  assert.equal(view.answerInput().disabled, true, "an explicit skip reveals the answer and cannot be edited in the same attempt");
+  assert.equal(view.button("提交答案"), undefined);
+  view.button("下一题").onClick(); await view.settle();
+  view.button("上一题").onClick(); await view.settle();
+  assert.equal(view.answerInput().disabled, true);
+  assert.equal(view.button("提交答案"), undefined);
+  assert.equal(view.activities.length, 0);
+  view.unmount();
+});
+
+test("ungraded subjective answers count as answers without becoming incorrect grades", async () => {
+  const view = session({ buildAnswer: ({ question, answer }) => ({ exerciseId: question.exerciseId, answer, answerType: 3 }) });
+  await view.settle(); view.answer("待教师批改的解题过程"); view.render();
+  view.button("提交答案").onClick(); await view.settle();
+  assert.equal(view.activities.length, 1);
+  assert.equal(view.activities[0].total, 1);
+  assert.equal(view.activities[0].graded, 0);
+  assert.equal(view.activities[0].correct, undefined);
+  view.unmount();
+});
+
+test("a mixed paper counts only real answers and grades only confirmed right or wrong answers", async () => {
+  const view = session({
+    launch: { examType: 2 },
+    data: {
+      exercises: [1, 2, 3, 4].map(question), exerciseTotalNumber: 4,
+      answerList: [1, 2, 3].map(number => ({ exerciseId: `q${number}`, answer: `answer-${number}` })),
+    },
+    buildAnswer: ({ question, answer }) => ({ exerciseId: question.exerciseId, answer, answerType: Number(question.exerciseId.slice(1)) }),
+  });
+  await view.settle(); view.button("交卷").onClick(); await view.settle();
+  assert.equal(view.activities.length, 1);
+  assert.equal(view.activities[0].total, 3);
+  assert.equal(view.activities[0].graded, 2);
+  assert.equal(view.activities[0].correct, 1);
   view.unmount();
 });

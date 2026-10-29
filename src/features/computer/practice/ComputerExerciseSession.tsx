@@ -266,12 +266,15 @@ export default function ExerciseSession({
           (a.answer || a.llmAnswer || a.answerType === 4),
       );
       if (newlyRecorded.length) {
-        recordActivity({
+        const answered = newlyRecorded.filter(a => Number(a.answerType) !== 4);
+        const graded = answered.filter(a => [1, 2].includes(Number(a.answerType)));
+        if (answered.length) recordActivity({
           platform: "computer",
           type: all ? "exam" : "practice",
           title: launch.title,
-          total: newlyRecorded.length,
-          correct: newlyRecorded.filter((a) => a.answerType === 1).length,
+          total: answered.length,
+          graded: graded.length,
+          correct: graded.length ? graded.filter(a => Number(a.answerType) === 1).length : undefined,
           path: "/study/review",
         });
         newlyRecorded.forEach((a) => recordedIds.current.add(a.exerciseId));

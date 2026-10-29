@@ -1,5 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { runInNewContext } from "node:vm";
+import ts from "typescript";
 import {
   matchesRelatedProperties,
   matchesRelatedSubject,
@@ -80,4 +83,31 @@ test("related practice preserves correct, partial multiple choice and wrong stat
   assert.equal(relatedGradeState(options, "101,102", true), 1);
   assert.equal(relatedGradeState(options, "101", false), 2);
   assert.equal(relatedGradeState(options, "101,103", false), 3);
+});
+
+test("confirming already answered related-practice drafts does not count the answers twice", async () => {
+  const source = await readFile(new URL("../../../src/features/math/questions/MathRelatedQuestions.tsx", import.meta.url), "utf8");
+  const ast = ts.createSourceFile("MathRelatedQuestions.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let submit;
+  const visit = node => {
+    if (ts.isVariableDeclaration(node) && node.name.getText(ast) === "submitAll") submit = node.initializer;
+    ts.forEachChild(node, visit);
+  };
+  visit(ast);
+  assert.ok(submit);
+  const activities = [], calls = [];
+  const code = ts.transpileModule(`const submitAll = ${submit.getText(ast)};`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  const handler = runInNewContext(`${code}\nsubmitAll;`, {
+    summary: { drafts: [{ ExerciseID: 1, State: 1 }, { ExerciseID: 2, State: 2, QuestionID: 9 }] },
+    mathPost: async (...args) => { calls.push(args); },
+    setBusy() {}, setNotice() {}, setLocal() {}, logs: { reload() {} },
+    collection: { name: "考点练习" }, stuid: "web-student", scope: "catalog",
+    recordStudy: activity => activities.push(activity),
+  });
+  await handler();
+  assert.equal(calls[0][0], "/api/rel_question_log/SubmitAll");
+  assert.equal(activities.length, 1);
+  assert.equal(activities[0].type, "test-submission");
+  assert.equal(activities[0].total, undefined);
+  assert.equal(activities[0].correct, undefined);
 });

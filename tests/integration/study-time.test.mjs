@@ -38,6 +38,7 @@ test("real learning time persists cumulatively through the learner API and stays
     assert.equal(stored.length, 1, "periodic saves update one cumulative activity");
     assert.equal(stored[0].durationSeconds, 27);
     assert.equal(stored[0].type, "study-time");
+    assert.equal(stored[0].studyMode, "reading");
     assert.equal(stored[0].total, undefined);
     assert.deepEqual((await request(second)).data.activities, []);
     const relogged = await app.login("learning", "time.first", "learner-password-123");

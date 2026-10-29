@@ -32,11 +32,15 @@ export function validateStudyData(input) {
       platform: platform(activity.platform), type: text(activity.type, 100, "活动类型"),
       title: text(activity.title, 500, "活动标题"),
     };
-    for (const field of ["correct", "total", "durationSeconds"]) {
+    for (const field of ["correct", "graded", "total", "durationSeconds"]) {
       if (activity[field] === undefined) continue;
       if (typeof activity[field] !== "number" || !Number.isFinite(activity[field]) || activity[field] < 0)
         fail("学习活动数值不正确");
       result[field] = activity[field];
+    }
+    if (activity.studyMode !== undefined) {
+      if (!["reading", "media"].includes(activity.studyMode)) fail("学习方式不正确");
+      result.studyMode = activity.studyMode;
     }
     if (activity.path !== undefined) {
       const route = text(activity.path, 1500, "活动链接", true);

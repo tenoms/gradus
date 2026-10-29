@@ -192,8 +192,8 @@ export async function createPrivatePlatformStore({ database, resourceStore, pers
     }
     if (/\/examination\/exercise\/reset$/.test(path)) {
       const ids=p.examRecordIdList || [];
-      await remove(userId,'computer','exams',ids);
       const answers=await list(userId,'computer','answers');
+      await remove(userId,'computer','exams',ids);
       for (const row of answers.filter(row=>ids.includes(row.examRecordId))) await remove(userId,'computer','answers',[row.id]);
       return success('computer',true);
     }

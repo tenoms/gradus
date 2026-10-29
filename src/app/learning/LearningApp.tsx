@@ -416,6 +416,7 @@ export default function LearningApp() {
                   <Dashboard
                     platform={platform}
                     onAdd={() => setTaskOpen(true)}
+                    onPlatformChange={changePlatform}
                   />
                 }
               />
@@ -429,7 +430,7 @@ export default function LearningApp() {
                   <StudyPlan platform={platform} onAdd={() => setTaskOpen(true)} />
                 }
               />
-              <Route path="/insights" element={<StudyInsights />} />
+              <Route path="/insights" element={<StudyInsights platform={platform} onPlatformChange={changePlatform} />} />
               <Route path="/profile" element={<Suspense fallback={<Spinner />}><PersonalCenter settings={<StudySettings />} /></Suspense>} />
               <Route path="/settings" element={<Navigate to="/profile?tab=settings" replace />} />
               <Route

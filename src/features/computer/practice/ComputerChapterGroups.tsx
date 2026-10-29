@@ -9,6 +9,7 @@ import {
 import type { ComputerRecord as R } from "../api/computer";
 import { computerLearningApi, computerPracticeType } from "./computer-learning";
 import type { ComputerExerciseLaunch } from "./computer-learning";
+import { ComputerResetDialog, ComputerResetNotice, ComputerResetToolbar, useComputerRecordReset } from "./ComputerRecordReset";
 
 export default function ComputerChapterGroups({
   chapter,
@@ -25,10 +26,16 @@ export default function ComputerChapterGroups({
     [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [notice, setNotice] = useState(""),
-    [selected, setSelected] = useState<string[]>([]),
     [version, setVersion] = useState(0),
     rows = records(data.groupList);
+  const reset = useComputerRecordReset({
+    scope: identity(chapter),
+    records: rows.map(group => ({ id: String(group.examRecordId || group.examinationRecordId || ""), title: label(group), answered: Number(group.correctNumber || 0) + Number(group.incorrectNumber || 0) })),
+    refresh: async () => {
+      setData(await computerLearningApi.groups(identity(chapter)) || {});
+      setError("");
+    },
+  });
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -74,24 +81,9 @@ export default function ComputerChapterGroups({
       setBusy(false);
     }
   }
-  async function reset() {
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      await computerLearningApi.resetRecords(selected);
-      setSelected([]);
-      setVersion((v) => v + 1);
-      setNotice("重置请求已提交，请刷新查看学习进度。");
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setBusy(false);
-    }
-  }
   return (
     <div className="panel">
-      <button className="computer-back" onClick={onClose}>
+      <button className="computer-back" disabled={reset.busy} onClick={onClose}>
         <ArrowLeft size={15} />
         返回章节
       </button>
@@ -116,11 +108,8 @@ export default function ComputerChapterGroups({
           </button>
         </p>
       )}
-      {notice && (
-        <p className="computer-notice" role="status">
-          {notice}
-        </p>
-      )}
+      <ComputerResetNotice reset={reset} />
+      <ComputerResetToolbar reset={reset} disabled={loading || busy || !!error} />
       {!loading && !error && !rows.length && (
         <div className="empty-state">该章节暂时没有可用练习组</div>
       )}
@@ -133,7 +122,7 @@ export default function ComputerChapterGroups({
           ),
           active = String(data.lastExaminationGroupId) === identity(group);
         return (
-          <div className="computer-list-row" key={identity(group) || index}>
+          <div className={`computer-list-row ${reset.selecting && reset.selected.includes(recordId) ? "computer-reset-selected" : ""}`} key={identity(group) || index}>
             <div className="computer-grow">
               <span className="computer-pill">
                 {active
@@ -153,26 +142,21 @@ export default function ComputerChapterGroups({
                   : ""}
               </p>
             </div>
-            {recordId && (
-              <label className="computer-toolbar">
+            {reset.selecting && recordId && (
+              <label className="computer-reset-choice">
                 <input
                   type="checkbox"
                   aria-label={`选择重置${label(group)}`}
-                  checked={selected.includes(recordId)}
-                  onChange={(e) =>
-                    setSelected((s) =>
-                      e.target.checked
-                        ? [...s, recordId]
-                        : s.filter((id) => id !== recordId),
-                    )
-                  }
+                  checked={reset.selected.includes(recordId)}
+                  disabled={reset.busy || loading}
+                  onChange={() => reset.toggle(recordId)}
                 />
-                选择重置
+                选择此组
               </label>
             )}
             <button
               className="btn btn-primary"
-              disabled={busy}
+              disabled={busy || reset.busy || reset.selecting}
               onClick={() => void begin(group)}
             >
               开始练习
@@ -181,24 +165,7 @@ export default function ComputerChapterGroups({
           </div>
         );
       })}
-      {rows.some((r) => r.examRecordId || r.examinationRecordId) && (
-        <div className="computer-toolbar">
-          <button
-            className="btn btn-secondary"
-            disabled={busy || !selected.length}
-            onClick={() => {
-              if (
-                window.confirm(
-                  `重置所选 ${selected.length} 组已有答题记录？此操作会清除对应练习进度。`,
-                )
-              )
-                void reset();
-            }}
-          >
-            重置所选学习记录
-          </button>
-        </div>
-      )}
+      <ComputerResetDialog reset={reset} />
     </div>
   );
 }

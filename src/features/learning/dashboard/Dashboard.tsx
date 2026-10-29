@@ -15,6 +15,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import type { Platform } from "../../../shared/api/client";
 import { useSession } from "../../../shared/auth/session";
 import Announcements from "../../identity/Announcements";
@@ -23,20 +24,32 @@ import { useStudyData } from "../state/store";
 import { platformLabel as label, today } from "../study-format";
 import { formatStudyDuration, studyDurationValue, studySummary } from "../study-summary.mjs";
 import WeeklyChart from "./WeeklyChart";
+import "./study-statistics.css";
 
 export default function Dashboard({
   platform,
   onAdd,
+  onPlatformChange,
 }: {
   platform: Platform;
   onAdd: () => void;
+  onPlatformChange: (platform: Platform) => void;
 }) {
-  const { session, openLogin } = useSession();
+  const { session } = useSession();
   const { tasks, activities, goalMinutes } = useStudyData();
-  const todaysTasks = tasks.filter((t) => t.date === today());
+  const [scope, setScope] = useState<Platform | "all">(platform);
+  const [metric, setMetric] = useState<"duration" | "questions">("duration");
+  useEffect(() => setScope(platform), [platform]);
+  const activePlatform = scope === "all" ? undefined : scope;
+  const scopeLabel = activePlatform ? label(activePlatform) : "全部科目";
+  function selectScope(value: Platform | "all") {
+    setScope(value);
+    if (value !== "all") onPlatformChange(value);
+  }
+  const todaysTasks = tasks.filter((t) => t.date === today() && (!activePlatform || t.platform === activePlatform));
   const completed = todaysTasks.filter((t) => t.done).length;
-  const summary = studySummary(activities, { date: today() });
-  const { events } = studySummary(activities);
+  const summary = studySummary(activities, { date: today(), platform: activePlatform });
+  const { events } = studySummary(activities, { platform: activePlatform, toDate: today() });
   const duration = studyDurationValue(summary.durationSeconds);
   const recent = events[0];
   return (
@@ -64,6 +77,7 @@ export default function Dashboard({
               <Link
                 className="btn hero-button"
                 to={recent?.path || "/study/question-bank"}
+                onClick={() => onPlatformChange(recent?.platform || activePlatform || platform)}
               >
                 {recent ? "回看最近学习" : "开始今天的学习"}
                 <ArrowRight size={17} />
@@ -104,10 +118,16 @@ export default function Dashboard({
               <span className="art-dot dot-two" />
             </div>
           </section>
+          <div className="study-overview-heading">
+            <div><span className="study-section-kicker">TODAY'S PROGRESS</span><h2>今天的学习</h2></div>
+            <div className="study-scope-tabs" role="group" aria-label="概览统计科目">
+              {(["all", "math", "computer"] as const).map(value => <button key={value} aria-pressed={scope === value} onClick={() => selectScope(value)}>{value === "all" ? "全部科目" : label(value)}</button>)}
+            </div>
+          </div>
           <div className="stat-grid">
             <div className="stat-card">
               <div className="stat-top">
-                <span>今日练习</span>
+                <span>今日作答</span>
                 <span className="mini-icon violet">
                   <Target size={17} />
                 </span>
@@ -116,7 +136,7 @@ export default function Dashboard({
                 {summary.questions}
                 <small>题</small>
               </div>
-              <span className="stat-note">每一题，都算数</span>
+              <span className="stat-note">{scopeLabel} · {summary.graded} 题已批改{summary.questions > summary.graded ? `，${summary.questions - summary.graded} 题待批改` : ""}</span>
             </div>
             <div className="stat-card">
               <div className="stat-top">
@@ -130,7 +150,7 @@ export default function Dashboard({
                 <small>{duration.unit}</small>
               </div>
               <span className="stat-note">
-                目标 {goalMinutes} 分钟 <Link to="/profile?tab=settings">调整</Link>
+                两科每日总目标 {goalMinutes} 分钟 <Link to="/profile?tab=settings">调整</Link>
               </span>
             </div>
             <div className="stat-card">
@@ -144,9 +164,32 @@ export default function Dashboard({
                 {completed}
                 <small>/ {todaysTasks.length} 项</small>
               </div>
-              <span className="stat-note">一点点积累，大大的进步</span>
+              <span className="stat-note">{scopeLabel} · 今日计划</span>
             </div>
           </div>
+          <section className="study-subject-overview" aria-label="数学与408今日统计">
+            <div className="section-heading"><h2>两科学习概况</h2><span className="subtle">今日 · 分别累计</span></div>
+            <div className="study-subject-grid">
+              {(["math", "computer"] as const).map(subject => {
+                const subjectSummary = studySummary(activities, { date: today(), platform: subject });
+                const plans = tasks.filter(task => task.date === today() && task.platform === subject);
+                const pending = Math.max(0, subjectSummary.questions - subjectSummary.graded);
+                return <article key={subject} className={`study-subject-card is-${subject} ${scope === subject ? "is-selected" : ""}`}>
+                  <button className="study-subject-title" aria-label={`查看${label(subject)}今日统计`} onClick={() => selectScope(subject)}>
+                    <span className={`path-icon ${subject === "math" ? "violet" : "mint"}`}>{subject === "math" ? <Sigma size={20} /> : <Code2 size={20} />}</span>
+                    <strong>{label(subject)}</strong><ArrowUpRight size={16} />
+                  </button>
+                  <dl className="study-subject-numbers">
+                    <div><dt>今日作答</dt><dd>{subjectSummary.questions}<small>题</small></dd></div>
+                    <div><dt>已批改正确率</dt><dd>{subjectSummary.graded ? `${Math.round(subjectSummary.correct / subjectSummary.graded * 100)}%` : "—"}</dd></div>
+                  </dl>
+                  <div className="study-subject-time"><Clock3 size={14} /><span>{formatStudyDuration(subjectSummary.durationSeconds)}</span><small>学习时长</small></div>
+                  <p className="study-subject-note">计划 {plans.filter(task => task.done).length}/{plans.length} 已完成 · {pending ? `${pending} 题待批改` : subjectSummary.graded ? `${subjectSummary.graded} 题已批改` : "暂无已批改作答"}</p>
+                  <Link className="study-subject-report" to={`/insights?subject=${subject}&period=7`} onClick={() => onPlatformChange(subject)}>查看分科报告<ArrowRight size={14} /></Link>
+                </article>;
+              })}
+            </div>
+          </section>
           <section className="panel learning-entrances">
             <div className="section-heading">
               <h2>选择你的学习路径</h2>
@@ -191,7 +234,7 @@ export default function Dashboard({
                 最近学习
                 <span className="heading-dot" />
               </h2>
-              <Link to="/insights" className="text-link">
+              <Link to={`/insights?subject=${scope}&period=all`} className="text-link">
                 全部记录
                 <ArrowRight size={14} />
               </Link>
@@ -203,6 +246,7 @@ export default function Dashboard({
                     to={a.path || "/study/practice"}
                     className="recent-item"
                     key={a.id}
+                    onClick={() => onPlatformChange(a.platform)}
                   >
                     <span
                       className={`recent-icon ${a.platform === "math" ? "violet" : "mint"}`}
@@ -237,8 +281,8 @@ export default function Dashboard({
                   <BookOpen size={25} />
                 </div>
                 <div>
-                  <h3>新的积累，从今天开始</h3>
-                  <p>完成练习后，你的学习轨迹会出现在这里。</p>
+                  <h3>{scopeLabel}，从这一步开始</h3>
+                  <p>完成作答或查看解析后，这里会记录你的学习轨迹。</p>
                 </div>
                 <Link className="btn btn-secondary" to="/study/practice">
                   去练习
@@ -302,9 +346,10 @@ export default function Dashboard({
           <section className="panel activity-panel">
             <div className="section-heading">
               <h2>学习节奏</h2>
-              <span className="subtle">近 7 天</span>
+              <span className="subtle">{scopeLabel} · 近 7 天</span>
             </div>
-            <WeeklyChart />
+            <div className="study-trend-toggle" role="group" aria-label="概览趋势指标"><button aria-pressed={metric === "duration"} onClick={() => setMetric("duration")}>学习时长</button><button aria-pressed={metric === "questions"} onClick={() => setMetric("questions")}>作答量</button></div>
+            <WeeklyChart platform={activePlatform} metric={metric} />
             <div className="chart-foot">
               <span className="legend-dot" />
               每一次投入，都值得被记录

@@ -1,0 +1,58 @@
+.computer-reset-entry,
+.computer-reset-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 0 8px;
+  padding: 14px 16px;
+  border: 1px solid #e7e4f0;
+  border-radius: 14px;
+  background: #faf9fd;
+}
+.computer-reset-entry { justify-content: space-between; }
+.computer-reset-entry > span { color: #79758b; font-size: 13px; }
+.computer-reset-toolbar { background: #f2effc; border-color: #dcd4f4; }
+.computer-reset-select-all,
+.computer-reset-choice { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: #625779; cursor: pointer; }
+.computer-reset-select-all input,
+.computer-reset-choice input { width: 17px; height: 17px; accent-color: #8a75c4; }
+.computer-reset-count { font-size: 13px; color: #79718a; }
+.computer-reset-count strong { color: #7460a6; }
+.computer-reset-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-left: auto; }
+.btn.computer-reset-danger { background: #ad4f61; border: 1px solid #ad4f61; color: #fff; box-shadow: none; }
+.btn.computer-reset-danger:hover:not(:disabled) { background: #984354; border-color: #984354; }
+.btn.computer-reset-danger:disabled { opacity: .5; }
+.computer-list-row.computer-reset-selected { background: #f5f2fc; border-radius: 12px; box-shadow: inset 3px 0 #9a83cd; padding-left: 16px; padding-right: 16px; }
+.computer-reset-notice { display: flex; align-items: center; gap: 8px; color: #4b8674; background: #edf7f2; border: 1px solid #d8ebe1; border-radius: 12px; padding: 13px 15px; font-size: 13px; }
+.computer-reset-readback { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 4px 12px; }
+.computer-reset-readback p { color: #a34e5e; font-size: 13px; margin: 0; }
+.computer-reset-readback .btn { flex-shrink: 0; }
+.computer-reset-backdrop { z-index: 1200; padding: 22px; }
+.computer-reset-dialog { width: min(100%, 500px); max-height: calc(100dvh - 44px); overflow-y: auto; padding: 30px; border-radius: 22px; }
+.computer-reset-icon { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 16px; color: #ad5969; background: #faeef1; margin-bottom: 16px; }
+.computer-reset-eyebrow { display: block; color: #8e7c92; font-size: 12px; letter-spacing: .06em; margin-bottom: 7px; }
+.computer-reset-dialog h2 { margin: 0 0 12px; color: #393548; font-size: 23px; line-height: 1.5; }
+.computer-reset-description { color: #827b8c; font-size: 14px; line-height: 1.8; margin: 0 0 20px; }
+.computer-reset-review { margin: 0; padding: 0; list-style: none; max-height: 220px; overflow-y: auto; border: 1px solid #eeeaf2; background: #faf9fc; border-radius: 12px; }
+.computer-reset-review li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid #eeeaf2; }
+.computer-reset-review li:last-child { border-bottom: 0; }
+.computer-reset-review li > span { display: flex; align-items: center; gap: 8px; color: #5d566d; font-size: 14px; min-width: 0; overflow-wrap: anywhere; }
+.computer-reset-review li svg { flex-shrink: 0; color: #9b8cb3; }
+.computer-reset-review li small { color: #91869b; font-size: 12px; flex-shrink: 0; }
+.computer-reset-preserved { display: flex; align-items: center; gap: 7px; color: #7b897f; font-size: 12px; line-height: 1.7; margin: 14px 0 22px; }
+.computer-reset-preserved svg { flex-shrink: 0; color: #78a08b; }
+.computer-reset-error { color: #a34e5e; background: #fcf2f4; border-radius: 10px; padding: 11px 13px; font-size: 13px; line-height: 1.7; }
+.computer-reset-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.computer-reset-progress { color: #93869f; text-align: center; font-size: 12px; margin: 12px 0 0; }
+@media (max-width: 600px) {
+  .computer-reset-entry { align-items: stretch; }
+  .computer-reset-entry > span { width: 100%; }
+  .computer-reset-entry > .btn { width: 100%; justify-content: center; }
+  .computer-reset-actions { width: 100%; margin-left: 0; }
+  .computer-reset-actions .btn { flex: 1; justify-content: center; }
+  .computer-reset-dialog { padding: 25px 20px; }
+  .computer-reset-readback { align-items: stretch; flex-direction: column; }
+  .computer-reset-dialog h2 { font-size: 21px; }
+  .computer-reset-dialog-actions .btn { flex: 1; justify-content: center; }
+}
