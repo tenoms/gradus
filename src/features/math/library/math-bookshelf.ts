@@ -84,8 +84,8 @@ export function enrichShelfBooks(records: ShelfRow[], catalog: ShelfRow[]): Shel
     const merged = { ...book };
     for (const [key, value] of Object.entries(record))
       if (value !== undefined && value !== null && value !== "") merged[key] = value;
-    for (const key of ["BusType", "TeacherName"])
-      if (book[key]) merged[key] = book[key];
+    for (const key of ["BusType", "TeacherName", "BusValue", "BookYear"])
+      if (book[key] && String(book[key]).trim() !== "0") merged[key] = book[key];
     return merged;
   });
 }

@@ -19,6 +19,24 @@ export function mathLibraryTag(row: Row): string {
   return "考研真题";
 }
 
+export function mathBookLabels(row: Row): { kind: "material" | "subject" | "edition"; label: string }[] {
+  const subject = text(row.BusValue) || text(row.SubjectType);
+  const year = ["number", "string"].includes(typeof row.BookYear)
+    ? String(row.BookYear).trim().match(/^([12]\d{3})(?:年(?:版)?|版)?$/)?.[1]
+    : undefined;
+  const labels: ReturnType<typeof mathBookLabels> = [{ kind: "material", label: mathLibraryTag(row) }];
+  if (subject) labels.push({ kind: "subject", label: subject });
+  if (year) labels.push({ kind: "edition", label: `${year}年版` });
+  return labels.filter((item, index) => labels.findIndex(other => other.label === item.label) === index);
+}
+
+export function matchesMathBookSearch(row: Row, query: string): boolean {
+  const searchable = [row.Name, row.BookName, row.Author, row.BookAuthor, row.TeacherName,
+    row.PublishingHouse, row.BusValue, row.SubjectType, row.BookYear, ...mathBookLabels(row).map(item => item.label)]
+    .join(" ").toLowerCase();
+  return query.toLowerCase().split(/[\s,，;；]+/).filter(Boolean).every(word => searchable.includes(word));
+}
+
 export function matchesMathLibraryTag(row: Row, kind = "全部", tag = ""): boolean {
   if (kind === "教辅" && isPaper(row)) return false;
   if (kind === "真题" && !isPaper(row)) return false;

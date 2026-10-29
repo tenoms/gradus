@@ -32,11 +32,12 @@ import ImportedReportSummary from "../identity/ImportedReportSummary";
 import MathLearningPlan, { useMathLearningPlan } from "./preparation/MathLearningPlan";
 import { matchesMathSubject } from "./preparation/learning-plan-model.mjs";
 import MathBookshelf from "./library/MathBookshelf";
+import MathBookLabels from "./library/MathBookLabels";
 import { loadBookPosition, saveBookPosition } from "./library/math-book-position";
 import { groupBookCatalog, findBookCatalogChapter } from "./library/math-book-catalog";
 import MathCatalogPagination from "./library/MathCatalogPagination";
 import MathLibraryTagFilter from "./library/MathLibraryTagFilter";
-import { mathLibraryTag, mathLibraryTagOptions, matchesMathLibraryTag } from "./library/math-library";
+import { mathLibraryTagOptions, matchesMathLibraryTag, matchesMathBookSearch } from "./library/math-library";
 import { useSession } from "../../shared/auth/session";
 import { recordStudy } from "../learning/state/store";
 import {
@@ -225,13 +226,7 @@ function Library({ stuid }: { stuid: string }) {
       (allSubjects || matchesMathSubject(r, subject)) &&
       (year === "全部" || String(r.BookYear) === year),
   );
-  const searchedRows = scopedRows.filter(
-    (r) => !search ||
-        [r.Name, r.Author, r.BookAuthor, r.TeacherName, r.BusValue, r.BookYear, mathLibraryTag(r)]
-          .join(" ")
-          .toLowerCase()
-          .includes(search.toLowerCase()),
-  );
+  const searchedRows = scopedRows.filter(r => matchesMathBookSearch(r, search));
   const tags = mathLibraryTagOptions(searchedRows, kind);
   const filtered = searchedRows.filter((r) => matchesMathLibraryTag(r, kind, tag));
   const pagination = usePagination({
@@ -323,7 +318,7 @@ function Library({ stuid }: { stuid: string }) {
             <Search size={17} />
             <input
               aria-label="搜索教辅和真题"
-              placeholder="搜索书名、作者…"
+              placeholder="搜索书名、作者、科目、年份…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -377,9 +372,7 @@ function Library({ stuid }: { stuid: string }) {
                 )}
               </div>
               <div className="math-book-copy">
-                <div className="math-tag">
-                  {mathLibraryTag(r)}
-                </div>
+                <MathBookLabels book={r} />
                 <h3>{mathTitle(r)}</h3>
                 <p>
                   {r.Author ||
@@ -570,6 +563,7 @@ function BookWorkspace({
         <div>
           <span className="eyebrow">BOOK WORKSPACE</span>
           <h2>{mathTitle(book)}</h2>
+          <MathBookLabels book={book} />
           <p>
             {rows.length
               ? `${rows.length} 道题目 · 按原书目录学习`

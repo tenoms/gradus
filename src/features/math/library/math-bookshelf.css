@@ -136,15 +136,6 @@
   font-weight: 500;
   letter-spacing: 0.14em;
 }
-.bookshelf-tag {
-  display: inline-block;
-  font-size: 10px;
-  color: var(--accent);
-  background: #f5f1fc;
-  padding: 3px 7px;
-  border-radius: 5px;
-  margin-top: 16px;
-}
 .bookshelf-card h3 {
   font-size: 13px;
   line-height: 1.7;

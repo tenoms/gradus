@@ -1,0 +1,7 @@
+.math-book-labels { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; max-width: 100%; }
+.math-book-label { display: inline-block; padding: 3px 7px; border-radius: 5px; font-size: 10px; line-height: 1.5; overflow-wrap: anywhere; }
+.math-book-label-material { color: var(--accent); background: #f5f1fc; }
+.math-book-label-subject { color: #4f6c88; background: #edf3fa; }
+.math-book-label-edition { color: #6d647d; background: #f2f1f5; }
+.bookshelf-card > .math-book-labels { margin-top: 16px; }
+.math-section-heading .math-book-labels { margin: 10px 0; }

@@ -16,7 +16,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { mathImage, mathTitle } from "../api/math";
-import { mathLibraryTag, mathLibraryTagOptions, matchesMathLibraryTag } from "./math-library";
+import { mathLibraryTagOptions, matchesMathLibraryTag, matchesMathBookSearch } from "./math-library";
+import MathBookLabels from "./MathBookLabels";
 import MathLibraryTagFilter from "./MathLibraryTagFilter";
 import {
   bookshelfApi,
@@ -91,19 +92,7 @@ export default function MathBookshelf({
       (row) =>
         matchesMathLibraryTag(row, kind) &&
         (allSubjects || matchesMathSubject(row, subject)) &&
-        (!search ||
-          [
-            row.Name,
-            row.BookName,
-            row.Author,
-            row.BookAuthor,
-            row.TeacherName,
-            row.BookYear,
-            mathLibraryTag(row),
-          ]
-            .join(" ")
-            .toLowerCase()
-            .includes(search.toLowerCase())),
+        matchesMathBookSearch(row, search),
     );
   const tagOptions = mathLibraryTagOptions(scoped, kind),
     rows = scoped.filter(row => matchesMathLibraryTag(row, kind, tag));
@@ -352,9 +341,7 @@ export default function MathBookshelf({
                     </span>
                   )}
                 </button>
-                <span className="bookshelf-tag">
-                  {mathLibraryTag(book)}
-                </span>
+                <MathBookLabels book={book} />
                 <h3>{mathTitle(book)}</h3>
                 <p>
                   {book.Author ||

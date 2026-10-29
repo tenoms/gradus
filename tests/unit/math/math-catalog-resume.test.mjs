@@ -76,7 +76,7 @@ function workspace({ catalogue = deferred(), resume = deferred(), save = () => P
     invalidateCatalogResources() {},
     msg: error => error.message,
   };
-  for (const name of ["ArrowLeft", "ArrowRight", "BookOpen", "ChevronRight", "ChevronDown", "PanelLeftClose", "PanelLeftOpen", "RefreshCw", "Search", "Suspense", "State", "MathCatalogPagination", "QuestionReader"])
+  for (const name of ["ArrowLeft", "ArrowRight", "BookOpen", "ChevronRight", "ChevronDown", "PanelLeftClose", "PanelLeftOpen", "RefreshCw", "Search", "Suspense", "State", "MathBookLabels", "MathCatalogPagination", "QuestionReader"])
     scope[name] = name;
   const BookWorkspace = runInNewContext(`${executable}\nBookWorkspace;`, scope);
   const props = { book: { ID: 34, Name: "测试书籍" }, stuid: "web-student", back() {} };

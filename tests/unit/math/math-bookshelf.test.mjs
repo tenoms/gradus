@@ -61,17 +61,19 @@ test("bookshelf reads personal progress and retains existing editions absent fro
 });
 test("sparse shelf and recent records inherit authoritative classification without losing reading progress", () => {
   const catalog = [
-    { ID: 1, Name: "高等数学", TeacherName: "同济教材", BusType: "书籍", BookYear: 2026 },
+    { ID: 1, Name: "高等数学", TeacherName: "同济教材", BusType: "书籍", BookYear: 2026, BusValue: "通用" },
     { ID: 2, Name: "模拟练习卷", TeacherName: "模拟试卷", BusType: "试卷", BusValue: "数一" },
   ];
   const recent = adapter.enrichShelfBooks([
-    { ID: 1, TeacherName: "", Name: null, StudentCount: 0 },
+    { ID: 1, TeacherName: "", Name: null, StudentCount: 0, BookYear: 0, BusValue: "数三" },
     { ID: 2, TeacherName: "通用", BusType: "书籍", StudentCount: 7 },
     { ID: 3, Name: "旧版真题", TeacherName: "396真题", BusType: "试卷" },
   ], catalog);
   assert.equal(recent[0].Name, "高等数学");
   assert.equal(recent[0].TeacherName, "同济教材");
   assert.equal(recent[0].StudentCount, 0);
+  assert.equal(recent[0].BookYear, 2026);
+  assert.equal(recent[0].BusValue, "通用");
   assert.equal(recent[1].TeacherName, "模拟试卷");
   assert.equal(recent[1].BusType, "试卷");
   assert.equal(recent[1].StudentCount, 7);

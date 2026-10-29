@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import React, { useEffect, useRef, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
-import { mathLibraryTag, mathLibraryTagOptions, matchesMathLibraryTag } from "../../../src/features/math/library/math-library.ts";
+import { mathLibraryTag, mathLibraryTagOptions, matchesMathLibraryTag, mathBookLabels, matchesMathBookSearch } from "../../../src/features/math/library/math-library.ts";
 import { matchesMathSubject } from "../../../src/features/math/preparation/learning-plan-model.mjs";
 
 let search = "";
@@ -31,7 +31,8 @@ globalThis.__workspaceEntryFixture = {
   Pagination: () => null,
   MathBookshelf: () => React.createElement("h2", null, "我的书架"),
   MathLibraryTagFilter: () => null,
-  mathLibraryTag, mathLibraryTagOptions, matchesMathLibraryTag, matchesMathSubject,
+  MathBookLabels: () => null,
+  mathLibraryTag, mathLibraryTagOptions, matchesMathLibraryTag, matchesMathSubject, mathBookLabels, matchesMathBookSearch,
   mathImage: value => value || "", mathTitle: row => row.Name,
   State: () => null,
   BookOpen: icon, Camera: icon, ArrowRight: icon, ImagePlus: icon,
@@ -51,6 +52,7 @@ async function component(file, name) {
 }
 const QuestionBank = await component("../../../src/features/computer/ComputerWorkspace.tsx", "QuestionBank");
 globalThis.__workspaceEntryFixture.MathLibraryTagFilter = await component("../../../src/features/math/library/MathLibraryTagFilter.tsx", "MathLibraryTagFilter");
+globalThis.__workspaceEntryFixture.MathBookLabels = await component("../../../src/features/math/library/MathBookLabels.tsx", "MathBookLabels");
 const Library = await component("../../../src/features/math/MathWorkspace.tsx", "Library");
 
 test("computer question bank opens sequential practice and loads practice chapters", () => {
@@ -82,7 +84,7 @@ test("math global search opens catalogue results instead of hiding the query beh
 test("math catalogue search preserves author tags and distinguishes paper categories on cards", () => {
   search = "q=2025";
   libraryRows = [
-    { ID: 1, Name: "2025 660题", TeacherName: "李*乐", BusType: "书籍", BusValue: "数一" },
+    { ID: 1, Name: "2025 660题", TeacherName: "李*乐", BusType: "书籍", BusValue: "数一", BookYear: 2025 },
     { ID: 2, Name: "2025 模拟试卷", TeacherName: "模拟试卷", BusType: "试卷" },
     { ID: 3, Name: "2025 396试题", TeacherName: "396真题", BusType: "试卷" },
     { ID: 4, Name: "2025 数一真题", BusType: "试卷" },
@@ -92,8 +94,26 @@ test("math catalogue search preserves author tags and distinguishes paper catego
     const html = renderToStaticMarkup(React.createElement(Library, { stuid: "student" }));
     assert.match(html, /role="group" aria-label="资料标签"/);
     for (const label of ["李*乐", "模拟试卷", "396真题", "考研真题"])
-      assert.ok(html.includes(`<div class="math-tag">${label}</div>`), label);
+      assert.ok(html.includes(`<span class="math-book-label math-book-label-material">${label}</span>`), label);
+    assert.match(html, /math-book-label-subject">数一<\/span>/);
+    assert.match(html, /math-book-label-edition">2025年版<\/span>/);
     assert.doesNotMatch(html, /历年真题|同济教材/);
     assert.match(html, /全部标签<span>4<\/span>/);
+  } finally { libraryRows = []; }
+});
+
+test("math catalogue search accepts combined displayed subject and edition labels", () => {
+  search = new URLSearchParams({ q: "通用，2027年版" }).toString();
+  libraryRows = [
+    { ID: 1, Name: "同名教辅", TeacherName: "张*", BusValue: "数一", BookYear: 2027 },
+    { ID: 2, Name: "通用新版教辅", TeacherName: "张*", BusValue: "通用", BookYear: 2027 },
+    { ID: 3, Name: "通用旧版教辅", TeacherName: "张*", BusValue: "通用", BookYear: 2026 },
+  ];
+  try {
+    const html = renderToStaticMarkup(React.createElement(Library, { stuid: "student" }));
+    assert.match(html, /通用新版教辅/);
+    assert.doesNotMatch(html, /同名教辅|通用旧版教辅/);
+    assert.match(html, /math-book-label-subject">通用<\/span>/);
+    assert.match(html, /math-book-label-edition">2027年版<\/span>/);
   } finally { libraryRows = []; }
 });

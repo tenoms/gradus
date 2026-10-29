@@ -1,6 +1,37 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mathLibraryTag, mathLibraryTagOptions, matchesMathLibraryTag, mergeMathLibraryCatalog } from "../../../src/features/math/library/math-library.ts";
+import { mathLibraryTag, mathLibraryTagOptions, matchesMathLibraryTag, mergeMathLibraryCatalog, mathBookLabels, matchesMathBookSearch } from "../../../src/features/math/library/math-library.ts";
+
+test("book labels retain the source label and distinguish subject and edition for otherwise identical titles", () => {
+  const book = { Name: "复习全书", TeacherName: "李*元", BusValue: "数一", BookYear: 2027 };
+  assert.deepEqual(mathBookLabels(book), [
+    { kind: "material", label: "李*元" }, { kind: "subject", label: "数一" }, { kind: "edition", label: "2027年版" },
+  ]);
+  assert.deepEqual(mathBookLabels({ ...book, BusValue: " 通用 ", BookYear: "2026" }).map(item => item.label), ["李*元", "通用", "2026年版"]);
+  assert.deepEqual(mathBookLabels({ BusType: "试卷", TeacherName: "模拟试卷", BusValue: "通用", BookYear: 2027 }).map(item => item.label), ["模拟试卷", "通用", "2027年版"]);
+});
+
+test("book labels omit unknown subjects and years without inventing current editions", () => {
+  for (const BookYear of [undefined, null, 0, "0", "", false, -1, "unknown", {}])
+    assert.deepEqual(mathBookLabels({ TeacherName: "同济教材", BusValue: "通用", BookYear }).map(item => item.label), ["同济教材", "通用"]);
+  assert.deepEqual(mathBookLabels({ TeacherName: "其他", BookYear: 0 }).map(item => item.label), ["其他"]);
+  assert.deepEqual(mathBookLabels({ TeacherName: "通用", BusValue: "通用" }).map(item => item.label), ["通用"]);
+});
+
+test("edition labels normalize explicit source years without repeating the edition suffix", () => {
+  for (const BookYear of [2027, " 2027 ", "2027年", "2027版", "2027年版"])
+    assert.equal(mathBookLabels({ BookYear }).find(item => item.kind === "edition").label, "2027年版");
+});
+
+test("book search matches the visible subject and edition together with author and title", () => {
+  const book = { Name: "复习全书", TeacherName: "李*元", BusValue: "数一", BookYear: 2027 };
+  assert.ok(matchesMathBookSearch(book, "数一，2027年版"));
+  assert.ok(matchesMathBookSearch(book, "  李*元  2027  全书  "));
+  assert.equal(matchesMathBookSearch(book, "通用，2027年版"), false);
+  assert.equal(matchesMathBookSearch(book, "数一 2026"), false);
+  assert.ok(matchesMathBookSearch(book, ""));
+  assert.equal(matchesMathBookSearch({ BookYear: 0 }, "2027年版"), false);
+});
 
 test("real combined catalog shape has no BusType: the source paper list supplies classification", () => {
   const all = [
