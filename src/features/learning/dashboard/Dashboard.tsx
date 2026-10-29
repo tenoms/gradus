@@ -89,28 +89,21 @@ export default function Dashboard({
               <div className="art-orbit orbit-two" />
               <span className="art-star star-one">✧</span>
               <span className="art-star star-two">✧</span>
+              <div className="art-card art-code">
+                <div className="art-card-title">
+                  <Code2 size={12} />
+                  learn.js
+                </div>
+                <pre className="art-code-snippet"><code><span className="art-code-keyword">const</span>{" "}<span className="art-code-name">learn</span>{" = n =>\n  n + "}<span className="art-code-value">1</span>{";\n\n"}<span className="art-code-name">learn</span>{"("}<span className="art-code-value">1</span>{");"}</code></pre>
+              </div>
               <div className="art-card art-math">
                 <div className="art-card-title">
-                  <Sigma size={14} />
+                  <Sigma size={10} />
                   MATHEMATICS
                 </div>
                 <div className="formula">
                   ∫ <span>f(x)</span> dx
                 </div>
-                <div className="art-lines">
-                  <i />
-                  <i />
-                </div>
-                <span className="art-badge">探索无限可能</span>
-              </div>
-              <div className="art-card art-code">
-                <Code2 size={21} />
-                <div>
-                  <i />
-                  <i />
-                  <i />
-                </div>
-                <span className="code-cursor" />
               </div>
               <div className="art-float">
                 <CheckCheck size={18} />

@@ -587,13 +587,14 @@ svg {
   border-radius: 11px;
   box-shadow: 0 15px 35px color-mix(in srgb, var(--accent) 15%, transparent);
 }
-.art-math {
+.art-code {
   width: 177px;
   height: 160px;
   left: 42px;
   top: 33px;
   transform: rotate(-10deg);
   padding: 19px 17px;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
 }
 .art-card-title {
   display: flex;
@@ -604,69 +605,62 @@ svg {
   letter-spacing: 1.2px;
   color: var(--accent);
 }
-.formula {
-  font-family: Georgia, serif;
-  color: var(--accent);
-  font-size: 32px;
-  white-space: nowrap;
-  margin-top: 14px;
+.art-code .art-card-title {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.4px;
 }
-.formula span {
-  font-size: 25px;
-  font-style: italic;
+.art-code-snippet {
+  margin: 15px 0 0;
+  color: var(--text-secondary);
+  font: 9.5px/1.8 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: -0.2px;
+  white-space: pre;
 }
-.art-lines {
-  display: flex;
-  gap: 7px;
-  flex-direction: column;
-  margin-top: 12px;
+.art-code-snippet code {
+  font: inherit;
 }
-.art-lines i {
-  height: 3px;
-  width: 95px;
-  border-radius: 5px;
-  background: var(--accent-soft);
-}
-.art-lines i:nth-child(2) {
-  width: 65px;
-}
-.art-badge {
-  position: absolute;
-  bottom: 14px;
-  right: 13px;
-  font-size: 6px;
-  letter-spacing: 1px;
+.art-code-keyword {
   color: var(--accent);
 }
-.art-code {
+.art-code-name {
+  color: var(--success);
+}
+.art-code-value {
+  color: var(--ink);
+}
+.art-math {
   width: 133px;
   height: 83px;
   right: 3px;
   bottom: 19px;
   transform: rotate(7deg);
-  display: flex;
-  align-items: center;
-  padding: 17px;
-  gap: 10px;
+  padding: 12px 13px;
   background: linear-gradient(140deg, var(--success-soft), var(--surface-soft));
+  border: 1px solid color-mix(in srgb, var(--success) 18%, transparent);
+}
+.art-math .art-card-title {
+  gap: 4px;
   color: var(--success);
+  font-size: 6.5px;
+  letter-spacing: 0.8px;
 }
-.art-code > div {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.art-math .art-card-title svg {
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
 }
-.art-code i {
-  height: 3px;
-  width: 49px;
-  border-radius: 3px;
-  background: var(--success-soft);
+.formula {
+  font-family: Georgia, serif;
+  color: var(--success);
+  font-size: 24px;
+  line-height: 1;
+  white-space: nowrap;
+  margin-top: 9px;
 }
-.art-code i:nth-child(2) {
-  width: 33px;
-}
-.art-code i:nth-child(3) {
-  width: 42px;
+.formula span {
+  font-size: 18px;
+  font-style: italic;
 }
 .art-float {
   position: absolute;
@@ -2163,6 +2157,10 @@ svg {
     right: -18px;
     top: 12px;
     opacity: 0.85;
+  }
+  .art-math {
+    right: 33px;
+    bottom: -4px;
   }
   .hero-copy {
     max-width: 66%;
