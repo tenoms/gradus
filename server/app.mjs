@@ -3,9 +3,20 @@ import cookieParser from "cookie-parser";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createDatabase } from "./database.mjs";
+import { createAccountPool } from "./account-pool.mjs";
+import { createPrivatePlatformStore } from "./private-platform.mjs";
+import { createPersonalSync } from "./personal-sync.mjs";
+import { createPersonalSyncRouter } from "./routes/personal-sync.mjs";
+import { createResourceStore } from "./resource-store.mjs";
+import { createResourceSync } from "./resource-sync.mjs";
+import { createResourceRouter } from "./routes/resources.mjs";
 import { createIdentityStore } from "./identity-store.mjs";
 import { createPlatformConfigStore } from "./platform-config.mjs";
 import { createUpstreamClient } from "./upstream.mjs";
+import { createTokenLifecycle } from "./token-lifecycle.mjs";
+import { createRegistrationStore } from "./registration.mjs";
+import { createRegistrationRouter } from "./routes/registration.mjs";
 import { createSessionSpace } from "./session-space.mjs";
 import { createAdminRouter } from "./routes/admin.mjs";
 import { createLearningRouter } from "./routes/learning.mjs";
@@ -14,15 +25,22 @@ export { injectMathUser, validatePlatformRequest, publicPlatformResponse } from 
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-export function createApp(overrides = {}) {
-  const databasePath = overrides.databasePath || process.env.STUDY_DATABASE_PATH || path.join(root, ".data/identity.sqlite");
-  const identities = overrides.identityStore || createIdentityStore(databasePath);
-  const configuration = overrides.configuration || createPlatformConfigStore({ filename: overrides.configDatabasePath || process.env.STUDY_CONFIG_DATABASE_PATH || (databasePath === ":memory:" ? ":memory:" : path.join(path.dirname(databasePath), "integrations.sqlite")) });
+export async function createApp(overrides = {}) {
+  const database = overrides.database || await createDatabase({ schemaPrefix: process.env.STUDY_SCHEMA_PREFIX || "study" });
+  const identities = overrides.identityStore || await createIdentityStore(database);
+  const configuration = await (overrides.configuration || createPlatformConfigStore({ database, ...(overrides.configurationDefaults ? { defaults: overrides.configurationDefaults } : {}) }));
   const service = { ...createUpstreamClient(() => configuration.snapshot(), overrides.requestJson ? { requestJson: overrides.requestJson } : {}), ...overrides };
+  const tokenLifecycle = createTokenLifecycle({ service });
   const connections = new Map();
   const operations = createRuntimeInsights();
+  const accountPool = await createAccountPool({ database, service, connections, identities, tokenLifecycle });
+  const resourceStore = await createResourceStore(database);
+  const resourceSync = createResourceSync({ store: resourceStore, service, connections, configuration, accountPool });
+  const personalSync = await createPersonalSync({ database, service, identities, tokenLifecycle });
+  const privatePlatform = await createPrivatePlatformStore({ database, resourceStore, personalSync });
   const adminAuth = createSessionSpace({ space: "admin", identities, connections });
-  const learningAuth = createSessionSpace({ space: "learning", identities, connections });
+  const learningAuth = createSessionSpace({ space: "learning", identities, connections, learningProfile: (user,name) => privatePlatform.profile(user.id,name,name === "math" ? { ID:user.id,StuID:user.id } : { userId:user.id },user.displayName) });
+  const registration = await createRegistrationStore({ database, identities });
   const app = express();
   app.disable("x-powered-by");
   app.use(cookieParser());
@@ -40,13 +58,16 @@ export function createApp(overrides = {}) {
   });
   app.use(express.json({ limit: "3mb" }));
   app.get("/api/health", (req, res) => res.json({ ok: true, service: "study-web", spaces: ["admin", "learning"] }));
-  app.get("/api/system/setup", (req, res) => res.json({ setupRequired: identities.setupRequired() }));
-  app.post("/api/system/setup", (req, res) => {
-    const user = identities.setup(req.body);
-    res.status(201).json(adminAuth.save(req, res, user));
+  app.get("/api/system/setup", async (req, res) => res.json({ setupRequired: await identities.setupRequired() }));
+  app.post("/api/system/setup", async (req, res) => {
+    const user = await identities.setup(req.body);
+    res.status(201).json(await adminAuth.save(req, res, user));
   });
-  app.use("/api/admin", createAdminRouter({ service, identities, connections, configuration, operations, auth: adminAuth }));
-  app.use("/api/learning", createLearningRouter({ service, identities, connections, auth: learningAuth }));
+  app.use("/api/admin", createResourceRouter({ resourceStore, resourceSync, identities, service, connections, auth: adminAuth }));
+  app.use("/api/admin", createAdminRouter({ service, identities, connections, configuration, operations, accountPool, resourceSync, auth: adminAuth }));
+  app.use(createRegistrationRouter({ registration, adminAuth, learningAuth }));
+  app.use("/api/learning/personal-sync", createPersonalSyncRouter({ auth: learningAuth, personalSync }));
+  app.use("/api/learning", createLearningRouter({ service, identities, connections, accountPool, privatePlatform, resourceSync, personalSync, auth: learningAuth }));
   app.use("/api", (req, res) => res.status(404).json({ error: "接口不存在" }));
   const dist = path.join(root, "dist");
   if (existsSync(path.join(dist, "index.html"))) {
@@ -60,9 +81,17 @@ export function createApp(overrides = {}) {
     const status = Number.isInteger(error.status) && error.status >= 400 && error.status <= 599 ? error.status : 500;
     res.status(status).json({ error: status === 500 ? "服务处理失败，请稍后重试" : error.message, requestId: res.locals.requestId, ...(error.details ? { details: error.details } : {}) });
   });
+  app.locals.database = database;
+  app.locals.accountPool = accountPool;
+  app.locals.resourceStore = resourceStore;
+  app.locals.resourceSync = resourceSync;
+  app.locals.personalSync = personalSync;
+  app.locals.registration = registration;
+  app.locals.tokenLifecycle = tokenLifecycle;
+  app.locals.privatePlatform = privatePlatform;
   app.locals.identityStore = identities;
   app.locals.configuration = configuration;
   app.locals.connections = connections;
-  app.locals.close = () => { identities.close(); configuration.close(); };
+  app.locals.close = async () => { await identities.close(); await configuration.close(); await database.close(); };
   return app;
 }

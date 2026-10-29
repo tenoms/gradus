@@ -241,7 +241,7 @@ export default function MathAlbums({
             : {}),
         },
       );
-      setNotice("阅读位置已同步到数学平台");
+      setNotice("阅读位置已保存到当前 Web 学习账号");
       progress.reload();
       recordStudy({
         platform: "math",

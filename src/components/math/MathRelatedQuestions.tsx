@@ -503,7 +503,7 @@ function RelatedCollection({
           Object.entries(v).map(([id, r]) => [id, { ...r, IsSubmit: 1 }]),
         ),
       );
-      setNotice(`已提交 ${drafts.length} 道题，结果已同步至原平台`);
+      setNotice(`已提交 ${drafts.length} 道题，结果已保存到当前学习账号`);
       recordStudy({
         platform: "math",
         type: "test",

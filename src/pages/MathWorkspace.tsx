@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import RichContent from "../components/RichContent";
+import ImportedReportSummary from "../components/identity/ImportedReportSummary";
 import MathNoteEditor from "../components/math/MathNoteEditor";
 import MathNotebook from "../components/math/MathNotebook";
 import MathDiscussion, {
@@ -109,7 +110,7 @@ function State({
     return (
       <div className="math-state">
         <LoaderCircle className="spin" size={22} />
-        <p>正在读取数学平台内容…</p>
+        <p>正在读取数学学习内容…</p>
       </div>
     );
   if (error)
@@ -150,20 +151,10 @@ const safeUrl = (v: unknown) =>
 export default function MathWorkspace({ section }: { section: string }) {
   const { session, openLogin } = useSession();
   const platform = session.platforms.math;
-  const user = platform.user || {};
-  const stuid = String(user.StuID || "");
-  if (!platform.connected)
-    return (
-      <div className="panel math-connect">
-        <div className="math-connect-icon">∑</div>
-        <h2>连接你的数学学习空间</h2>
-        <p>使用 yyb 账号登录后，同步教辅、真题、专辑及个人学习记录。</p>
-        {platform.error && <p className="math-error-text">{platform.error}</p>}
-        <button className="btn btn-primary" onClick={openLogin}>
-          使用 yyb 登录
-        </button>
-      </div>
-    );
+  const learnerId = session.user?.id || "";
+  const user = { ...platform.user, ID: learnerId, StuID: learnerId };
+  const stuid = learnerId;
+  if (!session.authenticated) return <div className="panel math-connect"><h2>登录学习空间</h2><p>使用你的账号查看数学内容与学习记录。</p><button className="btn btn-primary" onClick={openLogin}>登录学习空间</button></div>;
   let content;
   if (section === "practice") content = <PracticeCenter stuid={stuid} />;
   else if (section === "review" || section === "notes")
@@ -175,7 +166,7 @@ export default function MathWorkspace({ section }: { section: string }) {
       />
     );
   else if (section === "community")
-    content = <Community stuid={stuid} userId={Number(user.ID)} />;
+    content = <Community stuid={stuid} userId={learnerId} />;
   else if (section === "courses") content = <MathCourses stuid={stuid} />;
   else if (section === "exams") content = <MathExams stuid={stuid} />;
   else if (section === "schools") content = <SchoolCenter stuid={stuid} />;
@@ -716,6 +707,7 @@ function Practice({ stuid }: { stuid: string }) {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
   const [historyShown, setHistoryShown] = useState(false);
+  const [importedReport, setImportedReport] = useState<Record<string, any>>();
   const catalogs = useRemote(
     `practice-${stuid}-${subject}-${mode}-${subjectCode}`,
     () =>
@@ -832,6 +824,7 @@ function Practice({ stuid }: { stuid: string }) {
         </button>
       </div>
       <div className="panel">
+        {importedReport && <><ImportedReportSummary record={importedReport} /><button className="btn btn-secondary" onClick={() => setImportedReport(undefined)}>收起历史摘要</button></>}
         <div className="math-toolbar">
           <h3>{historyShown ? "我的练习历史" : "按章节练习"}</h3>
           <button
@@ -914,6 +907,7 @@ function Practice({ stuid }: { stuid: string }) {
               key={`${r.ID}-${i}`}
               onClick={() => {
                 if (historyShown) {
+                  if(r._imported){setImportedReport(r);return;}
                   setPaperReview(Number(r.IsFinish) === 1);
                   setPaper(Number(r.ID || r.ExerciseID));
                 } else void start(Number(r.ID));
@@ -927,7 +921,7 @@ function Practice({ stuid }: { stuid: string }) {
                 <strong>{mathTitle(r)}</strong>
                 <small>
                   {historyShown
-                    ? `${r.IsFinish ? "已完成" : "继续作答"}${r.AddTime ? " · " + String(r.AddTime).slice(0, 10) : ""}`
+                    ? `${r._imported ? "小程序导入 · 历史摘要" : r.IsFinish ? "已完成" : "继续作答"}${r.AddTime ? " · " + String(r.AddTime).slice(0, 10) : ""}`
                     : `${r.counts || 0} / ${r.sumcount || r.Count || "—"} 道已练习`}
                 </small>
               </span>
@@ -1036,7 +1030,7 @@ function PracticePaper({
           </h3>
           <p>
             {correct} 道正确 · {rows.length - correct} 道待巩固 ·
-            成绩已同步至数学平台
+            成绩已保存到当前 Web 学习账号
           </p>
           <button
             className="btn btn-secondary"
@@ -1050,7 +1044,7 @@ function PracticePaper({
             onClick={async () => {
               if (
                 !window.confirm(
-                  "重新练习本试卷？将按原平台规则重置此卷完成状态。",
+                  "重新练习本试卷？将重置当前账号的本次练习状态。",
                 )
               )
                 return;
@@ -1179,7 +1173,7 @@ function Albums({ stuid }: { stuid: string }) {
   return <MathAlbums stuid={stuid} onQuestion={setSelected} />;
 }
 
-function Community({ stuid, userId }: { stuid: string; userId: number }) {
+function Community({ stuid, userId }: { stuid: string; userId: string }) {
   const [tab, setTab] = useState("学习答疑");
   const [question, setQuestion] = useState<MathRow>();
   if (question)

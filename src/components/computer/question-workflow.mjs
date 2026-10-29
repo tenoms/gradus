@@ -1,10 +1,8 @@
 import { answerProgress } from "../learning/answer-progress.mjs";
 
-/** Drafts belong to both the Web learner and the selected upstream learner. */
+/** Drafts always belong to the current Web learner. */
 export function computerDraftScope(session) {
-  const yyb = session.user?.yyb;
-  const upstream = session.platforms?.computer?.user?.userId;
-  return JSON.stringify([session.user?.id || "guest", upstream || [yyb?.mode || "system", yyb?.baseUrl || "", session.account?.ref || "guest"]]);
+  return JSON.stringify([session.user?.id || "guest"]);
 }
 
 /** Practice saves one question at a time; paper answers remain editable drafts until hand-in. */

@@ -1192,10 +1192,10 @@ svg {
   background: #c4cec8;
   border-radius: 50%;
 }
-.connection-status .connected {
+.connection-status .is-ready {
   color: #4e7261;
 }
-.connection-status .connected i {
+.connection-status .is-ready i {
   background: #83b39e;
 }
 .connection-card .text-link {

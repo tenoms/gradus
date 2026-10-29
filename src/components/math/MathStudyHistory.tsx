@@ -184,6 +184,7 @@ export default function MathStudyHistory({
               <span>
                 <strong>{q.BookName || row.Name || `${tab}学习记录`}</strong>
                 <small>
+                  {row._imported ? "小程序导入 · " : ""}
                   第 {q.QuestionPage || "—"} 页 · 第{" "}
                   {q.QuestionSort || q.QuestionID || "—"} 题 ·{" "}
                   {String(row.addTime || row.AddTime || "")
@@ -200,7 +201,7 @@ export default function MathStudyHistory({
       {loading ? (
         <div className="math-state">
           <LoaderCircle className="spin" size={23} />
-          <p>正在读取原平台学习记录…</p>
+          <p>正在读取当前账号的学习记录…</p>
         </div>
       ) : !rows.length && !error ? (
         <div className="math-state">

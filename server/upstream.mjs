@@ -1,4 +1,5 @@
 import { createCipheriv, createDecipheriv, createHash } from "node:crypto";
+import { tokenMetadata } from "./token-lifecycle.mjs";
 const iv = Buffer.from("59b87344b54f3197");
 const key = (seed) => Buffer.from(createHash("md5").update(seed).digest("hex"));
 export function encryptMath(value) {
@@ -288,6 +289,7 @@ async function loginPlatformWith(config, request, name, account) {
       token,
       refreshToken: body.refresh_token || body.data?.refresh_token,
       connected: true,
+      auth: tokenMetadata(name, body.data?.access_token ? body.data : body),
     };
     try {
       const detail = await computerRequestWith(config, request,
@@ -322,11 +324,24 @@ async function loginPlatformWith(config, request, name, account) {
       ? reason : "数学小程序未返回学习身份，请先在原小程序完成登录后重新连接";
     throw new ApiError(`${message}${code ? `（错误码 ${code}）` : ""}`, 502);
   }
+  const tokenData = await mathOAuthToken(config, request, user.StuID);
+  return {
+    connected: true,
+    token: tokenData.access_token,
+    auth: tokenMetadata(name, tokenData),
+    user: tokenData.User || user,
+    stuId: user.StuID,
+    wxOpenId: check.data?.WxUserInfo?.OpenID,
+    sessionKey: check.data?.resule?.session_key,
+    appInfo: info,
+  };
+}
+async function mathOAuthToken(config, request, stuId) {
   const tokenBody = await mathRequestWith(config, request,"/api/OAuth2/Login", {
     method: "POST",
     data: {
       scope: "wxxcxA",
-      username: encryptMath(user.StuID),
+      username: encryptMath(stuId),
       password: encryptMath(JSON.stringify(1001)),
     },
   });
@@ -335,17 +350,9 @@ async function loginPlatformWith(config, request, name, account) {
   if (!token)
     throw new ApiError(
       tokenBody.Message || tokenBody.msg || "数学登录令牌获取失败",
-      502,
+      [401,403].includes(Number(tokenBody.Code??tokenBody.code)) ? Number(tokenBody.Code??tokenBody.code) : 502,
     );
-  return {
-    connected: true,
-    token,
-    user: tokenData.User || user,
-    stuId: user.StuID,
-    wxOpenId: check.data?.WxUserInfo?.OpenID,
-    sessionKey: check.data?.resule?.session_key,
-    appInfo: info,
-  };
+  return tokenData;
 }
 
 function successful(body) {
@@ -363,6 +370,7 @@ export function createUpstreamClient(configuration, { requestJson: transport = r
     if (override) config.yyb = { baseUrl: override.baseUrl, apiKey: override.apiKey || "" };
     return config;
   };
+  const unsupportedRefresh = new Set();
   return {
     getConfig,
     requestJson: transport,
@@ -370,10 +378,33 @@ export function createUpstreamClient(configuration, { requestJson: transport = r
     mathRequest: (path, input, platform) => mathRequestWith(getConfig(), transport, path, input, platform),
     computerRequest: (path, input, platform) => computerRequestWith(getConfig(), transport, path, input, platform),
     loginPlatform: (name, account, yyb) => loginPlatformWith(forYyb(yyb), transport, name, account),
-    async probe({ target = "all", ref } = {}) {
+    async refreshPlatform(name, state) {
+      const config=getConfig();
+      if(name==='math') {
+        const stuId=state.stuId || state.user?.StuID;
+        if(!stuId)throw new ApiError('数学续期缺少已确认的学习身份',401);
+        const data=await mathOAuthToken(config,transport,stuId);
+        if(data.User?.StuID && String(data.User.StuID)!==String(stuId))throw new ApiError('数学续期返回了不同学习身份',409);
+        return {...state,token:data.access_token,user:data.User || state.user,stuId,auth:tokenMetadata(name,data)};
+      }
+      if(name!=='computer')throw new ApiError('未知学习平台',404);
+      const target=JSON.stringify([config.computer.baseUrl,config.computer.tenantCode,config.computer.oauthClientId]);
+      if(!state.refreshToken||unsupportedRefresh.has(target))throw Object.assign(new ApiError('来源未提供可用的刷新令牌协议',501),{code:'REFRESH_UNSUPPORTED'});
+      // This is the source mini-program's declared protocol, not the OAuth password/code flow.
+      const url=new URL('/api/auth/wx/refreshToken',config.computer.baseUrl);
+      addQuery(url,{grant_type:'wx',scope:'read',refresh_token:state.refreshToken});
+      let body;
+      try{body=await transport(url,{method:'GET',headers:{Accept:'application/json',Authorization:bearer(state.token),'Tenant-Code':config.computer.tenantCode}});}
+      catch(error){if([404,405,501].includes(Number(error.status)))unsupportedRefresh.add(target);throw error;}
+      const data=body.data??body.Data??body;
+      if(!data?.access_token)throw new ApiError('计算机来源未返回有效刷新令牌',[400,401,403].includes(Number(body.code??body.Code))?Number(body.code??body.Code):502);
+      if(data.user?.userId&&state.user?.userId&&String(data.user.userId)!==String(state.user.userId))throw new ApiError('计算机续期返回了不同学习身份',409);
+      return {...state,token:data.access_token,refreshToken:data.refresh_token||state.refreshToken,auth:tokenMetadata(name,data)};
+    },
+    async probe({ target = "all", ref, yyb } = {}) {
       if (!["all", "yyb", "math", "computer"].includes(target)) throw new ApiError("未知检测目标", 400);
       if (ref !== undefined && (typeof ref !== "string" || !ref || ref.length > 160)) throw new ApiError("检测账号格式不正确", 400);
-      const config = getConfig();
+      const config = forYyb(yyb);
       const checks = [];
       let accounts;
       const check = async (name, operation) => {

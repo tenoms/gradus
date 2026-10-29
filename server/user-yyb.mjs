@@ -27,7 +27,8 @@ export function updateYybSettings(current, input) {
   if (input.apiKey !== undefined && (typeof input.apiKey !== "string" || input.apiKey.length > 4096)) throw new ApiError("YYB API Key 格式不正确", 400);
   if (input.clearApiKey !== undefined && typeof input.clearApiKey !== "boolean") throw new ApiError("清除密钥选项格式不正确", 400);
   if (input.clearApiKey && input.apiKey) throw new ApiError("不能同时填写和清除 YYB API Key", 400);
+  if (input.ref !== undefined && (typeof input.ref !== "string" || input.ref.length > 160)) throw new ApiError("资源来源账号格式不正确",400);
   const changedEndpoint = baseUrl !== current.baseUrl;
   const apiKey = input.clearApiKey ? "" : input.apiKey || (changedEndpoint ? "" : current.apiKey);
-  return { mode, baseUrl, apiKey, ref: changedEndpoint ? "" : current.ref, revision: current.revision + 1 };
+  return { mode, baseUrl, apiKey, ref: input.ref === undefined ? (changedEndpoint ? "" : current.ref) : input.ref.trim(), revision: current.revision + 1 };
 }

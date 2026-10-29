@@ -18,7 +18,7 @@ const subjects = computerKnowledgeIndex(computerSubjects);
 export default function ComputerKnowledgeTags({ question, majorId }: { question: ComputerRecord; majorId?: string }) {
   const { session } = useSession();
   const major = computerKnowledgeMajorId(question, majorId);
-  const scope = session.user?.id || session.account?.ref || "guest";
+  const scope = session.user?.id || "guest";
   const key = JSON.stringify([scope, major]);
   const references = computerKnowledgeReferences(question);
   const needsCatalog = references.some(item => item.id && !item.name && !subjects[item.id]);

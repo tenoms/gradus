@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createCipheriv } from "node:crypto";
-import { createPlatformConfigStore, readPlatformDefaults } from "../server/platform-config.mjs";
+import { readPlatformDefaults } from "../server/platform-config.mjs";
 import { startHttpApp } from "./http-app.mjs";
 
 function configuredStore() {
   const defaults = readPlatformDefaults({ env: { YYB_BASE_URL: "https://yyb.original.test" }, readLocal: false });
-  return createPlatformConfigStore({ filename: ":memory:", defaults });
+  return defaults;
 }
 function transport(calls) {
   return async (input, options = {}) => {
@@ -26,13 +26,16 @@ function transport(calls) {
     return { code: 200, SuccessResponse: true, data: [] };
   };
 }
-async function assignAndConnect(app, admin) {
+async function assignAndLogin(app, admin) {
   const assigned = await app.request(`/api/admin/users/${admin.userId}`, { auth: admin, method: "PATCH", body: { yybRef: "bound-account" } });
   assert.equal(assigned.status, 200);
   const learning = await app.login("learning");
-  const connected = await app.request("/api/learning/auth/connect", { auth: learning, body: { ref: "bound-account" } });
-  assert.equal(connected.status, 200);
   return learning;
+}
+async function readResources(app, auth) {
+  for (const [name, path] of [["math", "/api/question_list/GetQuestionByQuestionNew"], ["computer", "/api/exam/wx/practice/knowledge"]]) {
+    assert.equal((await app.request(`/api/learning/platform/${name}`, { auth, body: { path, query: { ID: 42, majorId: "fixture", examType: 3 } } })).status, 200);
+  }
 }
 async function photo(app, auth) {
   const form = new FormData();
@@ -42,7 +45,7 @@ async function photo(app, auth) {
 
 test("saved management configuration reaches YYB login, uploads and OCR instead of fixed environment values", async () => {
   const calls = [];
-  const app = await startHttpApp({ configuration: configuredStore(), requestJson: transport(calls) });
+  const app = await startHttpApp({ configurationDefaults: configuredStore(), requestJson: transport(calls) });
   try {
     const admin = await app.setup();
     const saved = await app.request("/api/admin/configuration", { auth: admin, method: "PUT", body: { revision: 0, config: {
@@ -51,7 +54,9 @@ test("saved management configuration reaches YYB login, uploads and OCR instead 
       computer: { baseUrl: "https://computer.saved.test", appId: "wx2222222222222222", tenantCode: "saved-tenant", oauthClientId: "saved-client", oauthClientSecret: "saved-oauth-secret", videoKey: "1234567890abcdef", videoIv: "fedcba0987654321" },
     } } });
     assert.equal(saved.status, 200);
-    const learning = await assignAndConnect(app, admin);
+    const learning = await assignAndLogin(app, admin);
+    assert.equal(calls.length, 0, "Web login does not contact the resource source");
+    await readResources(app, learning);
     const codeRequests = calls.filter(call => call.url.pathname === "/wxapp/getCode");
     assert.deepEqual(codeRequests.map(call => JSON.parse(call.options.body).app_id).sort(), ["wx1111111111111111", "wx2222222222222222"]);
     assert.ok(codeRequests.every(call => call.url.host === "yyb.saved.test" && call.options.headers.Authorization === "Bearer saved-yyb-secret"));
@@ -78,9 +83,9 @@ test("saved management configuration reaches YYB login, uploads and OCR instead 
   } finally { await app.close(); }
 });
 
-test("cleared credentials are not restored from defaults and disabled platforms lose learning access", async () => {
+test("cleared credentials stay cleared while disabled sources preserve the Web learning identity", async () => {
   const calls = [];
-  const app = await startHttpApp({ configuration: configuredStore(), requestJson: transport(calls) });
+  const app = await startHttpApp({ configurationDefaults: configuredStore(), requestJson: transport(calls) });
   try {
     const admin = await app.setup();
     const first = await app.request("/api/admin/configuration", { auth: admin, method: "PUT", body: { revision: 0, config: {
@@ -88,7 +93,9 @@ test("cleared credentials are not restored from defaults and disabled platforms 
       computer: { videoKey: "1234567890abcdef", videoIv: "fedcba0987654321" },
     } } });
     assert.equal(first.status, 200);
-    const learning = await assignAndConnect(app, admin);
+    const learning = await assignAndLogin(app, admin);
+    assert.equal(calls.length, 0, "Web login does not contact the resource source");
+    await readResources(app, learning);
     const cleared = await app.request("/api/admin/configuration", { auth: admin, method: "PUT", body: { revision: 1, config: {}, clearSecrets: ["yyb.apiKey", "math.ocrUsername", "math.ocrPassword", "computer.oauthClientSecret", "computer.videoKey"] } });
     assert.equal(cleared.status, 200);
     const value = await cleared.json();
@@ -96,7 +103,10 @@ test("cleared credentials are not restored from defaults and disabled platforms 
     const current = await (await app.request("/api/learning/auth/session", { auth: learning })).json();
     assert.equal(current.platforms.math.connected, false);
     assert.equal(current.platforms.computer.connected, false);
-    assert.equal((await app.request("/api/learning/auth/connect", { auth: learning, body: {} })).status, 200);
+    assert.equal(current.platforms.math.available, true);
+    assert.equal(current.platforms.computer.available, true);
+    assert.equal(current.platforms.math.user.StuID, learning.userId);
+    await readResources(app, learning);
     const directory = calls.filter(call => call.url.pathname === "/accounts").at(-1);
     assert.equal(directory.options.headers.Authorization, undefined);
     const oauth = calls.filter(call => call.url.pathname === "/api/auth/wx/token").at(-1);
@@ -110,7 +120,7 @@ test("cleared credentials are not restored from defaults and disabled platforms 
     assert.equal(disabled.status, 200);
     const afterDisable = calls.length;
     const upload = await app.request("/api/learning/platform/computer/upload?path=%2Fapi%2Fuser%2Fv1%2Fattachment%2Fupload%2F", { auth: learning, method: "POST", body: Buffer.from("fixture-body"), headers: { "content-type": "multipart/form-data; boundary=fixture" } });
-    assert.equal(upload.status, 401);
+    assert.equal(upload.status, 503);
     assert.equal(calls.length, afterDisable);
   } finally { await app.close(); }
 });

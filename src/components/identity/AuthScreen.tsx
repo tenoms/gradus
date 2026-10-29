@@ -7,14 +7,21 @@ import "./identity.css";
 export default function AuthScreen({ onAuthenticated, space = "learning" }: { onAuthenticated: (session: Session) => void; space?: ApiSpace }) {
   const management = space === "admin";
   const [setup, setSetup] = useState<boolean>();
+  const [registrationEnabled, setRegistrationEnabled] = useState(false);
+  const [registering, setRegistering] = useState(false);
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function load() {
     setError("");
-    try { setSetup((await api<{ setupRequired: boolean }>("/api/system/setup")).setupRequired); }
+    try {
+      const [system, registration] = await Promise.all([api<{ setupRequired: boolean }>("/api/system/setup"), management ? Promise.resolve({ registrationEnabled: false }) : api<{ registrationEnabled: boolean }>("/api/system/registration")]);
+      setSetup(system.setupRequired); setRegistrationEnabled(registration.registrationEnabled);
+      if (!registration.registrationEnabled) setRegistering(false);
+    }
     catch (e) { setError((e as Error).message); }
   }
   useEffect(() => { void load(); }, []);
@@ -37,29 +44,32 @@ export default function AuthScreen({ onAuthenticated, space = "learning" }: { on
       <div className="identity-form-wrap">
         <div className="identity-form-icon">{management ? <ShieldCheck size={25} /> : <Layers3 size={25} />}</div>
         {setup === undefined ? <>
-          <h2>正在连接{management ? "管理" : "学习"}空间</h2>
-          {error ? <><p className="error-banner" role="alert">{error}</p><button className="btn btn-primary" onClick={load}>重新连接</button></> : <LoaderCircle className="spin" aria-label="加载中" />}
+          <h2>正在读取{management ? "管理" : "学习"}空间</h2>
+          {error ? <><p className="error-banner" role="alert">{error}</p><button className="btn btn-primary" onClick={load}>重新读取</button></> : <LoaderCircle className="spin" aria-label="加载中" />}
         </> : needsAdministrator ? <>
           <p className="eyebrow">WELCOME TO STUDY</p><h2>空间即将就绪</h2><p className="identity-description">系统尚未初始化，请由管理员创建管理账号并配置学习平台。</p><a className="btn btn-primary full-width" href="/admin/">前往初始化管理空间<ArrowRight size={17} /></a>
         </> : <>
-          <p className="eyebrow">{initializing ? "欢迎创建你的管理空间" : management ? "ADMINISTRATOR ACCESS" : "WELCOME BACK"}</p>
-          <h2>{initializing ? "创建首位管理员" : management ? "登录管理空间" : "登录学习空间"}</h2>
-          <p className="identity-description">{initializing ? "创建后即可配置平台、管理用户和分配学习账号。" : management ? "使用管理员身份维护系统。管理与学习分别登录。" : "使用分配给你的账号，继续学习。"}</p>
+          <p className="eyebrow">{initializing ? "欢迎创建你的管理空间" : management ? "ADMINISTRATOR ACCESS" : registering ? "开始你的学习旅程" : "WELCOME BACK"}</p>
+          <h2>{initializing ? "创建首位管理员" : management ? "登录管理空间" : registering ? "注册学习账号" : "登录学习空间"}</h2>
+          <p className="identity-description">{initializing ? "创建后即可配置平台、管理用户和分配学习账号。" : management ? "使用管理员身份维护系统。管理与学习分别登录。" : registering ? "创建账号即可学习，计划与学习记录保存在你的账号下。" : "使用学习账号，继续学习。"}</p>
           <form onSubmit={async e => {
             e.preventDefault(); setBusy(true); setError("");
             try {
-              const session = await api<Session>(initializing ? "/api/system/setup" : `/api/${space}/auth/login`, { method: "POST", body: JSON.stringify({ username, password, ...(initializing ? { displayName } : {}) }) });
-              setPassword(""); onAuthenticated(session);
+              if (registering && password !== confirmPassword) throw new Error("两次输入的密码不一致。");
+              const session = await api<Session>(initializing ? "/api/system/setup" : registering ? "/api/learning/auth/register" : `/api/${space}/auth/login`, { method: "POST", body: JSON.stringify({ username, password, ...(initializing || registering ? { displayName } : {}) }) });
+              setPassword(""); setConfirmPassword(""); onAuthenticated(session);
             } catch (e) { setError((e as Error).message); }
             finally { setBusy(false); }
           }}>
-            {initializing && <label className="field-label">你的称呼<input className="input" value={displayName} onChange={e => setDisplayName(e.target.value)} maxLength={80} required autoComplete="name" placeholder="例如：学习管理员" disabled={busy} /></label>}
-            <label className="field-label">用户名<input className="input" value={username} onChange={e => setUsername(e.target.value)} minLength={3} maxLength={40} pattern="[a-zA-Z0-9][a-zA-Z0-9_.-]{2,39}" required autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder="输入用户名" disabled={busy} /></label>
-            <label className="field-label">密码<input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} minLength={initializing ? 10 : undefined} maxLength={256} required autoComplete={initializing ? "new-password" : "current-password"} placeholder={initializing ? "至少 10 位字符" : "输入密码"} disabled={busy} /></label>
+            {(initializing || registering) && <label className="field-label">你的称呼<input className="input" value={displayName} onChange={e => setDisplayName(e.target.value)} maxLength={80} required autoComplete="name" placeholder={initializing ? "例如：学习管理员" : "希望大家怎样称呼你"} disabled={busy} /></label>}
+            <label className="field-label">用户名<input className="input" value={username} onChange={e => setUsername(e.target.value)} minLength={3} maxLength={40} pattern={"[a-zA-Z0-9][a-zA-Z0-9_.\\-]{2,39}"} required autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder="输入用户名" disabled={busy} /></label>
+            <label className="field-label">密码<input className="input" type="password" value={password} onChange={e => setPassword(e.target.value)} minLength={initializing || registering ? 10 : undefined} maxLength={256} required autoComplete={initializing || registering ? "new-password" : "current-password"} placeholder={initializing || registering ? "至少 10 位字符" : "输入密码"} disabled={busy} /></label>
+            {registering && <label className="field-label">确认密码<input className="input" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} minLength={10} maxLength={256} required autoComplete="new-password" placeholder="再次输入密码" disabled={busy} /></label>}
             {error && <div className="error-banner" role="alert"><CircleAlert size={17} /><span>{error}</span></div>}
-            <button className="btn btn-primary full-width" disabled={busy}>{busy ? <LoaderCircle className="spin" size={17} /> : null}{busy ? "正在进入…" : initializing ? "创建并进入管理空间" : management ? "进入管理空间" : "进入学习空间"}<ArrowRight size={17} /></button>
+            <button className="btn btn-primary full-width" disabled={busy}>{busy ? <LoaderCircle className="spin" size={17} /> : null}{busy ? "正在进入…" : initializing ? "创建并进入管理空间" : management ? "进入管理空间" : registering ? "注册并开始学习" : "进入学习空间"}<ArrowRight size={17} /></button>
           </form>
-          <div className="identity-help"><Check size={16} /><p>{initializing ? "请在向其他人开放服务前完成初始化。创建后将关闭此入口。" : management ? "管理权限由系统管理员分配，请妥善保管登录凭据。" : "还没有账号或忘记密码？请联系学习空间管理员。"}</p></div>
+          {!management && registrationEnabled && <button type="button" className="identity-space-link" disabled={busy} onClick={() => { setRegistering(value => !value); setError(""); setPassword(""); setConfirmPassword(""); }}>{registering ? "已有账号？返回登录" : "还没有账号？注册学习账号"}<ArrowRight size={14} /></button>}
+          <div className="identity-help"><Check size={16} /><p>{initializing ? "请在向其他人开放服务前完成初始化。创建后将关闭此入口。" : management ? "管理权限由系统管理员分配，请妥善保管登录凭据。" : registering ? "无需邮箱验证。创建后即可进入学习空间。" : registrationEnabled ? "忘记密码时，请联系学习空间管理员。" : "还没有账号或忘记密码？请联系学习空间管理员。"}</p></div>
         </>}
         <a className="identity-space-link" href={management ? "/learn/" : "/admin/"}>{management ? "前往学习空间" : "管理员登录"}<ArrowRight size={14} /></a>
       </div>

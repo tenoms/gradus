@@ -159,7 +159,7 @@ export default function MathCourseReportMore({
           {loading && (
             <p className="mer-loading">
               <LoaderCircle className="spin" size={17} />
-              正在读取原平台成绩统计…
+              正在读取当前账号的成绩统计…
             </p>
           )}
           {error && (
@@ -234,7 +234,7 @@ export default function MathCourseReportMore({
           {!loading && !error && tab === "comparison" && (
             <>
               {!last.length ? (
-                <p className="mer-muted">原平台尚无对应的最近模拟成绩。</p>
+                <p className="mer-muted">当前账号尚无对应的最近模拟成绩。</p>
               ) : (
                 <>
                   <div className="mcrm-last">
@@ -298,7 +298,7 @@ export default function MathCourseReportMore({
                   <strong>{rate === null ? "暂无统计" : `${rate}%`}</strong>
                   {accuracy && <p>累计作答 {Number(accuracy.count) || 0} 次</p>}
                   <p className="mer-muted">
-                    按原平台累计得分与题目满分计算，包含主观题的部分得分。
+                    按当前账号的累计得分与题目满分计算，包含主观题的部分得分。
                   </p>
                 </div>
               )}

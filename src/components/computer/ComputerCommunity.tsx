@@ -458,7 +458,7 @@ export default function ComputerCommunity() {
                 {records(feed.data).map((item, i) => {
                   const own =
                     String(item.userId) ===
-                    String(session.platforms.computer.user?.userId);
+                    String(session.user?.id);
                   return (
                     <article className="computer-post" key={i}>
                       <div className="computer-section-label">
@@ -574,7 +574,7 @@ export default function ComputerCommunity() {
                               [item.id]: [
                                 ...(c[item.id] || []),
                                 {
-                                  nickname: session.account?.nickname || "我",
+                                  nickname: session.user?.displayName || "我",
                                   comment: commentDraft[item.id],
                                 },
                               ],

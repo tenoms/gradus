@@ -1,87 +1,87 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, statSync } from "node:fs";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { createCipheriv, createDecipheriv, createHash } from "node:crypto";
 import { createPlatformConfigStore, readPlatformDefaults } from "../server/platform-config.mjs";
 import { ApiError, createUpstreamClient } from "../server/upstream.mjs";
+import { createTestDatabase } from "./database.mjs";
 
 const defaults = () => readPlatformDefaults({ env: { YYB_BASE_URL: "https://yyb.test", YYB_API_KEY: "yyb-test-secret" }, readLocal: false });
-const memory = () => createPlatformConfigStore({ filename: ":memory:", defaults: defaults() });
+const memory = async () => {
+  const database = await createTestDatabase();
+  const store = await createPlatformConfigStore({ database, defaults: defaults() });
+  return { ...store, database, close: () => database.close() };
+};
 
-test("public configuration hides every credential while empty fields preserve and explicit clears remove them", () => {
-  const store = memory();
+test("public configuration hides every credential while empty fields preserve and explicit clears remove them", async () => {
+  const store = await memory();
   try {
     const first = store.publicConfig();
     assert.equal(first.secretStatus["yyb.apiKey"], true);
     assert.equal(first.config.yyb.apiKey, undefined);
     assert.equal(JSON.stringify(first).includes("yyb-test-secret"), false);
-    const second = store.update({ revision: first.revision, config: { math: { ocrUsername: "ocr-user", ocrPassword: "ocr-secret" }, computer: { videoKey: "1234567890abcdef", videoIv: "fedcba0987654321" } } });
+    const second = await store.update({ revision: first.revision, config: { math: { ocrUsername: "ocr-user", ocrPassword: "ocr-secret" }, computer: { videoKey: "1234567890abcdef", videoIv: "fedcba0987654321" } } });
     assert.deepEqual(second.affectedPlatforms, ["math", "computer"]);
     assert.equal(second.secretStatus["math.ocrPassword"], true);
     assert.equal(JSON.stringify(second).includes("ocr-secret"), false);
-    const unchanged = store.update({ revision: second.revision, config: { math: { ocrPassword: "" } } });
+    const unchanged = await store.update({ revision: second.revision, config: { math: { ocrPassword: "" } } });
     assert.equal(unchanged.revision, second.revision);
     assert.equal(store.snapshot().math.ocrPassword, "ocr-secret");
-    const cleared = store.update({ revision: unchanged.revision, config: {}, clearSecrets: ["math.ocrPassword"] });
+    const cleared = await store.update({ revision: unchanged.revision, config: {}, clearSecrets: ["math.ocrPassword"] });
     assert.equal(cleared.secretStatus["math.ocrPassword"], false);
     assert.equal(store.snapshot().math.ocrPassword, "");
-    assert.throws(() => store.update({ revision: cleared.revision, config: { yyb: { apiKey: "new-secret" } }, clearSecrets: ["yyb.apiKey"] }), { status: 400 });
+    await assert.rejects(() => store.update({ revision: cleared.revision, config: { yyb: { apiKey: "new-secret" } }, clearSecrets: ["yyb.apiKey"] }), { status: 400 });
     assert.equal(store.snapshot().yyb.apiKey, "yyb-test-secret");
-  } finally { store.close(); }
+  } finally { await store.close(); }
 });
 
-test("configuration updates persist, retain private filesystem permissions and reject stale admin revisions", () => {
-  const folder = mkdtempSync(path.join(tmpdir(), "study-config-"));
-  const filename = path.join(folder, "config.sqlite");
-  let store = createPlatformConfigStore({ filename, defaults: defaults() });
+test("configuration updates persist and reject stale admin revisions across PostgreSQL clients", async () => {
+  const database = await createTestDatabase();
+  let store = await createPlatformConfigStore({ database, defaults: defaults() });
   try {
-    const updated = store.update({ revision: 0, config: { yyb: { baseUrl: "https://changed.test/" } } });
+    const updated = await store.update({ revision: 0, config: { yyb: { baseUrl: "https://changed.test/" } } });
     assert.deepEqual(updated.affectedPlatforms, ["math", "computer"]);
     assert.equal(updated.config.yyb.baseUrl, "https://changed.test");
-    assert.throws(() => store.update({ revision: 0, config: { math: { enabled: false } } }), { status: 409 });
-    assert.equal(statSync(filename).mode & 0o777, 0o600);
-    store.close();
-    store = createPlatformConfigStore({ filename, defaults: { ...defaults(), yyb: { baseUrl: "https://ignored.test", apiKey: "ignored" } } });
+    await assert.rejects(() => store.update({ revision: 0, config: { math: { enabled: false } } }), { status: 409 });
+    await store.close();
+    store = await createPlatformConfigStore({ database, defaults: { ...defaults(), yyb: { baseUrl: "https://ignored.test", apiKey: "ignored" } } });
     assert.equal(store.publicConfig().revision, 1);
     assert.equal(store.snapshot().yyb.baseUrl, "https://changed.test");
     assert.equal(store.snapshot().yyb.apiKey, "yyb-test-secret");
     const copy = store.snapshot(); copy.math.enabled = false;
     assert.equal(store.snapshot().math.enabled, true);
-  } finally { store.close(); rmSync(folder, { recursive: true, force: true }); }
+  } finally { await database.close(); }
 });
 
-test("invalid platform fields cannot partially save a configuration", () => {
-  const store = memory();
+test("invalid platform fields cannot partially save a configuration", async () => {
+  const store = await memory();
   try {
     for (const config of [
       { math: { stationId: 0 } }, { math: { loginId: 1.2 } }, { math: { enabled: "false" } },
       { yyb: { baseUrl: "file:///etc/passwd" } }, { yyb: { baseUrl: "https://user:password@example.test" } },
       { computer: { videoKey: "short" } }, { computer: { tenantCode: "" } },
       { computer: { appId: "not-an-app-id" } }, { math: { unexpected: "value" } },
-    ]) assert.throws(() => store.update({ revision: 0, config }), { status: 400 });
-    assert.throws(() => store.update({ revision: 0, config: {}, clearSecrets: ["math.baseUrl"] }), { status: 400 });
+    ]) await assert.rejects(() => store.update({ revision: 0, config }), { status: 400 });
+    await assert.rejects(() => store.update({ revision: 0, config: {}, clearSecrets: ["math.baseUrl"] }), { status: 400 });
     assert.equal(store.publicConfig().revision, 0);
-  } finally { store.close(); }
+  } finally { await store.close(); }
 });
 
 test("the same upstream client immediately uses saved endpoints, tenant settings and enabled state", async () => {
-  const store = memory(); const seen = [];
+  const store = await memory(); const seen = [];
   const client = createUpstreamClient(() => store.snapshot(), { requestJson: async (url, options) => { seen.push({ url: String(url), options }); return { code: 200, data: [] }; } });
   try {
     await client.computerRequest("/api/test");
     assert.match(seen.at(-1).url, /^https:\/\/teach\.computer-upstream\.invalid/);
-    store.update({ revision: 0, config: { computer: { baseUrl: "https://computer.new", tenantCode: "changed" } } });
+    await store.update({ revision: 0, config: { computer: { baseUrl: "https://computer.new", tenantCode: "changed" } } });
     await client.computerRequest("/api/test");
     assert.equal(new URL(seen.at(-1).url).host, "computer.new");
     assert.equal(seen.at(-1).options.headers["Tenant-Code"], "changed");
-    store.update({ revision: 1, config: { computer: { enabled: false } } });
+    await store.update({ revision: 1, config: { computer: { enabled: false } } });
     const calls = seen.length;
     await assert.rejects(client.computerRequest("/api/test"), { status: 503 });
     await assert.rejects(client.loginPlatform("computer", { ref: "test" }), { status: 503 });
     assert.equal(seen.length, calls);
-  } finally { store.close(); }
+  } finally { await store.close(); }
 });
 
 test("configured application identities, OAuth credentials and math station settings are used throughout login", async () => {

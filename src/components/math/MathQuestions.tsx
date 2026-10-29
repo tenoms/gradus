@@ -248,7 +248,7 @@ export default function MathQuestions({
   initialOrder,
 }: {
   stuid: string;
-  userId?: number;
+  userId?: number | string;
   onQuestion?: (row: MathRow) => void;
   initialOrder?: MathRow;
 }) {
@@ -258,14 +258,7 @@ export default function MathQuestions({
   const [current, setCurrent] = useState<MathRow | undefined>(initialOrder);
   const [newShown, setNewShown] = useState(false);
   const [teacherShown, setTeacherShown] = useState(false);
-  const teacher = useData(`qa-teacher-${userId}`, () =>
-    userId
-      ? mathCommand("CheckUserIsQuestionTeacher", {
-          UserID: userId,
-          System_Station_ID: station,
-        })
-      : Promise.resolve({ data: [] }),
-  );
+  const teacher = useData(`qa-teacher-${userId}`, () => Promise.resolve({ data: [] }));
   const teacherAccounts = mathRows(teacher.data).filter(
     (t) => t.TeacherID,
   );
@@ -913,7 +906,7 @@ function QuestionOrder({
         );
       }
       setAction("");
-      setNotice("语音解答已同步到数学平台");
+      setNotice("语音解答已保存到当前 Web 学习账号");
       refresh();
     } finally {
       setBusy(false);

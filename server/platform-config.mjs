@@ -1,5 +1,4 @@
-import { DatabaseSync } from "node:sqlite";
-import { readFileSync, mkdirSync, chmodSync, existsSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -76,22 +75,19 @@ function validField(section, name, value) {
 }
 
 /** Stores one versioned server configuration; the public interface never returns credentials. */
-export function createPlatformConfigStore({ filename, defaults, env, readLocal } = {}) {
-  if (!filename) filename = path.join(projectRoot, ".data/platform-config.sqlite");
-  if (filename !== ":memory:") mkdirSync(path.dirname(filename), { recursive: true });
-  const db = new DatabaseSync(filename);
-  db.exec("PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS platform_configuration (id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL, config TEXT NOT NULL, updated_at TEXT NOT NULL)");
+export async function createPlatformConfigStore({ database: db, defaults, env, readLocal } = {}) {
+  if (!db) throw new Error("平台配置需要 PostgreSQL 数据库连接");
+  const table = db.web('platform_configuration');
+  await db.query(`CREATE TABLE IF NOT EXISTS ${table} (id INTEGER PRIMARY KEY CHECK(id=1),revision INTEGER NOT NULL,config JSONB NOT NULL,updated_at TIMESTAMPTZ NOT NULL)`);
   const initial = defaults || readPlatformDefaults({ ...(env ? { env } : {}), ...(readLocal === undefined ? {} : { readLocal }) });
-  const existing = db.prepare("SELECT revision,config,updated_at FROM platform_configuration WHERE id=1").get();
-  let revision = existing?.revision || 0;
-  let config = existing ? JSON.parse(existing.config) : clone(initial);
-  let updatedAt = existing?.updated_at || new Date().toISOString();
-  if (!existing) db.prepare("INSERT INTO platform_configuration(id,revision,config,updated_at) VALUES(1,0,?,?)").run(JSON.stringify(config), updatedAt);
-  const secureFiles = () => {
-    if (filename === ":memory:") return;
-    for (const file of [filename, `${filename}-wal`, `${filename}-shm`]) if (existsSync(file)) chmodSync(file, 0o600);
-  };
-  secureFiles();
+  await db.query(`INSERT INTO ${table}(id,revision,config,updated_at) VALUES(1,0,$1,$2) ON CONFLICT(id) DO NOTHING`, [JSON.stringify(initial), new Date().toISOString()]);
+  let revision, config, updatedAt;
+  async function refresh() {
+    const existing = (await db.query(`SELECT revision,config,updated_at FROM ${table} WHERE id=1`)).rows[0];
+    revision = existing.revision; config = existing.config; updatedAt = new Date(existing.updated_at).toISOString();
+    return publicConfig();
+  }
+  await refresh();
   function publicConfig() {
     const safe = clone(config);
     const secretStatus = {};
@@ -105,8 +101,10 @@ export function createPlatformConfigStore({ filename, defaults, env, readLocal }
   return {
     snapshot: () => clone(config),
     publicConfig,
-    update(input) {
+    refresh,
+    async update(input) {
       if (!isObject(input) || !Number.isInteger(input.revision) || input.revision < 0 || !isObject(input.config)) failure("配置及版本格式不正确");
+      await refresh();
       if (input.revision !== revision) failure("配置已在其他窗口更新，请重新读取后保存", 409);
       const clearing = input.clearSecrets || [];
       if (!Array.isArray(clearing) || clearing.some(field => !secretPaths.includes(field))) failure("清空凭据字段不正确");
@@ -126,12 +124,11 @@ export function createPlatformConfigStore({ filename, defaults, env, readLocal }
       const affectedPlatforms = ["math", "computer"].filter(name => yybChanged || JSON.stringify(next[name]) !== JSON.stringify(config[name]));
       if (!affectedPlatforms.length) return { ...publicConfig(), affectedPlatforms };
       const nextAt = new Date().toISOString();
-      const result = db.prepare("UPDATE platform_configuration SET revision=revision+1,config=?,updated_at=? WHERE id=1 AND revision=?").run(JSON.stringify(next), nextAt, revision);
-      if (result.changes !== 1) failure("配置已被更新，请重新打开配置页面", 409);
+      const result = await db.query(`UPDATE ${table} SET revision=revision+1,config=$1,updated_at=$2 WHERE id=1 AND revision=$3`, [JSON.stringify(next), nextAt, revision]);
+      if (result.rowCount !== 1) { await refresh(); failure("配置已被更新，请重新打开配置页面", 409); }
       config = next; revision++; updatedAt = nextAt;
-      secureFiles();
       return { ...publicConfig(), affectedPlatforms };
     },
-    close() { db.close(); },
+    close: async () => {},
   };
 }

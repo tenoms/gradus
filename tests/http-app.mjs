@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { once } from "node:events";
+import { createTestDatabase } from "./database.mjs";
 import { createApp } from "../server/app.mjs";
 
 export const testAdmin = { username: "admin", password: "administration-123", displayName: "管理员" };
@@ -7,7 +8,8 @@ export const testLearner = (username, yybRef, extra = {}) => ({ username, passwo
 
 /** Test clients obtain both cookie and principal from the public authentication response. */
 export async function startHttpApp(overrides = {}) {
-  const app = createApp({ databasePath: ":memory:", ...overrides });
+  const database = overrides.database || await createTestDatabase();
+  const app = await createApp({ ...overrides, database });
   const server = app.listen(0, "127.0.0.1");
   await once(server, "listening");
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -35,6 +37,6 @@ export async function startHttpApp(overrides = {}) {
       assert.equal(response.status, 201);
       return (await response.json()).user;
     },
-    async close() { await new Promise(resolve => server.close(resolve)); app.locals.close(); },
+    async close() { await new Promise(resolve => server.close(resolve)); await app.locals.close(); },
   };
 }

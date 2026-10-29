@@ -58,7 +58,7 @@ function RemoteList({
     return (
       <div className="math-state">
         <LoaderCircle className="spin" size={23} />
-        <p>正在读取数学平台记录…</p>
+        <p>正在读取数学学习记录…</p>
       </div>
     );
   if (error)

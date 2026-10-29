@@ -13,6 +13,7 @@ import Pagination from "../components/Pagination";
 import { adminActions } from "../../shared/admin-actions.mjs";
 import "./admin.css";
 const OperationsConsole = lazy(() => import("./admin/OperationsConsole"));
+const DataManagement = lazy(() => import("./admin/DataManagement"));
 const IntegrationSettings = lazy(() => import("./admin/IntegrationSettings"));
 
 type Role = "admin" | "learner";
@@ -27,7 +28,7 @@ interface AdminUser {
   createdAt: string;
   lastLoginAt?: string | null;
 }
-interface LearningAccount { ref: string; nickname: string; status: string; assignedTo?: { id: string; displayName: string } }
+interface LearningAccount { ref: string; nickname: string; status: string; serviceName?: string; routes?: { serviceName: string }[]; assignedTo?: { id: string; displayName: string } }
 interface PageInfo { page: number; pageSize: number; total: number; totalPages: number }
 const emptyPage: PageInfo = { page: 1, pageSize: 20, total: 0, totalPages: 1 };
 interface AuditEntry {
@@ -40,8 +41,8 @@ interface AuditEntry {
 }
 interface Announcement { id: string; title: string; body: string; createdAt: string }
 interface OverviewData {
-  stats: { users: number; activeUsers: number; connectedUsers: number; tasks: number; activities: number };
-  platforms: { id: string; label: string; connectedUsers: number }[];
+  stats: { users: number; activeUsers: number; connectedUsers: number; learningUsers: number; tasks: number; activities: number };
+  platforms: { id: string; label: string; connectedUsers: number; resourceCount: number }[];
   recentAudit: AuditEntry[];
 }
 const actions = adminActions;
@@ -88,7 +89,7 @@ function UserYYBDetails({ user, accountName, detailed = false }: { user: AdminUs
   return <div className="admin-user-yyb">
     <span className={`admin-badge ${own ? "admin-badge-purple" : ""}`}>{own ? "自有 YYB" : "系统 YYB"}</span>
     {user.yyb?.baseUrl && <span className="admin-yyb-endpoint" title={user.yyb.baseUrl}>{own ? "" : "已保存自有地址："}{user.yyb.baseUrl}</span>}
-    <span className={`admin-account-value ${ref ? "assigned" : ""}`}>{ref ? own ? `微信账号 ${ref}` : accountName || `账号 ${ref}` : own ? "尚未选择微信账号" : "暂未分配"}</span>
+    <span className={`admin-account-value ${ref ? "assigned" : ""}`}>{ref ? own ? `微信账号 ${ref}` : accountName || `账号 ${ref}` : own ? "自动选择可用来源" : "自动调度"}</span>
     {detailed && user.yyb?.baseUrl && <small>自有 API Key：{user.yyb.apiKeyConfigured ? "已配置" : "未配置"}</small>}
   </div>;
 }
@@ -103,14 +104,14 @@ function Overview({ version }: { version: number }) {
   const { stats, platforms, recentAudit } = resource.data;
   const cards = [
     { label: "系统用户", value: stats.users, icon: Users, note: `${stats.activeUsers} 位已启用` },
-    { label: "学习账号已连接", value: stats.connectedUsers, icon: Link2, note: "当前进程中的连接" },
+    { label: "学习登录用户", value: stats.learningUsers, icon: Link2, note: "持有有效学习会话的用户" },
     { label: "学习计划", value: stats.tasks, icon: ListChecks, note: "全体用户已保存的计划" },
     { label: "学习活动", value: stats.activities, icon: Activity, note: "已保存到系统的记录" },
   ];
   return <>
     <div className="admin-metrics">{cards.map(({ label, value, icon: Icon, note }) => <section className="panel admin-metric" key={label}><div><span>{label}</span><Icon size={19} /></div><strong>{Number(value || 0).toLocaleString("zh-CN")}</strong><small>{note}</small></section>)}</div>
     <div className="admin-overview-grid">
-      <section className="panel"><div className="admin-section-heading"><div><h2>学习平台</h2><p>两学科独立连接，支持系统分配和用户自有 YYB。</p></div><Link className="text-link" to="/users">管理分配<ArrowRight size={14} /></Link></div><div className="admin-platforms">{platforms.map((platform) => <div className="admin-platform" key={platform.id}><span className={`admin-platform-symbol ${platform.id}`}>{platform.id === "math" ? "∑" : "</>"}</span><div><strong>{platform.label}</strong><small>{platform.connectedUsers} 位用户已连接</small></div><span className={`admin-badge ${platform.connectedUsers ? "admin-badge-green" : ""}`}>{platform.connectedUsers ? "使用中" : "暂无连接"}</span></div>)}</div><div className="admin-note"><ShieldCheck size={17} /><p>学习者使用独立登录身份，可以连接系统分配的账号，也可以在个人中心配置自己的 YYB。</p></div></section>
+      <section className="panel"><div className="admin-section-heading"><div><h2>学习平台</h2><p>两科学习优先使用本地资源，缺失时自动补充。</p></div><Link className="text-link" to="/users">管理分配<ArrowRight size={14} /></Link></div><div className="admin-platforms">{platforms.map((platform) => <div className="admin-platform" key={platform.id}><span className={`admin-platform-symbol ${platform.id}`}>{platform.id === "math" ? "∑" : "</>"}</span><div><strong>{platform.label}</strong><small>{platform.resourceCount} 份已保存资源</small></div><span className={`admin-badge ${platform.resourceCount ? "admin-badge-green" : ""}`}>{platform.resourceCount ? "本地可用" : "按需补充"}</span></div>)}</div><div className="admin-note"><ShieldCheck size={17} /><p>学习者只需登录 Web。系统来源或用户自有 YYB 仅用于按需补充资源，个人记录独立保存。</p></div></section>
       <section className="panel"><div className="admin-section-heading"><div><h2>管理工作</h2><p>为学习者准备好学习空间。</p></div></div><div className="admin-quick-links"><Link to="/users"><span className="admin-quick-icon"><Users size={19} /></span><span><strong>用户与账号</strong><small>创建用户、分配账号、管理权限</small></span><ArrowRight size={17} /></Link><Link to="/announcements"><span className="admin-quick-icon"><Bell size={19} /></span><span><strong>学习公告</strong><small>向所有学习者发布通知</small></span><ArrowRight size={17} /></Link><Link to="/audit"><span className="admin-quick-icon"><Activity size={19} /></span><span><strong>操作审计</strong><small>查看登录与管理操作记录</small></span><ArrowRight size={17} /></Link></div></section>
     </div>
     <section className="panel"><div className="admin-section-heading"><div><h2>最近操作</h2><p>管理动作有迹可循。</p></div><Link className="text-link" to="/audit">查看全部<ArrowRight size={14} /></Link></div><AuditList entries={recentAudit || []} compact /></section>
@@ -118,7 +119,7 @@ function Overview({ version }: { version: number }) {
 }
 interface UserDraft { username: string; displayName: string; password: string; role: Role; status: "active" | "disabled"; yybRef: string }
 const emptyDraft: UserDraft = { username: "", displayName: "", password: "", role: "learner", status: "active", yybRef: "" };
-function UserEditor({ user, users, accounts, accountsError, onSaved, onClose }: {
+function UserEditor({ user, accounts, accountsError, onSaved, onClose }: {
   user: AdminUser | null; users: AdminUser[]; accounts: LearningAccount[]; accountsError: string; onSaved: (message?: string) => void; onClose: () => void;
 }) {
   const { session, refresh } = useSession();
@@ -161,13 +162,11 @@ function UserEditor({ user, users, accounts, accountsError, onSaved, onClose }: 
       {!user && <label className="field-label">初始密码<input className="input" type="password" value={draft.password} onChange={(event) => set("password", event.target.value)} required minLength={10} maxLength={256} autoComplete="new-password" disabled={pending} placeholder="至少 10 个字符" /><small>请将用户名和初始密码告知对应学习者。</small></label>}
       <div className="admin-field-pair"><label className="field-label">用户角色<select className="input" value={draft.role} onChange={(event) => set("role", event.target.value as Role)} disabled={pending}><option value="learner">学习者</option><option value="admin">管理员</option></select></label>{user && <label className="field-label">账号状态<select className="input" value={draft.status} onChange={(event) => set("status", event.target.value as UserDraft["status"])} disabled={pending || user.id === ownId}><option value="active">已启用</option><option value="disabled">已停用</option></select></label>}</div>
       {draft.role === "admin" && <p className="admin-inline-hint"><ShieldCheck size={14} />管理员可以管理所有用户、分配学习账号和发布公告。</p>}
-      {user && <div className="admin-yyb-details"><h3>当前学习连接来源</h3><UserYYBDetails user={user} detailed accountName={accounts.find(account => account.ref === user.yybRef)?.nickname} />{user.yyb?.mode === "custom" && <p>自有服务由该用户在个人中心维护，下面的系统账号分配可在切回系统 YYB 后使用。</p>}</div>}
-      <label className="field-label">系统 YYB 账号分配<select className="input" value={draft.yybRef} onChange={(event) => set("yybRef", event.target.value)} disabled={pending || !!accountsError}><option value="">暂不分配</option>{draft.yybRef && !accounts.some((account) => account.ref === draft.yybRef) && <option value={draft.yybRef}>已分配账号 · {draft.yybRef}</option>}{accounts.map((account) => {
-        const assigned = account.assignedTo || users.find((item) => item.yybRef === account.ref);
-        const owner = assigned?.id !== user?.id ? assigned : undefined;
-        return <option key={account.ref} value={account.ref} disabled={!!owner}>{account.nickname || account.ref}{owner ? `（已分配给 ${owner.displayName}）` : account.status === "alive" ? "" : "（需检查会话）"}</option>;
-      })}</select><small>{accountsError ? `账号目录暂不可用：${accountsError}` : "每个学习账号仅分配给一位用户。学习者连接后可直接使用平台返回的内容。"}</small></label>
-      {user && user.yybRef !== draft.yybRef && <p className="admin-inline-hint"><CircleAlert size={14} />更换或解除分配后，此用户原有的平台连接将失效。</p>}
+      {user && <div className="admin-yyb-details"><h3>当前资源来源偏好</h3><UserYYBDetails user={user} detailed accountName={accounts.find(account => account.ref === user.yybRef)?.nickname} />{user.yyb?.mode === "custom" && <p>自有服务由该用户在个人中心维护，下面的系统账号分配可在切回系统 YYB 后使用。</p>}</div>}
+      <label className="field-label">系统 YYB 来源偏好<select className="input" value={draft.yybRef} onChange={(event) => set("yybRef", event.target.value)} disabled={pending || !!accountsError}><option value="">从账号池自动调度</option>{draft.yybRef && !accounts.some((account) => account.ref === draft.yybRef) && <option value={draft.yybRef}>已分配账号 · {draft.yybRef}</option>}{accounts.map((account) => {
+        return <option key={account.ref} value={account.ref}>{account.nickname || account.ref}{account.routes && account.routes.length>1 ? ` · ${account.routes.length} 条 YYB 路径` : account.serviceName ? ` · ${account.serviceName}` : ""}{account.status === "alive" ? "" : "（需检查会话）"}</option>;
+      })}</select><small>{accountsError ? `账号目录暂不可用：${accountsError}` : "多个用户可共享同一账号，个人学习记录按 Web 用户独立保存。留空时使用账号池调度。"}</small></label>
+      {user && user.yybRef !== draft.yybRef && <p className="admin-inline-hint"><CircleAlert size={14} />后续缺失资源将按新来源补充，已有资源和个人学习记录保留。</p>}
       {user && user.status !== draft.status && draft.status === "disabled" && <p className="admin-inline-hint admin-warning"><CircleAlert size={14} />保存后，{user.displayName} 将立即退出并无法登录。</p>}
       {error && <p className="admin-form-error" role="alert">{error}</p>}
       <div className="admin-form-actions"><button className="btn btn-primary" type="submit" disabled={pending}>{pending ? <LoaderCircle size={15} className="spin" /> : <Check size={15} />}{user ? "保存修改" : "创建用户"}</button><button className="btn btn-secondary" type="button" onClick={onClose} disabled={pending}>取消</button></div>
@@ -251,14 +250,14 @@ export default function AdminWorkspace() {
   const [version, setVersion] = useState(0);
   const [notice, setNotice] = useState("");
   const section = location.pathname.split("/")[1] || "overview";
-  useEffect(() => { if (!["overview", "users", "configuration", "announcements", "audit", "operations"].includes(section)) navigate("/", { replace: true }); }, [section, navigate]);
+  useEffect(() => { if (!["overview", "users", "configuration", "data", "announcements", "audit", "operations"].includes(section)) navigate("/", { replace: true }); }, [section, navigate]);
   if (!session.authenticated || user?.role !== "admin") return <section className="panel admin-access-state"><span className="admin-access-icon"><ShieldCheck size={30} /></span><h1>管理工作台</h1><p>{session.authenticated ? "当前账号没有管理权限。请联系系统管理员。" : "请使用管理员账号登录，管理用户与学习空间。"}</p>{session.authenticated ? <a className="btn btn-primary" href="/learn/">返回学习空间<ArrowRight size={15} /></a> : <button className="btn btn-primary" onClick={openLogin}>登录管理账号<ArrowRight size={15} /></button>}</section>;
-  const headings: Record<string, string> = { overview: "管理总览", users: "用户与学习账号", configuration: "平台集成配置", announcements: "学习公告", audit: "操作审计", operations: "运行诊断" };
+  const headings: Record<string, string> = { overview: "管理总览", users: "用户与学习账号", configuration: "平台集成配置", data: "账号池与资源同步", announcements: "学习公告", audit: "操作审计", operations: "运行诊断" };
   const heading = headings[section] || headings.overview;
   return <div className="admin-workspace">
     <h1 className="sr-only">{heading}</h1>
-    {!["configuration", "operations"].includes(section) && <div className="admin-page-tools"><button className="btn btn-secondary" onClick={() => { setVersion((value) => value + 1); setNotice(""); }}><RefreshCw size={15} />刷新数据</button></div>}
+    {!["configuration", "operations", "data"].includes(section) && <div className="admin-page-tools"><button className="btn btn-secondary" onClick={() => { setVersion((value) => value + 1); setNotice(""); }}><RefreshCw size={15} />刷新数据</button></div>}
     {notice && <div className="admin-feedback" role="status"><Check size={17} /><span>{notice}</span><button className="icon-button" aria-label="关闭操作提示" onClick={() => setNotice("")}><X size={16} /></button></div>}
-    {section === "operations" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><OperationsConsole /></Suspense> : section === "configuration" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><IntegrationSettings /></Suspense> : section === "users" ? <UsersPanel version={version} notify={setNotice} /> : section === "announcements" ? <AnnouncementsPanel version={version} notify={setNotice} /> : section === "audit" ? <AuditPanel version={version} /> : <Overview version={version} />}
+    {section === "data" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><DataManagement /></Suspense> : section === "operations" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><OperationsConsole /></Suspense> : section === "configuration" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><IntegrationSettings /></Suspense> : section === "users" ? <UsersPanel version={version} notify={setNotice} /> : section === "announcements" ? <AnnouncementsPanel version={version} notify={setNotice} /> : section === "audit" ? <AuditPanel version={version} /> : <Overview version={version} />}
   </div>;
 }

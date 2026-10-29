@@ -57,15 +57,18 @@ export function publicSession(session) {
   if (!session) return { authenticated: false, account: null, platforms: {} };
   return {
     authenticated: true,
-    ...(session.user ? { user: session.user } : {}),
-    account: session.account,
+    ...(session.user ? { user: Object.fromEntries(Object.entries(session.user).filter(([key])=>!["yyb","yybRef"].includes(key))) } : {}),
+    account: null,
+    identityMode: "web",
     platforms: Object.fromEntries(
       ["math", "computer"].map((name) => {
         const p = session.platforms[name] || {};
         return [
           name,
           {
-            connected: !!p.connected,
+            available: p.available !== false,
+            connected: false,
+            identityMode: "web",
             ...(p.user ? { user: publicUser(name, p.user) } : {}),
             ...(p.error ? { error: p.error } : {}),
           },

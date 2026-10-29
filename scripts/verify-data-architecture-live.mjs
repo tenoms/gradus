@@ -1,0 +1,188 @@
+import assert from 'node:assert/strict';
+import { randomUUID, randomBytes } from 'node:crypto';
+import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
+import { once } from 'node:events';
+import { createApp } from '../server/app.mjs';
+import { createDatabase } from '../server/database.mjs';
+import { requestJson as upstreamRequestJson } from '../server/upstream.mjs';
+
+if (!process.env.DATABASE_URL && existsSync('.env')) process.loadEnvFile('.env');
+const database=await createDatabase({schemaPrefix:`verify_${randomUUID().replaceAll('-','')}`});
+const originalClose=database.close;
+database.close=async()=>{await database.drop();await originalClose();};
+const upstreamCalls=[];
+const app=await createApp({database,requestJson:async(url,options)=>{const parsed=new URL(url);upstreamCalls.push({path:parsed.pathname,number:parsed.searchParams.get('number')});return upstreamRequestJson(url,options);}});
+assert.equal(upstreamCalls.length,0,'服务启动不发起同步请求');
+const server=app.listen(0,'127.0.0.1');await once(server,'listening');
+const base=`http://127.0.0.1:${server.address().port}`;
+const results=[];
+const password=randomBytes(20).toString('base64url');
+async function request(route,{auth,body,method=body===undefined?'GET':'POST'}={}) {
+  const response=await fetch(base+route,{method,headers:{'content-type':'application/json',...(auth?{cookie:auth.cookie,'X-Study-User':auth.id}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});
+  const value=await response.json();
+  assert.ok(response.ok,`${route}: ${response.status} ${value.error||''}`);
+  return {response,value};
+}
+async function login(username){const {response,value}=await request('/api/learning/auth/login',{body:{username,password}});return {cookie:response.headers.get('set-cookie').split(';')[0],id:value.user.id,session:value};}
+async function platform(auth,name,input){try{return (await request(`/api/learning/platform/${name}`,{auth,body:input})).value;}catch(error){throw new Error(`${name} ${input.path} ${input.data?.command||''}: ${error.message}`);}}
+const command=(auth,command,data={},model=false)=>platform(auth,'math',{path:model?'/api/Master/Model':'/api/Master/AutoModel',method:'POST',data:{command,data:JSON.stringify(data)}});
+const get=(auth,name,path,query={})=>platform(auth,name,{path,query});
+const rows=response=>{const data=response?.data??response?.Data??[];return Array.isArray(data?.[0])?data[0]:Array.isArray(data)?data:data?.list||data?.exercises||data?.groupList||[];};
+const callsTo=(start,...paths)=>upstreamCalls.slice(start).filter(call=>paths.includes(call.path));
+function record(name,evidence){results.push({name,...evidence});console.log(JSON.stringify(results.at(-1)));}
+try {
+  const {response,value}=await request('/api/system/setup',{body:{username:'verify.admin',displayName:'架构验收',password}});
+  const admin={cookie:response.headers.get('set-cookie').split(';')[0],id:value.user.id};
+  let pool=(await request('/api/admin/account-pool',{auth:admin})).value;
+  const account=pool.accounts.find(row=>row.status==='alive');assert.ok(account,'YYB needs one active account');
+  await request('/api/admin/account-pool',{auth:admin,method:'PUT',body:{revision:pool.revision,algorithm:'least_loaded',enabledRefs:[account.ref]}});
+  for(const username of ['verify.first','verify.second']) await request('/api/admin/users',{auth:admin,body:{username,displayName:username,password}});
+  const beforeLogin=upstreamCalls.length;
+  const a=await login('verify.first'),b=await login('verify.second');
+  for(const auth of [a,b]){assert.equal(auth.session.account,null);assert.equal(auth.session.platforms.math.user.StuID,auth.id);assert.equal(auth.session.platforms.computer.user.userId,auth.id);assert.ok(auth.session.platforms.math.available);assert.ok(auth.session.platforms.computer.available);}
+  assert.equal(upstreamCalls.length,beforeLogin,'Web登录无需连接YYB');
+  record('两用户登录Web即可学习，登录不访问YYB',{passed:true,additionalUpstreamRequests:0});
+  const initial=(await request('/api/admin/resource-sync',{auth:admin})).value;
+  assert.equal(initial.settings.enabled,false);
+  assert.equal(initial.mode,'learning');
+  const callsBeforeEnable=upstreamCalls.length;
+  await request('/api/admin/resource-sync',{auth:admin,method:'PUT',body:{enabled:true,revision:initial.settings.revision}});
+  await new Promise(resolve=>setTimeout(resolve,40));
+  const enabledState=(await request('/api/admin/resource-sync',{auth:admin})).value;
+  assert.equal(upstreamCalls.length,callsBeforeEnable);assert.equal(enabledState.resources.total,0);assert.equal(enabledState.sources.length,0);
+  record('开启开关、闲置与管理状态读取不拉取资源',{passed:true,additionalUpstreamRequests:0});
+  const callsBeforeCatalogues=upstreamCalls.length;
+  const [books,papers]=await Promise.all([command(a,'GetBookPaperListOfVip',{IsValid:1,System_Station_ID:1,IsBook:1,IsBeta:0,IsRecommend:''},true),command(b,'GetBookListCountAndLookCount_New',{IsValid:1,System_Station_ID:1,BusType:'试卷',IsBook:1,IsBeta:0,IsRecommend:''},true)]);
+  assert.ok(rows(books).length);assert.ok(rows(papers).length);
+  const catalogueCalls=upstreamCalls.slice(callsBeforeCatalogues).filter(call=>call.path==='/api/Master/Model');
+  assert.equal(catalogueCalls.length,2,'两个目录请求不预抓题目/解析');
+  assert.equal((await request('/api/admin/resource-sync',{auth:admin})).value.resources.total,2);
+  record('缺失目录自动调度YYB且仅同步当前两个响应',{passed:true,books:rows(books).length,papers:rows(papers).length,resourceRequests:catalogueCalls.length,sourceControlRequests:upstreamCalls.length-callsBeforeCatalogues-catalogueCalls.length});
+  const book=rows(papers).find(row=>String(row.Name||row.BookName||'').includes('2025'))||rows(papers)[0];
+  const beforeBook=upstreamCalls.length;
+  const catalog=await command(a,'GetQuestionNexts2',{BookID:book.ID});
+  assert.equal(callsTo(beforeBook,'/api/Master/AutoModel').length,1,'目录仅请求当前命令');
+  assert.equal(callsTo(beforeBook,'/api/question_list/GetQuestionByQuestionNew','/api/question_list/GetQuestionByIDSoleDes').length,0,'目录题号不触发题干或解析请求');
+  assert.ok(rows(catalog).length);
+  const first=rows(catalog)[0],questionId=first.QuestionID||first.ID;
+  const question=await get(a,'math','/api/question_list/GetQuestionByQuestionNew',{ID:questionId});
+  assert.ok(rows(question).length);
+  const beforeSharedRead=upstreamCalls.length;
+  const sharedQuestion=await get(b,'math','/api/question_list/GetQuestionByQuestionNew',{ID:questionId});
+  assert.deepEqual(sharedQuestion,question);
+  assert.equal(upstreamCalls.length,beforeSharedRead,'另一Web用户读取同一公共题目直接命中PostgreSQL');
+  record('公共题目由另一Web用户从PostgreSQL复用',{passed:true,additionalUpstreamRequests:0});
+  pool=(await request('/api/admin/account-pool',{auth:admin})).value;
+  pool=(await request('/api/admin/account-pool',{auth:admin,method:'PUT',body:{revision:pool.revision,algorithm:pool.algorithm,enabledRefs:[]}})).value;
+  const beforeNoSource=upstreamCalls.length;
+  assert.deepEqual(await get(b,'math','/api/question_list/GetQuestionByQuestionNew',{ID:questionId}),question);
+  assert.equal(upstreamCalls.length,beforeNoSource,'账号池停用时已同步资源仍可学习');
+  assert.equal((await request('/api/learning/auth/session',{auth:b})).value.authenticated,true);
+  record('账号池停用后公共资源仍可学且Web会话有效',{passed:true,additionalUpstreamRequests:0});
+  pool=(await request('/api/admin/account-pool',{auth:admin,method:'PUT',body:{revision:pool.revision,algorithm:pool.algorithm,enabledRefs:[account.ref]}})).value;
+  await get(b,'math','/api/question_list/GetQuestionByIDSoleDes',{ID:questionId,System_Station_ID:1,SortDesc:'Sort'});
+  record('真实数学目录题目与解析',{passed:true,questions:rows(catalog).length});
+  const chapters=await get(a,'computer','/api/exam/wx/practice/knowledge',{majorId:'701769479767592960',examType:3});
+  assert.ok(rows(chapters).length);
+  await get(b,'computer','/api/exam/wx/course/courseList');
+  await get(a,'computer','/api/exam/wx/school/cs/search',{pageNum:1,pageSize:5});
+  record('后端自动补齐计算机章节课程院校',{passed:true,chapters:rows(chapters).length});
+  const flatten=value=>Array.isArray(value)?value.flatMap(flatten):value&&typeof value==='object'?[value,...Object.values(value).filter(item=>item&&typeof item==='object').flatMap(flatten)]:[];
+  let chosenChapter,chosenGroup;
+  for(const chapter of flatten(rows(chapters)).filter(item=>item.id).slice(0,8)) {
+    const groups=await get(a,'computer','/api/exam/wx/practice/examination/group/list',{chapterId:chapter.id,examExerciseType:1});
+    if(rows(groups).length){chosenChapter=chapter;chosenGroup=rows(groups)[0];break;}
+  }
+  assert.ok(chosenGroup,'需要至少一个真实章节练习组');
+  const practiceQuery={majorId:'701769479767592960',chapterId:chosenChapter.id,examGroupId:chosenGroup.id,examExerciseType:1,examType:3,examCategory:1,number:1};
+  const beforePractice=upstreamCalls.length;
+  const exercise=await get(a,'computer','/api/exam/wx/practice/exerciseList',practiceQuery);
+  assert.equal(rows(exercise).length,1);
+  assert.equal(upstreamCalls.slice(beforePractice).some(call=>call.path.endsWith('/examExercise')),false,'单题请求不读取整卷');
+  const beforeSecond=upstreamCalls.length;
+  const secondExercise=await get(a,'computer','/api/exam/wx/practice/exerciseList',{...practiceQuery,number:2});
+  assert.equal(rows(secondExercise).length,1);
+  assert.notEqual(rows(secondExercise)[0].exerciseId,rows(exercise)[0].exerciseId);
+  assert.equal(upstreamCalls.slice(beforeSecond).some(call=>call.path.endsWith('/examExercise')),false);
+  record('计算机点击下一题才读取下一题，未预抓整组',{passed:true,visitedQuestions:2,totalQuestions:exercise.data.exerciseTotalNumber});
+  const computerQuestion=rows(exercise)[0];assert.ok(computerQuestion?.exerciseId,'真实按需取题应返回题目');
+  const examId=exercise.data.examId;
+  const answer={exerciseId:computerQuestion.exerciseId,type:computerQuestion.exerciseType,majorId:practiceQuery.majorId,chapterId:practiceQuery.chapterId,answer:'A',score:0,answerType:2,markStatus:1,answerSource:3};
+  const submitted=await platform(a,'computer',{path:'/api/exam/wx/practice/submitExam',method:'POST',data:{answers:[answer],examinationId:examId,examType:3,submitStatus:1,examCategory:1}});
+  const reportId=submitted.data.examRecordId;assert.ok(reportId);
+  const report=await get(a,'computer','/api/exam/wx/practice/examinationRecord/detail',{examRecordId:reportId});
+  assert.equal(report.data.answerList[0].answer,'A');
+  const denied=await fetch(base+'/api/learning/platform/computer',{method:'POST',headers:{'content-type':'application/json',cookie:b.cookie,'X-Study-User':b.id},body:JSON.stringify({path:'/api/exam/wx/practice/examinationRecord/detail',query:{examRecordId:reportId}})});
+  assert.equal(denied.status,404);
+  await get(a,'computer','/api/exam/wx/personal/collectExercise',{exerciseId:computerQuestion.exerciseId,collectFlag:0,majorId:practiceQuery.majorId});
+  await get(a,'computer','/api/exam/wx/personal/addExerciseNote',{collectExerciseId:computerQuestion.exerciseId,exerciseNote:'用户A私有笔记',majorId:practiceQuery.majorId});
+  assert.equal((await get(a,'computer','/api/exam/wx/personal/collectExerciseList')).data.list[0].exerciseNote,'用户A私有笔记');
+  assert.equal((await get(b,'computer','/api/exam/wx/personal/collectExerciseList')).data.list.length,0);
+  record('真实计算机章节取题、本地交卷报告与收藏笔记隔离',{passed:true,questions:exercise.data.exerciseTotalNumber});
+  await platform(a,'math',{path:'/api/rel_question_log/Inner_rel_question_log',method:'POST',data:{QuestionID:questionId,Type:'题目',MyAnswer:'架构验收用户A',State:2,IsSubmit:1,ID:0}});
+  const history=auth=>command(auth,'GetQuestionLogInfo_rel2',{QuestionID:questionId});
+  assert.equal((await history(a)).data[5][0].MyAnswer,'架构验收用户A');assert.equal((await history(b)).data[5].length,0);
+  await platform(a,'math',{path:'/api/sys_users/Inner_sys_users',method:'POST',data:{ID:a.id,EBookIDs:String(book.ID),UpdateColumns:'ID,EBookIDs'}});
+  assert.equal((await command(a,'GetUserInfoByStuID')).data[0][0].EBookIDs,String(book.ID));assert.equal((await command(b,'GetUserInfoByStuID')).data[0][0].EBookIDs,'');
+  record('数学答案书架按Web用户隔离',{passed:true});
+  const resourceQuery=new URLSearchParams({platform:'math',scope:'public',q:'/api/question_list/GetQuestionByQuestionNew',pageSize:'100'});
+  const cachedRows=(await request(`/api/admin/resources?${resourceQuery}`,{auth:admin})).value.resources;
+  let managed;
+  for(const row of cachedRows) {
+    const detail=(await request(`/api/admin/resources/${row.platform}/${row.sourceId}/${row.key}`,{auth:admin})).value;
+    if(String(detail.request.query?.ID)===String(questionId)){managed=detail;break;}
+  }
+  assert.ok(managed,'管理端应能检索到已同步题目');
+  const managedPath=`/api/admin/resources/${managed.platform}/${managed.sourceId}/${managed.key}`;
+  const beforeEdit=upstreamCalls.length;
+  const edited={...managed.response,WebResourceLabel:'Web资源管理验收标记'};
+  managed=(await request(managedPath,{auth:admin,method:'PATCH',body:{revision:managed.revision,response:edited}})).value;
+  assert.equal(managed.expired,false);
+  assert.equal((await get(b,'math','/api/question_list/GetQuestionByQuestionNew',{ID:questionId})).WebResourceLabel,'Web资源管理验收标记');
+  assert.equal(upstreamCalls.length,beforeEdit,'管理编辑和读回仅使用PostgreSQL');
+  record('资源检索详情与管理员JSON编辑立即供学习读取',{passed:true,additionalUpstreamRequests:0});
+  const beforeInvalidate=upstreamCalls.length;
+  managed=(await request(`${managedPath}/invalidate`,{auth:admin,body:{revision:managed.revision}})).value;
+  assert.equal(managed.expired,true);assert.equal(upstreamCalls.length,beforeInvalidate,'标记需要更新不主动读取上游');
+  const refreshedQuestion=await get(b,'math','/api/question_list/GetQuestionByQuestionNew',{ID:questionId});
+  assert.equal(refreshedQuestion.WebResourceLabel,undefined);
+  assert.equal(callsTo(beforeInvalidate,'/api/question_list/GetQuestionByQuestionNew').length,1,'下次访问时读取一次资源并更新公共资源');
+  managed=(await request(managedPath,{auth:admin})).value;
+  assert.equal(managed.expired,false);
+  const afterRefresh=upstreamCalls.length;
+  await get(a,'math','/api/question_list/GetQuestionByQuestionNew',{ID:questionId});
+  assert.equal(upstreamCalls.length,afterRefresh,'刷新后的公共资源继续由另一用户复用');
+  record('资源标记失效后仅下次学习访问刷新并保存',{passed:true,refreshUpstreamRequests:1});
+  const beforeDelete=upstreamCalls.length;
+  await request(managedPath,{auth:admin,method:'DELETE',body:{revision:managed.revision}});
+  assert.equal((await history(a)).data[5][0].MyAnswer,'架构验收用户A');
+  assert.equal((await command(a,'GetUserInfoByStuID')).data[0][0].EBookIDs,String(book.ID));
+  assert.equal((await history(b)).data[5].length,0);
+  assert.equal(upstreamCalls.length,beforeDelete,'删除缓存及个人记录读回不请求上游');
+  await get(a,'math','/api/question_list/GetQuestionByQuestionNew',{ID:questionId});
+  assert.equal(callsTo(beforeDelete,'/api/question_list/GetQuestionByQuestionNew').length,1,'缺失缓存只在下一次学习访问时重建');
+  assert.equal((await history(a)).data[5][0].MyAnswer,'架构验收用户A');
+  record('删除资源缓存后按需重建且个人答案书架保留',{passed:true,rebuildUpstreamRequests:1});
+  const state=(await request('/api/admin/resource-sync',{auth:admin})).value;
+  assert.ok(state.resources.total>0);assert.equal(state.tasks,undefined);
+  const beforeIdle=upstreamCalls.length;
+  await new Promise(resolve=>setTimeout(resolve,40));
+  assert.equal(upstreamCalls.length,beforeIdle);
+  record('学习访问持续积累资源，停止学习后无额外请求',{passed:true,resources:state.resources.total,additionalUpstreamRequests:0});
+  const off=(await request('/api/admin/resource-sync',{auth:admin,method:'PUT',body:{revision:state.settings.revision,enabled:false}})).value;
+  assert.equal(off.resources.total,state.resources.total);
+  record('关闭同步保留已访问资源',{passed:true});
+  const offPractice=await get(b,'computer','/api/exam/wx/practice/exerciseList',{...practiceQuery,number:3});
+  assert.ok(rows(offPractice).length);
+  const mathPractice=await platform(b,'math',{path:'/api/choice_question_exercise/RelPaper',method:'POST',data:{BusType:'数一',CatalogID:18,ExanType:'真题模式',Type:'精选10题'}});
+  const mathPracticeId=mathPractice.data.ID||mathPractice.data;
+  const mathQuestions=await get(b,'math','/api/choice_question_exercise/GetPaper',{ID:mathPracticeId});
+  assert.ok(rows(mathQuestions).length);
+  const unchanged=(await request('/api/admin/resource-sync',{auth:admin})).value;assert.equal(unchanged.resources.total,off.resources.total);
+  record('关闭资源同步仍可进行两科按需练习',{passed:true,mathQuestions:rows(mathQuestions).length});
+} catch(error){record('验收失败',{passed:false,message:error.message});process.exitCode=1;}
+finally{
+  const sourcePractices=(await database.query(`SELECT data->>'sourcePracticeId' AS id FROM ${database.web('platform_records')} WHERE platform='math' AND collection='choice_question_exercise' AND data ? 'sourcePracticeId'`)).rows.map(row=>row.id);
+  mkdirSync('artifacts',{recursive:true});writeFileSync('artifacts/data-architecture-live.json',JSON.stringify({checkedAt:new Date().toISOString(),results,sourceEffects:{mathEmptyPracticeIds:sourcePractices,answerWrites:0}},null,2)+'\n');
+  await new Promise(resolve=>server.close(resolve));await app.locals.close();
+}

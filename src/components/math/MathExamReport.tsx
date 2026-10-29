@@ -30,7 +30,6 @@ import {
   weeklyDimensionScores,
   weeklyRhythm,
   weeklyTaskGroups,
-  courseReportPrintLinks,
 } from "./report-model.mjs";
 import "./math-report.css";
 
@@ -145,64 +144,6 @@ export function MathReportDownloads({ sources }: { sources: any[] }) {
       ) : (
         <p className="mer-muted">当前试卷未返回下载地址。</p>
       )}
-      {error && <p className="mer-error">{error}</p>}
-    </section>
-  );
-}
-function MathCoursePrintDownloads({
-  context,
-  meta,
-  papers,
-}: {
-  context: MathPaperContext;
-  meta: Row;
-  papers: Row[];
-}) {
-  const links = courseReportPrintLinks(context, meta, papers),
-    [copied, setCopied] = useState(""),
-    [error, setError] = useState("");
-  async function copy(url: string) {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(url);
-      setError("");
-    } catch {
-      setError("未能复制地址，可打开原平台打印页后复制浏览器地址。");
-    }
-  }
-  if (!links.length) return null;
-  return (
-    <section className="mer-section">
-      <div className="mer-heading">
-        <FileText size={19} />
-        <h3>课程试卷打印</h3>
-      </div>
-      <div className="mer-downloads">
-        {links.map((file) => (
-          <div key={file.url}>
-            <span>
-              <FileText size={19} />
-              {file.label}
-            </span>
-            <a
-              className="btn btn-secondary"
-              href={file.url}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <Download size={15} />
-              打开打印页
-            </a>
-            <button
-              className="mer-icon"
-              aria-label={`复制${file.label}地址`}
-              onClick={() => void copy(file.url)}
-            >
-              {copied === file.url ? <Check size={16} /> : <Copy size={16} />}
-            </button>
-          </div>
-        ))}
-      </div>
       {error && <p className="mer-error">{error}</p>}
     </section>
   );
@@ -551,7 +492,6 @@ export default function MathExamReport({
       <MathReportDownloads
         sources={[meta, paperlog, ...(context.kind === "course" ? papers : [])]}
       />
-      <MathCoursePrintDownloads context={context} meta={meta} papers={papers} />
       {scopeRows.length > 0 && (
         <section className="mer-section">
           <h3>本次考察范围</h3>

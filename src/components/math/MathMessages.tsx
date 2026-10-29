@@ -77,7 +77,7 @@ export default function MathMessages({
         </button>
         <MathQuestions
           stuid={stuid}
-          userId={Number(session.platforms.math.user?.ID || 0)}
+          userId={session.user?.id}
           initialOrder={order}
           onQuestion={onQuestion}
         />

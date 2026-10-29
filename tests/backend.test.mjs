@@ -15,14 +15,14 @@ async function serve(overrides, run) {
   const harness = await startHttpApp(overrides);
   let administrator;
   let user;
-  async function loginAndConnect(options = {}) {
+  async function loginWeb(options = {}) {
     if (!administrator) administrator = await harness.setup();
     if (!user) user = await harness.createUser(administrator, testLearner("proxy.student", "7"));
     const auth = await harness.login("learning", "proxy.student", "learner-password-123");
-    const response = await harness.request("/api/learning/auth/connect", { auth, body: { ref: "7" }, ...options });
+    const response = await harness.request("/api/learning/auth/session", { auth, ...options });
     return { response, auth, cookie: auth.cookie, userId: auth.userId, setCookie: auth.setCookie };
   }
-  try { await run(harness.request, harness.base, loginAndConnect); }
+  try { await run(harness.request, harness.base, loginWeb); }
   finally { await harness.close(); }
 }
 const fixtures = {
@@ -52,16 +52,13 @@ const fixtures = {
 };
 
 test("session hides account identifiers, passwords, phone numbers and platform tokens", async () => {
-  await serve(fixtures, async (request, _base, loginAndConnect) => {
-    const { response, cookie, userId, setCookie } = await loginAndConnect();
-    const accounts = await (await request("/api/learning/auth/accounts", { headers: { cookie, "X-Study-User": userId } })).json();
-    assert.equal(accounts.accounts[0].ref, "7");
-    assert.equal(JSON.stringify(accounts).includes("private-openid"), false);
+  await serve(fixtures, async (request, _base, loginWeb) => {
+    const { response, cookie, userId, setCookie } = await loginWeb();
     assert.equal(response.status, 200);
     assert.match(setCookie, /HttpOnly/);
     assert.match(setCookie, /SameSite=Lax/);
     const session = await response.json();
-    assert.equal(session.platforms.math.user.StuID, "current-student");
+    assert.equal(session.platforms.math.user.StuID, userId);
     assert.equal(JSON.stringify(session).includes("private-"), false);
     assert.equal(
       (
@@ -84,13 +81,13 @@ test("session hides account identifiers, passwords, phone numbers and platform t
 });
 
 test("proxy requires session and rejects external, payment, arbitrary and traversal paths", async () => {
-  await serve(fixtures, async (request, _base, loginAndConnect) => {
+  await serve(fixtures, async (request, _base, loginWeb) => {
     assert.equal(
       (await request("/api/learning/platform/math", { method: "POST", body: "{}" }))
         .status,
       401,
     );
-    const { response: logged, cookie, userId, setCookie } = await loginAndConnect();
+    const { response: logged, cookie, userId, setCookie } = await loginWeb();
     for (const path of [
       "https://example.com/api/question",
       "/api/../secret",
@@ -119,8 +116,8 @@ test("math proxy binds AutoModel actor and decrypts transport independently of b
         return { SuccessResponse: true, data: [[{ ID: 1 }]] };
       },
     },
-    async (request, _base, loginAndConnect) => {
-      const { response: logged, cookie, userId, setCookie } = await loginAndConnect();
+    async (request, _base, loginWeb) => {
+      const { response: logged, cookie, userId, setCookie } = await loginWeb();
       const response = await request("/api/learning/platform/math", {
         method: "POST",
         headers: { cookie, "X-Study-User": userId },
@@ -141,24 +138,12 @@ test("math proxy binds AutoModel actor and decrypts transport independently of b
   );
 });
 
-test("a partially unavailable platform still allows the other learning system", async () => {
-  await serve(
-    {
-      ...fixtures,
-      loginPlatform: async (name) => {
-        if (name === "computer") throw new ApiError("测试上游不可用");
-        return fixtures.loginPlatform(name);
-      },
-    },
-    async (request, _base, loginAndConnect) => {
-      const { response: response, cookie, userId, setCookie } = await loginAndConnect();
-      const session = await response.json();
-      assert.equal(response.status, 200);
-      assert.equal(session.platforms.math.connected, true);
-      assert.equal(session.platforms.computer.connected, false);
-      assert.equal(session.platforms.computer.error, "测试上游不可用");
-    },
-  );
+test("an unavailable resource source does not prevent local learning or invalidate Web login", async()=>{
+ await serve({...fixtures,loginPlatform:async(name)=>{if(name==='computer')throw new ApiError('测试来源不可用',503);return fixtures.loginPlatform(name);},mathRequest:async()=>({SuccessResponse:true,data:[]})},async(request,_base,loginWeb)=>{
+  const {response,cookie,userId}=await loginWeb();const session=await response.json();assert.equal(session.platforms.math.available,true);assert.equal(session.platforms.computer.available,true);
+  const unavailable=await request('/api/learning/platform/computer',{headers:{cookie,'X-Study-User':userId},body:{path:'/api/exam/wx/practice/knowledge'}});assert.equal(unavailable.status,503);
+  assert.equal((await(await request('/api/learning/auth/session',{headers:{cookie,'X-Study-User':userId}})).json()).authenticated,true);
+ });
 });
 
 test("source-compatible AES request and response use distinct response request-id key", () => {
@@ -201,8 +186,8 @@ test("computer wx business routes remain available while math wx login is blocke
         data: [{ id: "chapter", name: "章节" }],
       }),
     },
-    async (request, _base, loginAndConnect) => {
-      const { response: logged, cookie, userId, setCookie } = await loginAndConnect();
+    async (request, _base, loginWeb) => {
+      const { response: logged, cookie, userId, setCookie } = await loginWeb();
       const response = await request("/api/learning/platform/computer", {
         method: "POST",
         headers: { cookie, "X-Study-User": userId },
@@ -218,20 +203,18 @@ test("computer wx business routes remain available while math wx login is blocke
 });
 
 test("same-origin requests require a matching browser Origin and Host", async () => {
-  await serve(fixtures, async (request, base, loginAndConnect) => {
-    const { auth } = await loginAndConnect();
-    const same = await request("/api/learning/auth/connect", {
+  await serve(fixtures, async (request, base, loginWeb) => {
+    const { auth } = await loginWeb();
+    const same = await request("/api/learning/auth/session", {
       auth,
-      method: "POST",
+      method: "GET",
       headers: { origin: base },
-      body: JSON.stringify({ ref: "7" }),
     });
     assert.equal(same.status, 200);
-    const mismatched = await request("/api/learning/auth/connect", {
+    const mismatched = await request("/api/learning/auth/session", {
       auth,
-      method: "POST",
+      method: "GET",
       headers: { origin: "http://127.0.0.1:5173" },
-      body: JSON.stringify({ ref: "7" }),
     });
     assert.equal(mismatched.status, 403);
   });
@@ -253,8 +236,8 @@ test("an expired platform token refreshes once and updates the same browser sess
         return { code: 200, data: [{ id: "restored" }] };
       },
     },
-    async (request, _base, loginAndConnect) => {
-      const { response: logged, cookie, userId, setCookie } = await loginAndConnect();
+    async (request, _base, loginWeb) => {
+      const { response: logged, cookie, userId, setCookie } = await loginWeb();
         const response = await request("/api/learning/platform/computer", {
         method: "POST",
         headers: { cookie, "X-Study-User": userId },
@@ -263,13 +246,13 @@ test("an expired platform token refreshes once and updates the same browser sess
       assert.equal(response.status, 200);
       assert.equal((await response.json()).data[0].id, "restored");
       assert.equal(calls, 2);
-      assert.equal(logins, 3);
+      assert.equal(logins, 2);
       assert.equal(
         (
           await (
             await request("/api/learning/auth/session", { headers: { cookie, "X-Study-User": userId } })
           ).json()
-        ).platforms.computer.connected,
+        ).platforms.computer.available,
         true,
       );
     },
@@ -320,8 +303,8 @@ test("known own profile writes update session display without entitlement checks
         return { SuccessResponse: true, code: 200, data: "操作成功" };
       },
     },
-    async (request, _base, loginAndConnect) => {
-      const { response: login, cookie, userId, setCookie } = await loginAndConnect();
+    async (request, _base, loginWeb) => {
+      const { response: login, cookie, userId, setCookie } = await loginWeb();
       const write = (path, data) =>
         request("/api/learning/platform/math", {
           method: "POST",
@@ -334,7 +317,7 @@ test("known own profile writes update session display without entitlement checks
         HeadImg: "https://example.com/avatar.png",
       });
       await write("/api/sys_users/Inner_sys_users", {
-        ID: 9,
+        ID: userId,
         SubjectType: "数二",
         UpdateColumns: "ID,SubjectType",
       });
@@ -381,15 +364,15 @@ test("raw business responses remove nonempty authentication fields and retain au
         ],
       }),
     },
-    async (request, _base, loginAndConnect) => {
-      const { response: login, cookie, userId } = await loginAndConnect();
+    async (request, _base, loginWeb) => {
+      const { response: login, cookie, userId } = await loginWeb();
       const response = await request("/api/learning/platform/math", {
           method: "POST",
           headers: { cookie, "X-Study-User": userId },
           body: JSON.stringify({
             path: "/api/Master/AutoModel",
             method: "POST",
-            data: { command: "GetUserInfoByStuID", data: "{}" },
+            data: { command: "GetBookPaperListOfVip", data: "{}" },
           }),
         }),
         body = await response.json();
@@ -406,6 +389,6 @@ test("raw business responses remove nonempty authentication fields and retain au
   );
 });
 
-test("successful computer own profile writes update only the known nickname and avatar session fields", async()=>{await serve({...fixtures,computerRequest:async()=>({code:200,data:null})},async (request,_base,loginAndConnect)=>{const {cookie,userId}=await loginAndConnect();await request('/api/learning/platform/computer',{method:'POST',headers:{cookie,"X-Study-User":userId},body:JSON.stringify({path:'/api/user/wx/user/updateUserInfo',method:'PUT',data:{name:'账户验证',previewUrl:'https://example.test/avatar.png',phone:'must-not-enter-session'}})});const user=(await(await request('/api/learning/auth/session',{headers:{cookie,"X-Study-User":userId}})).json()).platforms.computer.user;assert.equal(user.nickName,'账户验证');assert.equal(user.previewUrl,'https://example.test/avatar.png');assert.equal(user.phone,undefined);});});
+test("successful computer own profile writes update only the known nickname and avatar session fields", async()=>{await serve({...fixtures,computerRequest:async()=>({code:200,data:null})},async (request,_base,loginWeb)=>{const {cookie,userId}=await loginWeb();await request('/api/learning/platform/computer',{method:'POST',headers:{cookie,"X-Study-User":userId},body:JSON.stringify({path:'/api/user/wx/user/updateUserInfo',method:'PUT',data:{name:'账户验证',previewUrl:'https://example.test/avatar.png',phone:'must-not-enter-session'}})});const user=(await(await request('/api/learning/auth/session',{headers:{cookie,"X-Study-User":userId}})).json()).platforms.computer.user;assert.equal(user.nickName,'账户验证');assert.equal(user.previewUrl,'https://example.test/avatar.png');assert.equal(user.phone,undefined);});});
 
-test("computer image similarity keeps the source Tenant 2 while ordinary attachments stay Tenant 1",async()=>{const calls=[];await serve({...fixtures,requestJson:async(url,options)=>{calls.push({url,options});return {code:200,data:{previewUrl:'https://example.test/fixture.png'}};}},async (request,_base,loginAndConnect)=>{const {cookie,userId}=await loginAndConnect();for(const path of ['/api/exam/wx/searchExercise/text/similarity','/api/user/v1/attachment/upload/']){const response=await request('/api/learning/platform/computer/upload?path='+encodeURIComponent(path),{method:'POST',headers:{cookie,'X-Study-User':userId,'content-type':'multipart/form-data; boundary=fixture'},body:'--fixture\r\nContent-Disposition: form-data; name="file"; filename="fixture.png"\r\nContent-Type: image/png\r\n\r\nfixture\r\n--fixture--\r\n'});assert.equal(response.status,200);}assert.deepEqual(calls.map(call=>call.options.headers['Tenant-Code']),['2','1']);assert.ok(calls.every(call=>Buffer.isBuffer(call.options.body)));});});
+test("computer image similarity keeps the source Tenant 2 while ordinary attachments stay Tenant 1",async()=>{const calls=[];await serve({...fixtures,requestJson:async(url,options)=>{calls.push({url,options});return {code:200,data:{previewUrl:'https://example.test/fixture.png'}};}},async (request,_base,loginWeb)=>{const {cookie,userId}=await loginWeb();for(const path of ['/api/exam/wx/searchExercise/text/similarity','/api/user/v1/attachment/upload/']){const response=await request('/api/learning/platform/computer/upload?path='+encodeURIComponent(path),{method:'POST',headers:{cookie,'X-Study-User':userId,'content-type':'multipart/form-data; boundary=fixture'},body:'--fixture\r\nContent-Disposition: form-data; name="file"; filename="fixture.png"\r\nContent-Type: image/png\r\n\r\nfixture\r\n--fixture--\r\n'});assert.equal(response.status,200);}assert.deepEqual(calls.map(call=>call.options.headers['Tenant-Code']),['2','1']);assert.ok(calls.every(call=>Buffer.isBuffer(call.options.body)));});});

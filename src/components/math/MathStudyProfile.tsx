@@ -32,47 +32,30 @@ export default function MathStudyProfile({ user }: { user: MathRow }) {
   const stuid = String(user.StuID || "");
   useEffect(() => {
     let active = true;
-    Promise.allSettled([
-      mathGet("/api/sys_users_info/GetListByAll", { StuID: stuid }),
-      mathCommand("GetSysProvinceList"),
-      mathCommand("GetDryRunInfoList", { yuanxiao: "", neirong: "" }),
-    ])
-      .then((results) => {
+    mathGet("/api/sys_users_info/GetListByAll", { StuID: stuid })
+      .then(profile => {
         if (!active) return;
-        const profile = results[0];
-        if (profile.status === "rejected") {
-          setError(profile.reason.message);
-          return;
-        }
         setForm({
           UserName: user.UserNick || "",
           IsCrossCourse: 1,
           IsRealizeCourse: -1,
           IsInActivities: -1,
-          ...mathRows(profile.value)[0],
+          ...mathRows(profile)[0],
         });
-        if (results[1].status === "fulfilled")
-          setProvinces(mathRows(results[1].value));
-        if (results[2].status === "fulfilled") {
-          setSchools([
-            ...new Set(
-              mathRows(results[2].value)
-                .map((r) => String(r.f_xuexiao || ""))
-                .filter(Boolean),
-            ),
-          ]);
-          setMajors([
-            ...new Set(
-              mathRows(results[2].value, 1)
-                .map((r) => String(r.neirong || ""))
-                .filter(Boolean),
-            ),
-          ]);
-        }
       })
-      .finally(() => {
-        if (active) setBusy(false);
-      });
+      .catch(cause => { if (active) setError(cause.message); })
+      .finally(() => { if (active) setBusy(false); });
+    Promise.allSettled([
+      mathCommand("GetSysProvinceList"),
+      mathCommand("GetDryRunInfoList", { yuanxiao: "", neirong: "" }),
+    ]).then(results => {
+      if (!active) return;
+      if (results[0].status === "fulfilled") setProvinces(mathRows(results[0].value));
+      if (results[1].status === "fulfilled") {
+        setSchools([...new Set(mathRows(results[1].value).map(row => String(row.f_xuexiao || "")).filter(Boolean))]);
+        setMajors([...new Set(mathRows(results[1].value, 1).map(row => String(row.neirong || "")).filter(Boolean))]);
+      }
+    });
     return () => {
       active = false;
     };
@@ -132,7 +115,7 @@ export default function MathStudyProfile({ user }: { user: MathRow }) {
       setTargetSubject(subject);
       await refresh();
       setNotice(
-        "个人资料与考研档案已同步。资料奖励按平台规则发放，可在积分流水查看。",
+        "个人资料与考研档案已保存到当前学习账号。",
       );
     } catch (e) {
       setNotice(e instanceof Error ? e.message : String(e));

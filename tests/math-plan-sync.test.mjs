@@ -1,15 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
+import { randomUUID } from "node:crypto";
+import { createDatabase } from "../server/database.mjs";
 import { startHttpApp, testLearner } from "./http-app.mjs";
 import { createStudySync, emptyStudyData } from "../src/lib/study-sync.mjs";
 
 test("an account's preparation settings are shared by independent logins, isolated and persisted across restarts", async () => {
-  const folder = await mkdtemp(path.join(os.tmpdir(), "study-math-plan-"));
-  const databasePath = path.join(folder, "identity.sqlite");
-  let app = await startHttpApp({ databasePath });
+  const schemaPrefix = `test_${randomUUID().replaceAll('-', '')}`;
+  let database = await createDatabase({ schemaPrefix });
+  let app = await startHttpApp({ database });
+  let closed = false;
   try {
     const admin = await app.setup();
     await app.createUser(admin, testLearner("plan.student", ""));
@@ -26,11 +26,16 @@ test("an account's preparation settings are shared by independent logins, isolat
       const invalid = await app.request("/api/learning/study/data", { auth: secondDevice, method: "PUT", body: { data: { ...data, mathPlan }, revision: 1 } });
       assert.equal(invalid.status, 400);
     }
-    await app.close();
-    app = await startHttpApp({ databasePath });
+    await app.close(); closed = true;
+    database = await createDatabase({ schemaPrefix });
+    app = await startHttpApp({ database }); closed = false;
     const reconnected = await app.login("learning", "plan.student", "learner-password-123");
     assert.deepEqual(await (await app.request("/api/learning/study/data", { auth: reconnected })).json(), { data, revision: 1 });
-  } finally { await app.close(); await rm(folder, { recursive: true, force: true }); }
+  } finally {
+    if (closed) database = await createDatabase({ schemaPrefix });
+    await database.drop();
+    if (!closed) await app.close(); else await database.close();
+  }
 });
 
 function device(transport, cache = null) {

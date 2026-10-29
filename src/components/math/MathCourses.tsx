@@ -1448,7 +1448,7 @@ function LeakReport({
           {Number(task._c_paper_student?.Score) >= 0
             ? `本次得分 ${task._c_paper_student.Score} 分。`
             : ""}
-          训练完成状态从原平台学习记录同步。
+          训练完成状态随当前学习账号保存。
         </p>
         <button className="btn btn-secondary" onClick={onAnswers}>
           查看作答与老师批阅

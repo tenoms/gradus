@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { startHttpApp, testLearner } from "./http-app.mjs";
 
 const start = () => startHttpApp({ yybRequest: async () => [
-  { id: 7, nickname: "学习账号", status: "alive", openid: "private-account-value" },
+  { id: 7, nickname: "学习账号", status: "alive", openid: "wechat-account-value", token: "private-account-token", session_key: "private-session-key" },
 ] });
 async function get(app, auth, route) {
   const response = await app.request(route, { auth });
@@ -11,7 +11,7 @@ async function get(app, auth, route) {
   return response.json();
 }
 
-test("management user pages count all matches and expose account ownership outside the current page", async () => {
+test("management user pages count all matches and expose shared account assignments outside the current page", async () => {
   const app = await start();
   try {
     const admin = await app.setup();
@@ -38,8 +38,11 @@ test("management user pages count all matches and expose account ownership outsi
     assert.ok(filtered.users.every(user => user.role === "learner" && user.status === "disabled" && user.displayName.includes("甲组")));
     const accounts = await get(app, admin, "/api/admin/accounts");
     assert.deepEqual(accounts.accounts[0].assignedTo, { id: created[0].id, displayName: created[0].displayName });
-    assert.equal(JSON.stringify(accounts).includes("private-account-value"), false);
-    assert.equal((await app.request("/api/admin/users", { auth: admin, body: testLearner("duplicate.binding", "7") })).status, 409);
+    assert.equal(accounts.accounts[0].openid,"wechat-account-value");
+    assert.equal(accounts.accounts[0].ref,"openid:wechat-account-value");
+    assert.equal(JSON.stringify(accounts).includes("private-account-token"),false);
+    assert.equal(JSON.stringify(accounts).includes("private-session-key"),false);
+    assert.equal((await app.request("/api/admin/users", { auth: admin, body: testLearner("duplicate.binding", "7") })).status, 201);
     const empty = await get(app, admin, "/api/admin/users?q=missing-member&page=9");
     assert.deepEqual(empty.pagination, { page: 1, pageSize: 20, total: 0, totalPages: 1 });
     assert.deepEqual(empty.users, []);
@@ -50,7 +53,7 @@ test("audit pagination reaches records older than 100 entries and filters the en
   const app = await start();
   try {
     const admin = await app.setup();
-    for (let index = 0; index < 210; index++) app.app.locals.identityStore.audit(
+    for (let index = 0; index < 210; index++) await app.app.locals.identityStore.audit(
       { displayName: index === 0 ? "历史操作人" : "近期操作人" },
       index === 0 ? "fixture.legacy" : "user.updated",
       index === 0 ? "最早记录" : `成员 ${index}`,

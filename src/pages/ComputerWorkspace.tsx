@@ -835,8 +835,6 @@ export function ComputerAccount({ onClose }: { onClose?: () => void }) {
     [avatar, setAvatar] = useState(
       session.platforms.computer.user?.previewUrl || "",
     ),
-    [phone, setPhone] = useState(""),
-    [sms, setSms] = useState(""),
     [model, setModel] = useState<R>({
       year: "",
       school: "",
@@ -895,7 +893,7 @@ export function ComputerAccount({ onClose }: { onClose?: () => void }) {
       />
       {notice && <p className="computer-notice">{notice}</p>}
       <div className="panel">
-        <h3>计算机学习账户</h3>
+        <h3>计算机学习资料</h3>
         <form
           className="computer-account-form"
           onSubmit={(e) => {
@@ -905,10 +903,8 @@ export function ComputerAccount({ onClose }: { onClose?: () => void }) {
                 request("/api/user/wx/user/updateUserInfo", {}, "PUT", {
                   name,
                   previewUrl: avatar,
-                  phone: phone || detail.data?.phone,
-                  smsCode: sms,
                 }),
-              "账户信息已更新",
+              "学习资料已保存",
             );
           }}
         >
@@ -946,60 +942,18 @@ export function ComputerAccount({ onClose }: { onClose?: () => void }) {
                         if (!url) throw new Error("上传服务没有返回头像地址");
                         setAvatar(url);
                       },
-                      "头像已上传，保存账户信息后生效",
+                      "头像已上传，保存学习资料后生效",
                       false,
                     );
                 }}
               />
             </span>
           </label>
-          <label>
-            绑定或修改手机号
-            <input
-              className="input"
-              inputMode="tel"
-              autoComplete="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder={
-                detail.data?.phone
-                  ? "已绑定手机号，填写新号码可修改"
-                  : "输入手机号"
-              }
-            />
-          </label>
-          <div className="computer-toolbar">
-            <input
-              className="input"
-              aria-label="短信验证码"
-              placeholder="短信验证码"
-              value={sms}
-              onChange={(e) => setSms(e.target.value)}
-            />
-            <button
-              type="button"
-              className="btn btn-secondary"
-              disabled={loading || !/^\d{11}$/.test(phone)}
-              onClick={() =>
-                void act(
-                  () =>
-                    request("/api/user/wx/login/get/sms", {
-                      mobile: phone,
-                      captcha: "",
-                    }),
-                  "验证码已发送至填写的手机号",
-                  false,
-                )
-              }
-            >
-              发送验证码
-            </button>
-          </div>
           <button
             className="btn btn-primary"
             disabled={loading || !name.trim()}
           >
-            保存账户信息
+            保存学习资料
           </button>
         </form>
       </div>
@@ -1098,33 +1052,9 @@ export function ComputerAccount({ onClose }: { onClose?: () => void }) {
 export default function ComputerWorkspace({ section }: { section: string }) {
   const { session, openLogin } = useSession(),
     [launch, setLaunch] = useState<ExerciseLaunch | null>(null);
-  const connectionIdentity = [session.user?.yyb?.mode, session.user?.yyb?.baseUrl, session.account?.ref, session.platforms.computer.user?.userId].join(":");
-  useEffect(() => setLaunch(null), [section, connectionIdentity]);
-  if (!session.authenticated || !session.platforms.computer.connected)
-    return (
-      <div className="panel computer-auth-gate">
-        <span className="computer-gate-icon">
-          <BookOpen size={32} />
-        </span>
-        <h2>连接你的计算机学习空间</h2>
-        <p>
-          {session.authenticated
-            ? session.platforms.computer.error ||
-              "尚未连接计算机小程序，请重新登录以读取学习内容。"
-            : "登录 yyb 后，同步计算机题库、课程和学习记录。"}
-        </p>
-        <button className="btn btn-primary" onClick={openLogin}>
-          {session.authenticated ? "重新连接" : "使用 yyb 登录"}
-          <ArrowRight size={16} />
-        </button>
-        <div className="computer-feature-line">
-          <span>章节题库</span>
-          <span>院校真题</span>
-          <span>错题与笔记</span>
-          <span>录播课程</span>
-        </div>
-      </div>
-    );
+  const learnerIdentity = session.user?.id || "guest";
+  useEffect(() => setLaunch(null), [section, learnerIdentity]);
+  if (!session.authenticated) return <div className="panel computer-auth-gate"><h2>登录学习空间</h2><p>使用你的账号查看计算机内容与学习记录。</p><button className="btn btn-primary" onClick={openLogin}>登录学习空间<ArrowRight size={16} /></button></div>;
   if (launch)
     return (
       <ExerciseSession

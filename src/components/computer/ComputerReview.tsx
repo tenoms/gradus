@@ -26,6 +26,7 @@ import {
 import type { ComputerExerciseLaunch } from "./computer-learning";
 import { ComputerSubjectPicker, useComputerSubjects } from "./ComputerSubjects";
 import ComputerStages, { ComputerExamReport } from "./ComputerReports";
+import ImportedReportSummary from "../identity/ImportedReportSummary";
 
 function useData(path: string, query: R) {
   const [data, setData] = useState<any>(null),
@@ -236,7 +237,7 @@ export default function ComputerReview({
     try {
       if (tab === "history") {
         setReportItem(item);
-        setReport(await computerLearningApi.historyReport(item, category));
+        setReport(item._imported ? { importedSummary: item } : await computerLearningApi.historyReport(item, category));
       } else {
         const raw = await request(
             "/api/exam/wx/searchExercise/info/" +
@@ -492,14 +493,14 @@ export default function ComputerReview({
           )}
           {report && (
             <div className="panel">
-              <ComputerExamReport
+              {report.importedSummary ? <ImportedReportSummary record={report.importedSummary} /> : <ComputerExamReport
                 data={report}
                 majorId={major}
                 onOpen={launch}
                 onRefresh={() => {
                   if (reportItem) void open(reportItem);
                 }}
-              />
+              />}
               <button
                 className="btn btn-secondary"
                 onClick={() => setReport(null)}
@@ -562,6 +563,7 @@ export default function ComputerReview({
                   <>
                     <div className="computer-grow">
                       <span className="computer-pill">
+                        {item._imported ? "小程序导入 · " : ""}
                         {typeNames[item.exerciseType] ||
                           (tab === "history" ? "答题记录" : "题目")}
                       </span>

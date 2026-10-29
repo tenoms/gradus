@@ -44,4 +44,6 @@ export interface IntegrationAccount {
   ref: string;
   nickname?: string;
   status?: string;
+  serviceName?: string;
+  routes?: { serviceId: string; serviceName: string; rawRef: string; status: string }[];
 }

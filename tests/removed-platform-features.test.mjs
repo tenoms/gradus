@@ -79,8 +79,6 @@ test("removed correction requests are rejected by the HTTP proxy before reaching
     const admin = await app.setup();
     await app.createUser(admin, testLearner("removed.features", "7"));
     const auth = await app.login("learning", "removed.features", "learner-password-123");
-    const connected = await app.request("/api/learning/auth/connect", { auth, body: { ref: "7" } });
-    assert.equal(connected.status, 200);
     for (const [platform, body] of [
       ["math", { path: "/api/sys_error/Inner_sys_error", method: "POST" }],
       ["math", { path: "/api/sys_give/Inner_sys_give", method: "POST", data: { BusType: 1, Type: 3 } }],

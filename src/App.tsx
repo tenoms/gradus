@@ -65,7 +65,6 @@ import {
 import type { StudyTask } from "./lib/store";
 import AuthScreen from "./components/identity/AuthScreen";
 import StudySyncIndicator, { StudySyncNotice } from "./components/identity/StudySyncIndicator";
-import PasswordSettings from "./components/identity/PasswordSettings";
 import Announcements from "./components/identity/Announcements";
 import Pagination from "./components/Pagination";
 import { usePagination } from "./lib/pagination";
@@ -136,63 +135,27 @@ class ErrorBoundary extends Component<
     );
   }
 }
-function PlatformGate({
-  platform,
-  children,
-}: {
-  platform: Platform;
-  children: ReactNode;
-}) {
+function PlatformGate({ children }: { platform: Platform; children: ReactNode }) {
   const { session, openLogin } = useSession();
-  const s = session.platforms?.[platform];
-  return !s?.connected ? (
-    <div className="panel connect-empty">
-      <div className="icon-tile">
-        <BookOpen size={30} />
-      </div>
-      <p className="eyebrow">连接你的学习世界</p>
-      <h2>
-        {session.authenticated
-          ? `${label(platform)} 暂未连接`
-          : "登录后，接着上一次的学习"}
-      </h2>
-      <p>
-        {s?.error ||
-          "在个人中心连接学习账号，即可读取题库、课程和个人学习记录。"}
-      </p>
-      <button className="btn btn-primary" onClick={openLogin}>
-        {session.authenticated ? "管理账号连接" : "连接学习账号"}
-        <ArrowRight size={16} />
-      </button>
-      <div className="connect-features">
-        <span>
-          <Check size={15} /> 数学与计算机统一入口
-        </span>
-        <span>
-          <Check size={15} /> 直接读取学习平台内容
-        </span>
-        <span>
-          <Check size={15} /> 题库、课程和复习记录
-        </span>
-      </div>
-    </div>
-  ) : (
-    children
-  );
+  return session.authenticated ? children : <div className="panel connect-empty">
+    <div className="icon-tile"><BookOpen size={30} /></div>
+    <h2>登录后，接着上一次的学习</h2>
+    <p>使用你的学习账号查看内容，继续计划与个人记录。</p>
+    <button className="btn btn-primary" onClick={openLogin}>登录学习空间<ArrowRight size={16} /></button>
+  </div>;
 }
 function StudyPage({ platform }: { platform: Platform }) {
   const { session } = useSession();
   const location = useLocation();
   const section = location.pathname.split("/")[2] || "question-bank";
   const title = sectionTitles[section];
-  const platformUser = session.platforms[platform]?.user || {};
-  const connectionIdentity = [session.user?.yyb?.mode, session.user?.yyb?.baseUrl, session.account?.ref, platformUser.StuID || platformUser.userId || platformUser.ID].join(":");
+  const learnerIdentity = session.user?.id || "guest";
   return (
     <>
       <h1 className="sr-only">{title?.[0] || "学习空间"}</h1>
       <PlatformGate platform={platform}>
         <ErrorBoundary
-          key={`${platform}-${section}-${connectionIdentity}`}
+          key={`${platform}-${section}-${learnerIdentity}`}
         >
           <Suspense fallback={<Spinner />}>
             {platform === "math" ? (
@@ -672,32 +635,32 @@ function Dashboard({
             </div>
             <h3>两个学科，一个学习空间</h3>
             <p>
-              连接原小程序账号，
+              从本地题库继续学习，
               <br />
-              让知识和学习记录在这里相遇。
+              让每一次进步保存在你的账号里。
             </p>
             <div className="connection-status">
               <span
                 className={
-                  session.platforms?.math?.connected ? "connected" : ""
+                  session.authenticated ? "is-ready" : ""
                 }
               >
                 <i />
-                数学
+                数学 · 可学习
               </span>
               <span
                 className={
-                  session.platforms?.computer?.connected ? "connected" : ""
+                  session.authenticated ? "is-ready" : ""
                 }
               >
                 <i />
-                计算机
+                计算机 · 可学习
               </span>
             </div>
-            <button className="text-link" onClick={openLogin}>
-              {session.authenticated ? "管理账号连接" : "连接学习账号"}
+            <Link className="text-link" to="/study/question-bank">
+              进入题库
               <ArrowRight size={14} />
-            </button>
+            </Link>
           </section>
         </aside>
       </div>
@@ -910,7 +873,7 @@ function Insights() {
       </section>
       <p className="footnote">
         此报告汇总在 Web
-        中产生的学习活动；原平台历史记录可在对应题库或复习页查看。
+        中产生的学习活动；答案、笔记和复习记录归当前学习账号所有。
       </p>
     </>
   );
@@ -922,7 +885,6 @@ function Settings() {
   return (
     <>
       {session.user?.role === "admin" && <section className="panel settings-panel"><h2>管理空间</h2><div className="settings-row"><p>系统配置、用户和公告在独立管理空间中维护，需单独登录。</p><a className="btn btn-secondary" href="/admin/">打开管理空间<ArrowUpRight size={15} /></a></div></section>}
-      <PasswordSettings />
       <section className="panel settings-panel">
         <h2>每日学习目标</h2>
         <div className="settings-row">
@@ -1031,7 +993,7 @@ export default function App() {
       setApiIdentity(nextIdentity);
       setSession(normalized);
       setUserScope(
-        normalized.authenticated ? normalized.user?.id || normalized.account?.ref : undefined,
+        normalized.authenticated ? normalized.user?.id : undefined,
       );
       setServerError("");
   }
@@ -1076,7 +1038,7 @@ export default function App() {
   if (!session.authenticated) return <AuthScreen space="learning" onAuthenticated={acceptSession} />;
   return (
     <SessionContext.Provider
-      value={{ session, refresh, openLogin: () => navigate("/profile?tab=connection") }}
+      value={{ session, refresh, openLogin: () => navigate("/profile") }}
     >
       <div key={session.user?.id || "guest"} className={`app-shell ${sidebarCollapsed ? "nav-collapsed" : ""}`} inert={taskOpen}>
         <a className="skip-link" href="#main-content">
@@ -1276,7 +1238,7 @@ export default function App() {
             {serverError && (
               <div className="error-banner">
                 <CircleAlert size={17} />
-                <span>学习服务连接失败：{serverError}</span>
+                <span>学习服务暂不可用：{serverError}</span>
                 <button className="text-link" onClick={refresh}>
                   重试
                 </button>

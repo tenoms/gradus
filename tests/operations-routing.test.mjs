@@ -11,8 +11,6 @@ test("request diagnostics retain the exact route template for nested auth and le
     for (const [path, options, expected] of [
       ["/api/learning/auth/session", {}, "/api/learning/auth/session"],
       ["/api/learning/auth/accounts", {}, "/api/learning/auth/accounts"],
-      ["/api/learning/auth/connect", { body: {} }, "/api/learning/auth/connect"],
-      ["/api/learning/auth/avatar/private-ref", {}, "/api/learning/auth/avatar/:ref"],
       ["/api/learning/auth/password", { body: { currentPassword: "wrong", password: "new-password-123" } }, "/api/learning/auth/password"],
     ]) {
       const response = await app.request(path, { auth: learning, ...options });
@@ -33,7 +31,7 @@ test("diagnostic route templates never retain user and account path values or un
     const user = await app.request(`/api/admin/users/${privateValue}`, { auth: admin, method: "PATCH", body: { displayName: "private-body-sentinel" } });
     assert.equal(user.status, 404);
     const avatar = await app.request(`/api/learning/auth/avatar/${privateValue}?secret=private-query-sentinel`, { auth: learning });
-    assert.equal(avatar.status, 403);
+    assert.equal(avatar.status, 404);
     const unmatched = await app.request(`/api/admin/unmatched/${privateValue}?secret=private-query-sentinel`, { auth: admin });
     assert.equal(unmatched.status, 404);
     const snapshot = await (await app.request("/api/admin/operations", { auth: admin })).json();

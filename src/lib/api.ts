@@ -9,6 +9,7 @@ export function resolveApiPath(path: string): string {
 
 export type Platform = "math" | "computer";
 export interface PlatformState {
+  available?: boolean;
   connected: boolean;
   user?: Record<string, any>;
   error?: string;

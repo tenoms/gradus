@@ -2,13 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { computerAnalysisVisible, computerAnswerMode, computerDraftScope, computerImmediateChoice, computerChoiceAnswer, computerOptionFeedback, computerQuestionVideoSource } from "../src/components/computer/question-workflow.mjs";
 
-test("switching YYB learners cannot reuse another learner's local draft", () => {
+test("computer drafts belong to the Web learner across resource source changes", () => {
   const learner = (web, upstream, endpoint = "http://yyb-one.test", ref = "same-ref") => ({ user: { id: web, yyb: { mode: "custom", baseUrl: endpoint } }, account: { ref }, platforms: { computer: { user: { userId: upstream } } } });
   const first = learner("web-user", "upstream-one");
-  assert.notEqual(computerDraftScope(first), computerDraftScope(learner("web-user", "upstream-two")));
+  assert.equal(computerDraftScope(first), computerDraftScope(learner("web-user", "upstream-two")));
   assert.notEqual(computerDraftScope(first), computerDraftScope(learner("other-web-user", "upstream-one")));
-  assert.equal(computerDraftScope(first), computerDraftScope(learner("web-user", "upstream-one", "http://other-broker.test")), "the same actual learner may resume across brokers");
-  assert.notEqual(computerDraftScope(learner("web-user", undefined)), computerDraftScope(learner("web-user", undefined, "http://yyb-two.test")), "without a profile, identical refs from different YYBs are not the same learner");
+  assert.equal(computerDraftScope(first), computerDraftScope(learner("web-user", "upstream-one", "http://other-broker.test", "other-ref")));
+  assert.equal(computerDraftScope(learner("web-user", undefined)), computerDraftScope(learner("web-user", undefined, "http://yyb-two.test")));
 });
 
 test("answers remain hidden until practice is saved or a full paper is handed in", () => {
