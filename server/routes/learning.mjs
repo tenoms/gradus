@@ -1,7 +1,7 @@
 import express from "express";
 import { ApiError, bearer, encryptMathMaster } from "../upstream.mjs";
 import { firstScorePayload } from "../first-score.mjs";
-import { publicPlatformResponse, validatePlatformRequest, injectMathUser, cleanAccount, publicSession, publicUser } from "../platform-policy.mjs";
+import { publicPlatformResponse, validatePlatformRequest, injectMathUser, cleanAccount, publicSession } from "../platform-policy.mjs";
 
 export function createLearningRouter({ service, identities, connections, auth }) {
   const router = express.Router();
@@ -209,7 +209,7 @@ export function createLearningRouter({ service, identities, connections, auth })
       res.json(publicPlatformResponse(result));
     },
   );
-  const updateMathSession = async (input, result, platform) => {
+  const updateMathProfile = (input, result, platform) => {
     if (
       result?.SuccessResponse === false ||
       (result?.code !== undefined &&
@@ -236,39 +236,6 @@ export function createLearningRouter({ service, identities, connections, auth })
         )
           platform.user[field] = input.data[field];
     }
-    const rights = [
-      "/api/sys_integral_log/consume",
-      "/api/sys_users/ExperienceVip",
-      "/api/ks_paper/ExperiencePaper",
-      "/api/sys_users_isact/ActCode",
-      "/api/couponcard_study/ActivationCode",
-      "/api/couponcard_study/ActivationCodeStudy",
-      "/api/couponcard_study/Inner_couponcard_study",
-    ];
-    if (!rights.includes(input.path)) return;
-    // The original own-profile query refreshes rights after an explicit entitlement action.
-    try {
-      const fresh = await service.mathRequest(
-        "/api/Master/AutoModel",
-        {
-          method: "POST",
-          data: {
-            command: "GetUserInfoByStuID",
-            data: JSON.stringify({ StuID: own, System_Station_ID: 1, t: Date.now() }),
-          },
-        },
-        platform,
-      );
-      const data = fresh?.data ?? fresh?.Data;
-      const row = Array.isArray(data?.[0]) ? data[0][0] : data?.[0];
-      if (
-        fresh?.SuccessResponse !== false &&
-        String(row?.StuID) === String(own)
-      )
-        platform.user = { ...platform.user, ...publicUser("math", row) };
-    } catch {
-      /* The completed action stays successful; a later platform read can retry. */
-    }
   };
   router.post("/platform/:platform", authenticated, async (req, res) => {
     const name = req.params.platform;
@@ -285,7 +252,7 @@ export function createLearningRouter({ service, identities, connections, auth })
       );
     const respond = async () => {
       const result = await invoke();
-      if (name === "math") await updateMathSession(input, result, platform);
+      if (name === "math") updateMathProfile(input, result, platform);
       if (name === "computer" && input.path === "/api/user/wx/user/updateUserInfo" && [0, 200, "0", "200"].includes(result?.code)) {
         if (input.data.name !== undefined) platform.user.nickName = input.data.name;
         if (input.data.previewUrl !== undefined) platform.user.previewUrl = input.data.previewUrl;

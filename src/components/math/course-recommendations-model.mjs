@@ -72,21 +72,6 @@ export function recommendationGroups(rows, isSuper = false) {
     };
   });
 }
-export function recommendationCanAddTopic(groups) {
-  const first = groups.reduce(
-      (time, g) => Math.min(time, timestamp(g.AddTime) || Infinity),
-      Infinity,
-    ),
-    additional = groups.filter(
-      (g) => timestamp(g.AddTime) - first > 60000,
-    ).length;
-  return {
-    additional,
-    remaining: Math.max(0, 8 - additional),
-    allowed:
-      groups.length > 0 && groups.every((g) => g.isFinish) && additional < 8,
-  };
-}
 export function recommendationMetadata(
   groups,
   specialInfo,

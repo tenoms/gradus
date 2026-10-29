@@ -9,26 +9,10 @@ export function normalizeMathQuestionOrder(row: Row): Row {
     State: row.StateID ?? row.State,
   };
 }
-function time(value: unknown) {
-  const raw = String(value || "")
-    .trim()
-    .replace(" ", "T");
-  return raw
-    ? Date.parse(/Z$|[+-]\d\d:\d\d$/.test(raw) ? raw : `${raw}+08:00`)
-    : NaN;
-}
-export function qaStudentCanFollow(info: Row, now = Date.now()) {
-  return (
-    Number(info.State) === 2 &&
-    Number.isFinite(time(info.EndTime)) &&
-    now <= time(info.EndTime)
-  );
-}
 export function qaTeacherRights(
   info: Row,
   teacher: Row | undefined,
   previewOnly = false,
-  now = Date.now(),
 ) {
   const owns =
     !!teacher && String(info.TeacherID) === String(teacher.TeacherID);
@@ -41,18 +25,8 @@ export function qaTeacherRights(
     owns,
     unassigned,
     write,
-    editAnswer:
-      write &&
-      owns &&
-      (Number(info.State) === 1 ||
-        (Number(info.State) === 2 &&
-          now - time(info.UpdateTime) < 3 * 3600000)),
-    follow:
-      write &&
-      owns &&
-      Number(info.State) >= 2 &&
-      Number.isFinite(time(info.UpdateTime)) &&
-      now <= time(info.UpdateTime) + 3 * 86400000,
+    editAnswer: write && owns,
+    follow: write && owns,
   };
 }
 export function qaVoicePayload({

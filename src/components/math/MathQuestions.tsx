@@ -33,7 +33,6 @@ import MathQAReport from "./MathQAReport";
 import MathVoiceRecorder from "./MathVoiceRecorder";
 import {
   normalizeMathQuestionOrder,
-  qaStudentCanFollow,
   qaTeacherRights,
   qaVoicePayload,
 } from "../../platforms/math-qa";
@@ -268,7 +267,7 @@ export default function MathQuestions({
       : Promise.resolve({ data: [] }),
   );
   const teacherAccounts = mathRows(teacher.data).filter(
-    (t) => t.TeacherID && Number(t.IsValid) === 1,
+    (t) => t.TeacherID,
   );
   const teacherInfo = teacherAccounts[0];
   const remote = useData(`qa-${stuid}-${state}-${page}`, () =>
@@ -479,19 +478,6 @@ export function NewMathQuestion({
   const books = useData(`qa-books`, () =>
     question ? Promise.resolve({ data: [] }) : mathApi.books(),
   );
-  const quota = useData(`qa-quota-${stuid}`, async () => {
-    const [config, count] = await Promise.all([
-      mathGet("/api/wx_xcx_info/GetListByAll", { System_Station_ID: station }),
-      mathCommand("GetUserQuestionOrderCounts", {
-        StuID: stuid,
-        System_Station_ID: station,
-      }),
-    ]);
-    return {
-      config: mathRows(config)[0],
-      count: Number(mathRows(count)[0]?.QCounts || 0),
-    };
-  });
   const selectedBook = mathRows(books.data).find(
     (b) => String(b.ID) === bookId,
   );
@@ -499,16 +485,6 @@ export function NewMathQuestion({
     question?._book_list?.BusType === "试卷" ||
     question?.BookType === "试卷" ||
     selectedBook?.BusType === "试卷";
-  const dailyLimit = Number(
-    isTruePaper
-      ? quota.data?.config?.AnswerZTNumber
-      : quota.data?.config?.AnswerNumber,
-  );
-  const quotaAvailable =
-    !!quota.data?.config &&
-    (isTruePaper
-      ? !(dailyLimit > 0) || quota.data.count < dailyLimit
-      : dailyLimit > 0 && quota.data.count < dailyLimit);
   const search = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
@@ -534,7 +510,7 @@ export function NewMathQuestion({
     }
   };
   const submit = async () => {
-    if (!chosen || !title.trim() || !quotaAvailable) return;
+    if (!chosen || !title.trim()) return;
     setBusy(true);
     setError("");
     try {
@@ -692,18 +668,6 @@ export function NewMathQuestion({
               {title.length} / 249
             </span>
             <AttachmentInput value={images} onChange={setImages} />
-            <RequestState
-              loading={quota.loading}
-              error={quota.error}
-              reload={quota.reload}
-            />
-            {quota.data && (
-              <p className="math-qa-footnote">
-                {dailyLimit > 0
-                  ? `今日已提问 ${quota.data.count} / ${dailyLimit} 次${quotaAvailable ? "" : "，今日次数已用完"}`
-                  : "当前真题答疑不限每日次数"}
-              </p>
-            )}
             {error && (
               <p className="math-error-text" role="alert">
                 {error}
@@ -719,18 +683,13 @@ export function NewMathQuestion({
                 disabled={
                   busy ||
                   !chosen ||
-                  !title.trim() ||
-                  quota.loading ||
-                  !quotaAvailable
+                  !title.trim()
                 }
               >
                 {busy ? "提交中…" : "提交学习答疑"}
                 <Send size={15} />
               </button>
             </div>
-            <p className="math-qa-footnote">
-              可用答疑次数与受理时间以你当前的数学平台权益为准。
-            </p>
           </>
         )}
       </section>
@@ -914,7 +873,6 @@ function QuestionOrder({
         UpdateColumns: "ID,State,TeacherID,Context",
       });
     }, "已接受提问，可以开始解答");
-  const studentCanFollow = qaStudentCanFollow(info);
   const rights = qaTeacherRights(info, teacher, !!row._previewOnly);
   const teacherOwns = rights.owns;
   const teacherUnassigned = rights.unassigned;
@@ -1202,7 +1160,6 @@ function QuestionOrder({
                 撤回提问
               </button>
             )}
-            {studentCanFollow && (
               <button
                 className="btn btn-primary"
                 onClick={() => setAction("followup")}
@@ -1210,7 +1167,6 @@ function QuestionOrder({
               >
                 继续追问
               </button>
-            )}
             {Number(info.State) >= 2 &&
               Number(info.State) < 4 &&
               !mathRows(levels.data).length && (
@@ -1578,7 +1534,7 @@ function TeacherDesk({
         <div>
           <span className="eyebrow">TEACHING DESK</span>
           <h2>{teacher.TeacherName || "老师"}的答疑工作台</h2>
-          <p>接受提问、解答与追问，沿用你的原平台教学权限。</p>
+          <p>接受提问、解答与追问。</p>
         </div>
         <select
           className="input"

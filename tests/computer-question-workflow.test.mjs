@@ -1,7 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { computerKnowledgeMajorId } from "../src/components/computer/computer-knowledge.mjs";
-import { computerAnswerMode, computerImmediateChoice, computerChoiceAnswer, computerQuestionVideoSource, computerQuestionVideoPermission, computerNextVideoCount, computerQuestionVideoAllowed } from "../src/components/computer/question-workflow.mjs";
+import { computerAnswerMode, computerImmediateChoice, computerChoiceAnswer, computerQuestionVideoSource } from "../src/components/computer/question-workflow.mjs";
 
 test("single and judgment practice choices save immediately while complete papers stay drafts", () => {
   for (const launch of [{ examType: 3 }, { examType: 10 }, { examType: 6, redo: {} }, { examType: 6, random: true }]) {
@@ -33,30 +32,7 @@ test("question media distinguishes signed media URLs from external video pages",
   for (const videoUrl of ["javascript:alert(1)", "//media.example/lesson.mp4", "http://", "", null, 42]) assert.equal(computerQuestionVideoSource({ videoUrl }), null);
 });
 
-test("video trial preserves increment-before-check semantics and explicit authorization wins", () => {
-  let count = 0;
-  const trial = [];
-  for (let visit = 0; visit < 5; visit++) {
-    count = computerNextVideoCount(count);
-    trial.push(computerQuestionVideoAllowed(count, false));
-  }
-  assert.deepEqual(trial, [true, true, false, false, false]);
-  assert.equal(count, 4);
-  assert.equal(computerQuestionVideoAllowed(count, true), true);
-  assert.equal(computerQuestionVideoAllowed(count, "true"), false);
-});
-
-test("video permissions preserve source subject/category codes and a supplied school permission", () => {
-  assert.equal(computerQuestionVideoPermission({ majorId: "701769479767592960" }), "wx_video_ky_data");
-  assert.equal(computerQuestionVideoPermission({ majorId: "701769479767592960", examCategory: 2 }), "wx_video_term_data");
-  assert.equal(computerQuestionVideoPermission({ majorId: "804349070033424384", examCategory: 2 }), "wx_video_term_java");
-  assert.equal(computerQuestionVideoPermission({ majorId: "unknown", schoolPermission: "wx_video_school_specific" }), "wx_video_school_specific");
-  assert.equal(computerQuestionVideoPermission({ majorId: "unknown" }), "");
-  assert.equal(computerQuestionVideoPermission({ majorId: "804349070033424384", examCategory: 1 }), "");
-});
-
-test("cross-subject question video checks the subject from its knowledge path", () => {
-  const question = { exerciseProperty: { knowledgeTags: ["701769479767592960,701807269960093696"] } };
-  const majorId = computerKnowledgeMajorId(question, "704332467330486272");
-  assert.equal(computerQuestionVideoPermission({ majorId }), "wx_video_ky_data");
+test("returned question media stays available regardless of entitlement or trial fields", () => {
+  const videoUrl = "https://media.example/lesson.mp4";
+  assert.deepEqual(computerQuestionVideoSource({ videoUrl, isVideoAuth: false, videoCount: 999, permission: false }), { url: videoUrl, kind: "media" });
 });

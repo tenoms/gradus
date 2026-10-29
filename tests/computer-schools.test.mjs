@@ -66,15 +66,8 @@ test("target schools use the original schoolId parameter and cannot silently sav
     () => targetSchoolPayload(["admissions-id"], catalog),
     /原目标目录/,
   );
-  assert.throws(() => targetSchoolPayload([], catalog), /1 至 3/);
-  assert.throws(
-    () =>
-      targetSchoolPayload(
-        catalog.map((r) => r.id),
-        catalog,
-      ),
-    /1 至 3/,
-  );
+  assert.throws(() => targetSchoolPayload([], catalog), /请选择目标院校/);
+  assert.deepEqual(targetSchoolPayload(catalog.map(row => row.id), catalog), { schoolId: catalog.map(row => row.id).join(",") });
 });
 test("comparison matches the selected major, college and year instead of borrowing another year score", () => {
   const plans = [
@@ -134,19 +127,18 @@ const output = ts
 const adapter = await import(
   `data:text/javascript;base64,${Buffer.from("const {computerRequest,records,schoolQuery,targetSchoolPayload}=globalThis.__schoolFixture;" + output).toString("base64")}`
 );
-test("school adapter reads role-scoped permissions and saves selected targets through original GET query", async () => {
+test("school adapter saves selected targets without a separate entitlement request", async () => {
   const calls = [];
   globalThis.__schoolRequest = async (...args) => {
     calls.push(args);
     return [];
   };
-  await adapter.computerSchoolApi.permissions();
   await adapter.computerSchoolApi.saveTargets(
     ["original-a"],
     [{ id: "original-a" }],
   );
-  assert.deepEqual(calls[0], ["/api/user/wx/user/permission", { roleType: 2 }]);
-  assert.deepEqual(calls[1], [
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0], [
     "/api/user/wx/user/addTargetSchool",
     { schoolId: "original-a" },
   ]);

@@ -14,11 +14,7 @@ export function leakPaperState(
   outstanding?: number,
 ): number;
 export function courseMinutes(seconds: any): number;
-export function packetAuthorization(
-  rows: Record<string, any>[],
-  productID: any,
-  auth?: Record<string, any>[],
-): Record<string, any>[];
+export function packetTreeRows(rows: Record<string, any>[]): Record<string, any>[];
 export function completedCourseAssignments(tasks: Record<string, any>[]): {
   rows: Record<string, any>[];
   total: number;
@@ -28,10 +24,6 @@ export function packetResumeEntry(
   sections: Record<string, any>[],
   record: Record<string, any>,
 ): { entry: Record<string, any>; section: Record<string, any> } | undefined;
-export function courseAccessError(
-  product: Record<string, any>,
-  now?: number,
-): string;
 export function courseTasksFinished(tasks: Record<string, any>[]): boolean;
 export function packetVisitRecord(
   stuid: string,
@@ -40,17 +32,6 @@ export function packetVisitRecord(
   entry: Record<string, any>,
   now?: number,
 ): Record<string, any>;
-export function courseVipActive(
-  user: Record<string, any>,
-  now?: number,
-): boolean;
-export function zeroPriceCourse(product: Record<string, any>): boolean;
-export function freeCourseClaim(
-  stuid: string,
-  CourseProductID: any,
-  now?: number,
-): Record<string, any>;
-
 export function courseQuestionRecord(
   context: Record<string, any>,
   task: Record<string, any>,

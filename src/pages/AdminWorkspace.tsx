@@ -154,7 +154,7 @@ function UserEditor({ user, users, accounts, accountsError, onSaved, onClose }: 
         const assigned = account.assignedTo || users.find((item) => item.yybRef === account.ref);
         const owner = assigned?.id !== user?.id ? assigned : undefined;
         return <option key={account.ref} value={account.ref} disabled={!!owner}>{account.nickname || account.ref}{owner ? `（已分配给 ${owner.displayName}）` : account.status === "alive" ? "" : "（需检查会话）"}</option>;
-      })}</select><small>{accountsError ? `账号目录暂不可用：${accountsError}` : "每个学习账号仅分配给一位用户。学习者连接后可使用原有内容权限。"}</small></label>
+      })}</select><small>{accountsError ? `账号目录暂不可用：${accountsError}` : "每个学习账号仅分配给一位用户。学习者连接后可直接使用平台返回的内容。"}</small></label>
       {user && user.yybRef !== draft.yybRef && <p className="admin-inline-hint"><CircleAlert size={14} />更换或解除分配后，此用户原有的平台连接将失效。</p>}
       {user && user.status !== draft.status && draft.status === "disabled" && <p className="admin-inline-hint admin-warning"><CircleAlert size={14} />保存后，{user.displayName} 将立即退出并无法登录。</p>}
       {error && <p className="admin-form-error" role="alert">{error}</p>}

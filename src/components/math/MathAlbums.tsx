@@ -26,7 +26,6 @@ import {
 } from "../../platforms/math";
 import type { MathRow } from "../../platforms/math";
 import { useSession } from "../../lib/session";
-import { mathAlbumAllowed } from "../../platforms/math-access-model";
 import { recordStudy } from "../../lib/store";
 
 function useAlbumData(key: string, load: () => Promise<any>) {
@@ -121,7 +120,6 @@ export default function MathAlbums({
   onQuestion: (row: MathRow) => void;
 }) {
   const { session, refresh } = useSession();
-  const user = session.platforms.math.user || {};
   const [myOnly, setMyOnly] = useState(false);
   const profile = useAlbumData(`album-profile-${stuid}`, () =>
     mathCommand("GetUserInfoByStuID", { StuID: stuid, t: Date.now() }),
@@ -141,7 +139,6 @@ export default function MathAlbums({
   );
   const albumInfo = mathRows(info.data)[0];
   const fullAlbum = { ...album, ...albumInfo };
-  const allowed = !!albumInfo && mathAlbumAllowed(fullAlbum, user);
   const chapters = useAlbumData(`chapters-${album?.ID}`, () =>
     album ? mathApi.albumCatalog(album.ID) : Promise.resolve({ data: [] }),
   );
@@ -185,7 +182,6 @@ export default function MathAlbums({
         catalogId={practice.CatalogID || catalog?.ID}
         groupId={practice.ID}
         kind="album"
-        allowPractice={allowed}
         onClose={() => setPractice(undefined)}
       />
     );
@@ -195,8 +191,6 @@ export default function MathAlbums({
     setNotice("");
     try {
       const present = mine.includes(String(album.ID));
-      if (!present && !allowed)
-        throw new Error("当前账号暂未开通此专辑的学习权限");
       const next = present
         ? mine.filter((id) => id !== String(album.ID))
         : [...mine, String(album.ID)];
@@ -371,8 +365,7 @@ export default function MathAlbums({
               busy ||
               profile.loading ||
               !!profile.error ||
-              !currentProfile.ID ||
-              (!mine.includes(String(album.ID)) && !allowed)
+              !currentProfile.ID
             }
             onClick={toggleShelf}
           >
@@ -388,11 +381,6 @@ export default function MathAlbums({
               profile.reload();
             }}
           />
-          {!info.loading && !info.error && !allowed && (
-            <p className="math-error-text">
-              当前账号暂未开通此专辑的学习权限，可在已有权益中核对。
-            </p>
-          )}
           {notice && (
             <p className="math-account-notice" role="status">
               {notice}
@@ -408,7 +396,6 @@ export default function MathAlbums({
             {mathRows(chapters.data).map((c, i) => (
               <button
                 key={c.ID || i}
-                disabled={info.loading || !allowed}
                 onClick={() => setCatalog(c)}
               >
                 <div className="math-list-icon">

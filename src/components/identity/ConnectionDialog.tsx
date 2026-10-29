@@ -73,7 +73,7 @@ export default function ConnectionDialog({
         <p className="login-description">
           连接分配给你的数学与计算机学习账号，
           <br />
-          继续使用你原有的学习内容和权限。
+          继续读取你的学习内容和记录。
         </p>
         {loading ? (
           <div className="loading-state"><LoaderCircle size={20} className="spin" />正在读取可用账号…</div>
@@ -186,7 +186,7 @@ export default function ConnectionDialog({
           </button>
         )}
         <p className="login-note">
-          账号由管理员分配。内容访问遵循原平台权限。
+          账号由管理员分配，平台返回的内容可直接使用。
         </p>
       </section>
     </div>

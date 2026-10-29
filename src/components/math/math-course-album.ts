@@ -19,9 +19,11 @@ export interface CourseAlbumContext {
   CalendarID: string | number;
   ProductID: string | number;
 }
+const completed = (result: PromiseSettledResult<any>) => result.status === "fulfilled" ? result.value : undefined;
+const readError = (result: PromiseSettledResult<any>, label: string) => result.status === "rejected" ? `${label}读取失败：${result.reason instanceof Error ? result.reason.message : String(result.reason)}` : undefined;
 export const courseAlbumApi = {
   async load(AlbumID: string | number, context: CourseAlbumContext) {
-    const [info, catalogs, progress] = await Promise.all([
+    const [info, catalogs, progress] = await Promise.allSettled([
       mathCommand("GetAlbumInfo", { AlbumID }),
       mathApi.albumCatalog(AlbumID),
       mathGet("/api/book_highscorealbum_studylog/GetListByPage", {
@@ -37,9 +39,14 @@ export const courseAlbumApi = {
       }),
     ]);
     return {
-      info: mathRows(info)[0] || {},
-      catalogs: mathRows(catalogs),
-      progress: mathRows(progress),
+      info: mathRows(completed(info))[0] || {},
+      catalogs: mathRows(completed(catalogs)),
+      progress: mathRows(completed(progress)),
+      errors: {
+        info: readError(info, "专辑介绍"),
+        catalogs: readError(catalogs, "专辑目录"),
+        progress: readError(progress, "阅读进度"),
+      },
     };
   },
   async chapter(
@@ -47,7 +54,7 @@ export const courseAlbumApi = {
     CatalogID: string | number,
     context: CourseAlbumContext,
   ) {
-    const [content, log, likes] = await Promise.all([
+    const [content, log, likes] = await Promise.allSettled([
       mathApi.albumItems(CatalogID),
       mathGet("/api/book_highscorealbum_studylog/GetListByPage", {
         AlbumID,
@@ -68,9 +75,14 @@ export const courseAlbumApi = {
       }),
     ]);
     return {
-      rows: mathRows(content),
-      log: mathRows(log)[0] || {},
-      likes: mathRows(likes)[0] || {},
+      rows: mathRows(completed(content)),
+      log: mathRows(completed(log))[0] || {},
+      likes: mathRows(completed(likes))[0] || {},
+      errors: {
+        content: readError(content, "章节正文"),
+        log: readError(log, "章节阅读记录"),
+        likes: readError(likes, "点赞记录"),
+      },
     };
   },
   async operations(rows: MathRow[], context: CourseAlbumContext) {

@@ -22,8 +22,6 @@ export const computerSchoolApi = {
       pageNum: page,
       pageSize: 20,
     }),
-  permissions: () =>
-    computerRequest("/api/user/wx/user/permission", { roleType: 2 }),
   targets: () => computerRequest("/api/user/wx/user/targetSchool"),
   targetCatalog: () =>
     computerRequest("/api/exam/wx/practice/school", {

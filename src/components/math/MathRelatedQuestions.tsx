@@ -40,13 +40,12 @@ export interface RelatedReaderProps {
   row: MathRow;
   prev?: () => void;
   next?: () => void;
-  onAnswered: (
+  onAnswered?: (
     answer: string,
     correct: boolean,
     details?: { question: MathRow; options: MathRow[] },
   ) => Promise<void>;
   readOnly?: boolean;
-  lockAnalysis?: boolean;
 }
 function useData(key: string, load: () => Promise<any>) {
   const [data, setData] = useState<any>(),
@@ -125,7 +124,6 @@ export default function MathRelatedQuestions({
   const [source, setSource] = useState("分类题库");
   const [collection, setCollection] = useState<Collection>();
   const [product, setProduct] = useState<MathRow>();
-  const [onlyOwned, setOnlyOwned] = useState(false);
   const menus = useData(`related-menu-${stuid}-${source}`, async () => {
     if (source === "分类题库")
       return mathCommand("GetRelQuestionMenu_zyk", {
@@ -133,27 +131,15 @@ export default function MathRelatedQuestions({
         System_Station_ID: 1,
       });
     const Type = source === "真题书籍包" ? "真题书籍包" : "自定义刷题包";
-    const [catalog, owned] = await Promise.all([
-      mathGet("/api/c_course_product/GetProductByZyk", {
-        System_Station_ID: 1,
-        type: Type,
-        IsValid: 1,
-      }),
-      mathCommand("GetUserProductList", {
-        StuID: stuid,
-        BusType: "书籍产品",
-        Type,
-      }),
-    ]);
-    return { data: relatedPackageRows(mathRows(catalog), mathRows(owned)) };
+    const catalog = await mathGet("/api/c_course_product/GetProductByZyk", {
+      System_Station_ID: 1,
+      type: Type,
+      IsValid: 1,
+    });
+    return { data: relatedPackageRows(mathRows(catalog)) };
   });
   const [query, setQuery] = useState("");
-  const rows = mathRows(menus.data).filter(
-    (r) =>
-      (!onlyOwned || source === "分类题库" || r.owned) &&
-      (!query ||
-        [r.StandardName, r.ProductName, r.Name].join(" ").includes(query)),
-  );
+  const rows = mathRows(menus.data).filter(row => !query || [row.StandardName, row.ProductName, row.Name].join(" ").includes(query));
   if (collection)
     return (
       <RelatedCollection
@@ -196,7 +182,6 @@ export default function MathRelatedQuestions({
                 className={t === source ? "active" : ""}
                 onClick={() => {
                   setSource(t);
-                  setOnlyOwned(false);
                 }}
               >
                 {t}
@@ -212,16 +197,6 @@ export default function MathRelatedQuestions({
               onChange={(e) => setQuery(e.target.value)}
             />
           </label>
-          {source !== "分类题库" && (
-            <label className="mrq-owned">
-              <input
-                type="checkbox"
-                checked={onlyOwned}
-                onChange={(e) => setOnlyOwned(e.target.checked)}
-              />
-              只看我已有的
-            </label>
-          )}
         </div>
         <State
           loading={menus.loading}
@@ -254,7 +229,7 @@ export default function MathRelatedQuestions({
                 <small>
                   {source === "分类题库"
                     ? `${r.QuestionCount || r.Count || "—"} 道题目${r.FinishedCount ? ` · 已练 ${r.FinishedCount} 道` : ""}`
-                    : `${r.books?.length || 0} 本书籍 · ${r.owned ? "已有学习权限" : r.books?.some((b: MathRow) => b.isFree) ? "含免费试读" : "浏览书籍目录"}`}
+                    : `${r.books?.length || 0} 本书籍`}
                 </small>
               </span>
               <ChevronRight size={18} />
@@ -276,13 +251,13 @@ function PackageDetail({
   onPractice: () => void;
   renderQuestion: (props: RelatedReaderProps) => ReactNode;
 }) {
-  const [trial, setTrial] = useState<MathRow>();
+  const [selectedBook, setSelectedBook] = useState<MathRow>();
   const books: MathRow[] = row.books || [];
-  if (trial)
+  if (selectedBook)
     return (
-      <FreeBookPreview
-        book={trial}
-        back={() => setTrial(undefined)}
+      <PackageBookReader
+        book={selectedBook}
+        back={() => setSelectedBook(undefined)}
         renderQuestion={renderQuestion}
       />
     );
@@ -297,17 +272,12 @@ function PackageDetail({
         <h2>{row.ProductName || "数学书籍包"}</h2>
         <RichContent content={row.Intro || row.Remark || row.Description} />
         <p className="math-muted">
-          {books.length} 本书籍 ·{" "}
-          {row.owned
-            ? "当前账号已有此包的完整练习权限"
-            : "可查看本包内容，标记试读的书籍可免费阅读"}
+          {books.length} 本书籍
         </p>
-        {row.owned && (
-          <button className="btn btn-primary" onClick={onPractice}>
+        <button className="btn btn-primary" onClick={onPractice}>
             进入分类练习
             <ArrowRight size={15} />
           </button>
-        )}
       </div>
       <div className="panel math-content-list">
         {books.map((b, i) => (
@@ -320,15 +290,9 @@ function PackageDetail({
                 {b.QuestionSearchCount || b.QuestionListCount || "—"} 道题目
               </small>
             </span>
-            {b.isFree ? (
-              <button className="btn btn-secondary" onClick={() => setTrial(b)}>
-                免费试读
-              </button>
-            ) : (
-              <small>
-                {row.owned ? "已包含于本包" : "当前账号暂无学习权限"}
-              </small>
-            )}
+            <button className="btn btn-secondary" onClick={() => setSelectedBook(b)}>
+              查看题目
+            </button>
           </div>
         ))}
         {!books.length && (
@@ -340,7 +304,7 @@ function PackageDetail({
     </div>
   );
 }
-function FreeBookPreview({
+function PackageBookReader({
   book,
   back,
   renderQuestion,
@@ -349,7 +313,7 @@ function FreeBookPreview({
   back: () => void;
   renderQuestion: (props: RelatedReaderProps) => ReactNode;
 }) {
-  const catalog = useData(`trial-book-${book.ID}`, () =>
+  const catalog = useData(`package-book-${book.ID}`, () =>
     mathApi.bookCatalog(book.ID),
   );
   const [current, setCurrent] = useState<number>();
@@ -363,8 +327,7 @@ function FreeBookPreview({
       </button>
       <div className="math-section-heading">
         <div>
-          <span className="eyebrow">FREE BOOK PREVIEW</span>
-          <h2>{book.Name} · 免费试读</h2>
+          <h2>{book.Name}</h2>
           <p>{rows.length} 道原书题目，选择题目查看题干与解析。</p>
         </div>
       </div>
@@ -380,12 +343,10 @@ function FreeBookPreview({
             className="math-text-button"
             onClick={() => setCurrent(undefined)}
           >
-            返回试读目录
+            返回题目目录
           </button>
           {renderQuestion({
-            row: { ...row, BookID: book.ID, _mathPreview: true },
-            readOnly: true,
-            onAnswered: async () => {},
+            row: { ...row, BookID: book.ID },
             prev: current! > 0 ? () => setCurrent(current! - 1) : undefined,
             next:
               current! < rows.length - 1
@@ -1053,8 +1014,6 @@ function RelatedReader({
             next,
             onAnswered: answer,
             readOnly: Number(previous.IsSubmit) === 1,
-            lockAnalysis:
-              mode === "测试模式" && Number(previous.IsSubmit) !== 1,
           })}
           <div className="panel mrq-annotations">
             {crowdDone > 0 && (

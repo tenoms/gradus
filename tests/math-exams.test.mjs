@@ -222,7 +222,7 @@ test("paper loader isolates teacher course data from ordinary course progress", 
     false,
   );
 });
-test("course completion writes total and unlocks; ability completion skips recommendation creation", async () => {
+test("course completion writes total without an unlock and ability completion skips recommendation creation", async () => {
   const calls = [];
   globalThis.__mathExamPost = async (path, data) => {
     calls.push({ path, data });
@@ -250,8 +250,8 @@ test("course completion writes total and unlocks; ability completion skips recom
   );
   assert.equal(calls[0].data.IsFinished, 1);
   assert.equal(calls[0].data.BusValue, 50);
-  assert.equal(calls[1].path, "/api/c_course_calendar/UnlockCalendarByStuID");
-  assert.equal(calls[2].data.IsSpecial, 1);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].data.IsSpecial, 1);
   calls.length = 0;
   await adapter.mathExamApi.finish(
     {
@@ -374,46 +374,9 @@ test("partial dry-run submission records unanswered questions before final paper
   assert.equal(calls[1].data.IsLookScore, 1);
 });
 
-test("weekly duration is minutes while paper Times is seconds, and deadlines keep original force rules", () => {
-  const weekly = { kind: "weekly", stuid: "s", PaperID: 1 },
-    course = { kind: "course", stuid: "s", PaperID: 1 },
-    dry = { kind: "dry", stuid: "s", PaperID: 1 };
-  assert.equal(
-    adapter.examDurationSeconds(weekly, { ExamDuration: 90, Times: 120 }),
-    5400,
-  );
-  assert.equal(adapter.examDurationSeconds(course, { Times: 5400 }), 5400);
-  assert.equal(
-    adapter.examDeadline(weekly, { ExamDuration: 90 }, 5399).expired,
-    false,
-  );
-  assert.equal(
-    adapter.examDeadline(weekly, { ExamDuration: 90 }, 5400).forceSubmit,
-    true,
-  );
-  assert.equal(
-    adapter.examDeadline(weekly, { ExamDuration: 90 }, 5400).expired,
-    true,
-  );
-  assert.equal(
-    adapter.examDeadline(course, { Times: 5400 }, 5400).forceSubmit,
-    false,
-  );
-  assert.equal(
-    adapter.examDeadline({ ...course, isTeacher: true }, { Times: 5400 }, 5400)
-      .forceSubmit,
-    true,
-  );
-  const end = Date.parse("2026-10-29T10:00:00+08:00");
-  assert.equal(
-    adapter.examDeadline(dry, { Times: 10800 }, 0, end, end - 600).remaining,
-    1,
-  );
-  assert.equal(
-    adapter.examDeadline(dry, { Times: 10800 }, 0, end, end).expired,
-    true,
-  );
-  assert.equal(adapter.examDeadline(weekly, {}, 999999).expired, false);
+test("weekly duration is minutes while paper Times is seconds", () => {
+  assert.equal(adapter.examDurationSeconds({ kind: "weekly", stuid: "s", PaperID: 1 }, { ExamDuration: 90, Times: 120 }), 5400);
+  assert.equal(adapter.examDurationSeconds({ kind: "course", stuid: "s", PaperID: 1 }, { Times: 5400 }), 5400);
 });
 test("forced weekly completion preserves saved score and submits despite missing question records", async () => {
   const calls = [];

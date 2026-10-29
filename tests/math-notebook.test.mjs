@@ -51,32 +51,16 @@ test("PDF exports keep category scopes, selected record IDs and source format", 
   assert.equal(new URL(bank[0].url).searchParams.get("busindex"), "2");
   assert.equal(new URL(bank[0].url).searchParams.get("catalogids"), "99");
 });
-test("export respects existing account limits and never silently widens the selected set", () => {
+test("exports include every selected record without account or download-count gates", () => {
   assert.throws(() => noteExportLinks([], { stuid: "me" }), /先选择/);
-  assert.throws(
-    () => noteExportLinks([{ ID: 1 }], { stuid: "me", downloadCount: 101 }),
-    /额度/,
-  );
-  assert.throws(
-    () =>
-      noteExportLinks(
-        Array.from({ length: 7 }, (_, ID) => ({ ID })),
-        { stuid: "me" },
-      ),
-    /最多导出 6/,
-  );
-  assert.equal(
-    noteExportLinks(
-      Array.from({ length: 30 }, (_, ID) => ({ ID, CatalogID: 1 })),
-      { stuid: "me", vip: true },
-    )[0].count,
-    30,
-  );
+  const files = noteExportLinks(Array.from({ length: 107 }, (_, index) => ({ ID: index + 1, CatalogID: 1 })), { stuid: "me" });
+  assert.equal(files.flatMap(file => file.recordIds).length, 107);
+  assert.equal(new Set(files.flatMap(file => file.recordIds)).size, 107);
 });
-test("VIP exports split at the original 30-question batch limit without losing selected records", () => {
+test("large exports split into file batches without losing selected records", () => {
   const files = noteExportLinks(
     Array.from({ length: 65 }, (_, n) => ({ ID: n + 1, CatalogID: 1 })),
-    { stuid: "me", vip: true },
+    { stuid: "me" },
   );
   assert.deepEqual(
     files.map((x) => x.count),
@@ -85,35 +69,10 @@ test("VIP exports split at the original 30-question batch limit without losing s
   assert.equal(files.flatMap((x) => x.recordIds).length, 65);
   assert.equal(new Set(files.flatMap((x) => x.recordIds)).size, 65);
 });
-test("explicit print actions use question IDs and preserve original per-record print scope", async () => {
-  const { notePrintHistoryParams, notePrintLogRecords, noteWasPrinted } =
-    await import("../src/components/math/notebook-model.mjs");
-  assert.deepEqual(notePrintHistoryParams("me", "7"), {
-    StuID: "me",
-    BusKey: 7,
-  });
-  const records = notePrintLogRecords(
-    [{ ID: 99, QuestionID: 33, bookID: 44, CatalogID: 7 }],
-    { stuid: "me" },
-  );
-  assert.deepEqual(records, [
-    {
-      BusValue: "收藏错题打印",
-      Question_ID: 33,
-      BusKey: 7,
-      BookID: 44,
-      System_Station_ID: 1,
-      StuID: "me",
-      BusID: 33,
-    },
-  ]);
-  assert.equal(noteWasPrinted({ QuestionID: 33, BookID: 44 }, records), true);
-  assert.equal(noteWasPrinted({ QuestionID: 33, BookID: 45 }, records), false);
-  assert.equal(
-    notePrintLogRecords([{ ID: 99, QID: 123, BookID: 8 }], {
-      stuid: "me",
-      origin: "bank",
-    })[0].Question_ID,
-    123,
-  );
+test("print-history matching preserves original per-question and book scope", async () => {
+  const { notePrintHistoryParams, noteWasPrinted } = await import("../src/components/math/notebook-model.mjs");
+  assert.deepEqual(notePrintHistoryParams("me", "7"), { StuID: "me", BusKey: 7 });
+  const history = [{ Question_ID: 33, BookID: 44 }];
+  assert.equal(noteWasPrinted({ QuestionID: 33, BookID: 44 }, history), true);
+  assert.equal(noteWasPrinted({ QuestionID: 33, BookID: 45 }, history), false);
 });

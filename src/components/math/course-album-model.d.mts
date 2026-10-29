@@ -1,9 +1,3 @@
-export function courseAlbumAllowed(
-  info: Record<string, any>,
-  user: Record<string, any>,
-  chapterCount: number,
-  now?: number,
-): boolean;
 export function courseAlbumTree(
   rows: Record<string, any>[],
 ): Record<string, any>[];

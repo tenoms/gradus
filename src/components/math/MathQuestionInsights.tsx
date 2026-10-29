@@ -11,17 +11,14 @@ export default function MathQuestionInsights({
   stuid,
   qid,
   bookId = 0,
-  analysisViewed = false,
 }: {
   stuid: string;
   qid: string | number;
   bookId?: string | number;
-  analysisViewed?: boolean;
 }) {
   const [opened, setOpened] = useState(false),
     [frequencies, setFrequencies] = useState<MathRow[]>([]),
     [capacity, setCapacity] = useState<MathRow>(),
-    [enabled, setEnabled] = useState(false),
     [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -32,11 +29,8 @@ export default function MathQuestionInsights({
     let active = true;
     setLoading(true);
     setError("");
-    Promise.all([
+    Promise.allSettled([
       mathGet("/api/base/GetQuestionAnalyseByID", { ID: qid }),
-      bookId
-        ? mathGet("/api/book_list/GetListByPage", { ID: bookId })
-        : Promise.resolve({ data: [] }),
       bookId
         ? mathGet("/api/question_capacity_log/GetListByPage", {
             StuID: stuid,
@@ -46,10 +40,11 @@ export default function MathQuestionInsights({
         : Promise.resolve({ data: [] }),
       mathCommand("GetQuestionLogInfo_rel2", { QuestionID: qid }),
     ])
-      .then(([stats, book, level, aggregate]) => {
+      .then(results => {
         if (!active) return;
+        const [stats, level, aggregate] = results.map(result => result.status === "fulfilled" ? result.value : undefined);
+        setError(results.flatMap(result => result.status === "rejected" ? [result.reason instanceof Error ? result.reason.message : String(result.reason)] : []).join("；"));
         setFrequencies(mathFrequencyRows(mathRows(stats)[0]?.List || []));
-        setEnabled(Number(mathRows(book)[0]?.IsBtn) === 1);
         setCapacity(mathRows(level)[0]);
         const first = mathRows(aggregate);
         const done = Number(first.find((r) => r.Type === "题目")?.counts || 0);
@@ -81,18 +76,9 @@ export default function MathQuestionInsights({
           <LoaderCircle className="spin" size={15} />
           正在读取原平台统计…
         </p>
-      ) : error ? (
-        <p className="math-error-text" role="alert">
-          {error}
-          <button
-            className="math-text-button"
-            onClick={() => setVersion((v) => v + 1)}
-          >
-            重新读取
-          </button>
-        </p>
       ) : (
         <>
+          {error && <p className="math-error-text" role="alert">{error}<button className="math-text-button" onClick={() => setVersion(value => value + 1)}>重新读取</button></p>}
           {crowd && crowd.done > 0 && (
             <p className="math-muted">
               平台已练 {crowd.done} 次 · 正确 {crowd.right} 次 · 收藏{" "}
@@ -100,13 +86,10 @@ export default function MathQuestionInsights({
               {Math.round((crowd.right / crowd.done) * 100)}%
             </p>
           )}
-          {enabled && (
             <section className="mqi-capacity">
               <h4>这道题的掌握程度</h4>
               <p className="math-muted">
-                {analysisViewed
-                  ? "对照解析后，记录你的实际感受。"
-                  : "先查看本题解析，再记录掌握程度。"}
+                记录你对这道题的掌握程度。
               </p>
               <div>
                 {["不会", "吃力", "熟练"].map((name, i) => (
@@ -116,7 +99,7 @@ export default function MathQuestionInsights({
                         ? "btn btn-primary"
                         : "btn btn-secondary"
                     }
-                    disabled={busy || !analysisViewed}
+                    disabled={busy}
                     key={name}
                     onClick={async () => {
                       setBusy(true);
@@ -140,7 +123,6 @@ export default function MathQuestionInsights({
                 ))}
               </div>
             </section>
-          )}
           <h4>同题型历年考情</h4>
           {frequencies.length ? (
             <div className="mqi-frequencies">

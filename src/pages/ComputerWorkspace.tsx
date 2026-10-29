@@ -569,10 +569,8 @@ function Exams({ launch }: { launch: (s: ExerciseLaunch) => void }) {
       const data = await request("/api/exam/wx/practice/examExercise", {
         examId: item.examId || item.id,
       });
-      const selectedSchool = source === "school" ? records(schools.data).find(item => identity(item) === school) : undefined;
-      const schoolPermission = selectedSchool?.permission ? `wx:school:${selectedSchool.permission}` : undefined;
       launch({
-        data: schoolPermission ? { ...data, schoolPermission: data.schoolPermission || schoolPermission } : data,
+        data,
         title: label(item),
         majorId: item.majorId || major,
         ...computerExamConfig(source),
@@ -833,14 +831,12 @@ function Resources() {
 function ComputerAccount({ onClose }: { onClose: () => void }) {
   const { session, refresh } = useSession(),
     detail = useLoad("/api/user/wx/user/detail"),
-    redemptions = useLoad("/api/user/wx/redeemCode/redeem/records"),
     [name, setName] = useState(session.platforms.computer.user?.nickName || ""),
     [avatar, setAvatar] = useState(
       session.platforms.computer.user?.previewUrl || "",
     ),
     [phone, setPhone] = useState(""),
     [sms, setSms] = useState(""),
-    [code, setCode] = useState(""),
     [model, setModel] = useState<R>({
       year: "",
       school: "",
@@ -1095,70 +1091,6 @@ function ComputerAccount({ onClose }: { onClose: () => void }) {
           </button>
         </form>
       </div>
-      <div className="panel">
-        <h3>兑换已有权益</h3>
-        <p className="computer-dim">
-          使用已有兑换码开通相应学习内容。需要账号已绑定手机号。
-        </p>
-        <form
-          className="computer-toolbar"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void act(async () => {
-              if (!detail.data?.phone)
-                throw new Error("请先在上方绑定手机号。");
-              await request(
-                `/api/user/wx/redeemCode/redeem/${encodeURIComponent(code.trim())}/1`,
-                { phone: detail.data.phone },
-                "POST",
-                { phone: detail.data.phone },
-              );
-              setCode("");
-              redemptions.reload();
-            }, "兑换成功，权益已同步");
-          }}
-        >
-          <input
-            className="input"
-            aria-label="权益兑换码"
-            placeholder="输入已有兑换码"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-          />
-          <button
-            className="btn btn-primary"
-            disabled={loading || !code.trim()}
-          >
-            兑换
-          </button>
-        </form>
-        <h4>兑换记录</h4>
-        <Status
-          loading={redemptions.loading}
-          error={redemptions.error}
-          empty={
-            !redemptions.loading &&
-            !redemptions.error &&
-            !records(redemptions.data).length
-          }
-          retry={redemptions.reload}
-        />
-        {records(redemptions.data).map((r, i) => (
-          <div className="computer-list-row" key={i}>
-            <div className="computer-grow">
-              <strong>
-                {r.name ||
-                  r.redeemName ||
-                  r.courseName ||
-                  r.remark ||
-                  "学习权益"}
-              </strong>
-              <p>{r.createDate || r.createTime || r.redeemTime || ""}</p>
-            </div>
-            <span className="computer-pill">已兑换</span>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
@@ -1178,7 +1110,7 @@ export default function ComputerWorkspace({ section }: { section: string }) {
         <p>
           {session.authenticated
             ? session.platforms.computer.error ||
-              "尚未连接计算机小程序，请重新登录以同步学习权限。"
+              "尚未连接计算机小程序，请重新登录以读取学习内容。"
             : "登录 yyb 后，同步计算机题库、课程和学习记录。"}
         </p>
         <button className="btn btn-primary" onClick={openLogin}>
@@ -1210,7 +1142,7 @@ export default function ComputerWorkspace({ section }: { section: string }) {
           className="computer-text-link"
           onClick={() => setAccountOpen(true)}
         >
-          学习账户与已有权益
+          学习账户
           <ChevronRight size={14} />
         </button>
       </div>

@@ -2,10 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft,
-  Check,
   ChevronRight,
   ExternalLink,
-  Gift,
   LoaderCircle,
   MessageSquare,
   RefreshCw,
@@ -31,9 +29,7 @@ export default function MathMessages({
     [order, setOrder] = useState<MathRow>(),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
-    [busy, setBusy] = useState(false),
-    [version, setVersion] = useState(0),
-    [notice, setNotice] = useState("");
+    [version, setVersion] = useState(0);
   const pageSize = 30;
   useEffect(() => {
     let active = true;
@@ -63,7 +59,6 @@ export default function MathMessages({
   const reload = () => setVersion((v) => v + 1);
   const open = async (row: MathRow) => {
     setCurrent(row);
-    setNotice("");
     if (!Number(row.IsRead))
       try {
         await mathApi.readMessage(row.ID, stuid);
@@ -266,43 +261,7 @@ export default function MathMessages({
                   <ExternalLink size={15} />
                 </a>
               )}
-              {current.IsGet !== undefined && Number(current.IsGet) === 0 && (
-                <button
-                  className="btn btn-secondary"
-                  disabled={busy}
-                  onClick={async () => {
-                    setBusy(true);
-                    setError("");
-                    try {
-                      await mathGet("/api/sys_msg_push/GetQuestionAwardVip", {
-                        ID: current.ID,
-                      });
-                      setCurrent({ ...current, IsGet: 1 });
-                      setNotice("消息奖励已领取");
-                      reload();
-                    } catch (e: any) {
-                      setError(e.message);
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                >
-                  <Gift size={15} />
-                  领取反馈奖励
-                </button>
-              )}
-              {Number(current.IsGet) === 1 && (
-                <span className="math-tag">
-                  <Check size={14} />
-                  奖励已领取
-                </span>
-              )}
             </div>
-            {notice && (
-              <p className="math-account-notice" role="status">
-                {notice}
-              </p>
-            )}
             {error && (
               <p className="math-error-text" role="alert">
                 {error}

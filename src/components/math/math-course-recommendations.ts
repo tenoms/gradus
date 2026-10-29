@@ -84,18 +84,7 @@ export const recommendationApi = {
       "/api/c_course_users_record/Inner_c_course_users_record",
       recommendationCompletion(context),
     );
-    let warning = "";
-    if (context.CalendarID && String(context.CalendarID) !== "0")
-      try {
-        await mathPost("/api/c_course_calendar/UnlockCalendarByStuID", {
-          ID: context.CalendarID,
-          StuID: context.stuid,
-          ProductID: Number(context.ProductID) || 0,
-        });
-      } catch (e) {
-        warning = e instanceof Error ? e.message : "下一任务暂未解锁";
-      }
-    return { result, warning };
+    return result;
   },
   append: (
     context: RecommendationContext,

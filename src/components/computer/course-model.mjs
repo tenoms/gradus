@@ -3,30 +3,12 @@ export function orderedSubcourses(course) {
   const ids = String(course?.courseRelated || "")
     .split(",")
     .filter(Boolean);
-  return ids.length
-    ? ids.map((id) => list.find((c) => String(c.id) === id)).filter(Boolean)
-    : list;
+  const ordered = ids.map((id) => list.find((course) => String(course.id) === id)).filter(Boolean);
+  return [...ordered, ...list.filter(course => !ordered.includes(course))];
 }
 export function studyCourseId(course, selected = "") {
   return String(
     selected || orderedSubcourses(course)[0]?.id || course?.id || "",
-  );
-}
-export function isCourseOwned(course, permission, joined = false) {
-  return (
-    joined ||
-    course?.own === true ||
-    course?.own === 1 ||
-    permission === true ||
-    permission === 1 ||
-    permission === "true" ||
-    permission === "1"
-  );
-}
-export function lessonCanPlay(lesson, owned) {
-  return (
-    !!String(lesson?.mediaId || "").trim() &&
-    (owned || Number(lesson?.isFree) === 2)
   );
 }
 export function courseAttachments(lesson, detail) {

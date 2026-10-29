@@ -19,7 +19,7 @@ import MathModelTraining from "./MathModelTraining";
 import { AttachmentInput } from "./MathQuestions";
 import { courseAlbumApi as api } from "./math-course-album";
 import type { CourseAlbumContext } from "./math-course-album";
-import { courseAlbumAllowed, courseAlbumTree } from "./course-album-model.mjs";
+import { courseAlbumTree } from "./course-album-model.mjs";
 import "./math-course-album.css";
 function useData(key: string, load: () => Promise<any>) {
   const [data, setData] = useState<any>(),
@@ -117,16 +117,11 @@ export default function MathCourseAlbum({
     [position, setPosition] = useState<string | number>(0),
     [log, setLog] = useState<Row>({});
   const info: Row = remote.data?.info || {},
-    catalogs: Row[] = remote.data?.catalogs || [],
-    allowed = courseAlbumAllowed(
-      info,
-      session.platforms.math.user || {},
-      catalogs.length,
-    );
+    catalogs: Row[] = remote.data?.catalogs || [];
   const reading = useData(
     `course-album-chapter-${catalog?.ID || 0}-${contextKey}`,
     () =>
-      catalog && allowed
+      catalog
         ? api.chapter(AlbumID, catalog.ID, context)
         : Promise.resolve({ rows: [], log: {}, likes: {} }),
   );
@@ -222,7 +217,6 @@ export default function MathCourseAlbum({
         <MathQuestionReader
           row={question}
           stuid={stuid}
-          analysisSource="课程"
           isCourse={false}
         />
       </>
@@ -316,11 +310,6 @@ export default function MathCourseAlbum({
               </span>
               <button
                 className="btn btn-primary"
-                disabled={
-                  (teacher && status === 1) ||
-                  operations.loading ||
-                  !!operations.error
-                }
                 onClick={() => {
                   void savePosition(row.ID);
                   onPaper({
@@ -346,6 +335,8 @@ export default function MathCourseAlbum({
   }
   return (
     <section className="math-course-album">
+      {Object.values(remote.data?.errors || {}).filter(Boolean).map((message, index) => <p className="mc-error" role="status" key={`overview-${index}`}>{String(message)}</p>)}
+      {Object.values(reading.data?.errors || {}).filter(Boolean).map((message, index) => <p className="mc-error" role="status" key={`chapter-${index}`}>{String(message)}</p>)}
       {remote.loading ? (
         <div className="mc-status">
           <LoaderCircle size={19} className="spin" />
@@ -411,10 +402,6 @@ export default function MathCourseAlbum({
             </div>
           ) : reading.error ? (
             <p className="mc-error">{reading.error}</p>
-          ) : !allowed ? (
-            <p className="mc-notice">
-              本专辑需要有效的原平台专辑权益，当前账号尚不能打开。
-            </p>
           ) : (
             <>
               {operations.error && (
@@ -426,7 +413,7 @@ export default function MathCourseAlbum({
                   {render(courseAlbumTree(section.ContentList || []))}
                 </section>
               ))}
-              {!reading.data?.rows?.length && (
+              {!reading.data?.rows?.length && !reading.data?.errors?.content && (
                 <p className="mc-status">本章暂未返回学习内容。</p>
               )}
             </>
@@ -486,16 +473,10 @@ export default function MathCourseAlbum({
                 <img src={url} alt="专辑介绍" key={url} loading="lazy" />
               ))}
           </div>
-          {!allowed && (
-            <p className="mc-notice">
-              本专辑需要有效的数学会员或原专辑免费有效期，当前账号尚不能进入章节。
-            </p>
-          )}
           <div className="mca-catalogs">
             {catalogs.map((row) => (
               <button
                 key={row.ID}
-                disabled={!allowed}
                 onClick={() => {
                   setCatalog(row);
                   setNotice("");

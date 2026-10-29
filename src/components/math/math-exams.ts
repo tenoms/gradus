@@ -59,27 +59,6 @@ export function examDurationSeconds(context: MathPaperContext, meta: ExamRow) {
       : Number(meta.Times) || 0,
   );
 }
-export function examDeadline(
-  context: MathPaperContext,
-  meta: ExamRow,
-  elapsed: number,
-  roomEnd = NaN,
-  now = Date.now(),
-) {
-  const limit = examDurationSeconds(context, meta);
-  const remaining = Number.isFinite(roomEnd)
-    ? Math.max(0, Math.ceil((roomEnd - now) / 1000))
-    : Math.max(0, limit - elapsed);
-  return {
-    limit,
-    remaining,
-    expired: (limit > 0 || Number.isFinite(roomEnd)) && remaining === 0,
-    forceSubmit:
-      context.kind === "dry" ||
-      context.kind === "weekly" ||
-      !!context.isTeacher,
-  };
-}
 export function examName(row: ExamRow) {
   return String(
     row.Name ||
@@ -673,16 +652,6 @@ export const mathExamApi = {
       },
     );
     const warnings: string[] = [];
-    if (context.CalendarID)
-      try {
-        await mathPost("/api/c_course_calendar/UnlockCalendarByStuID", {
-          ID: context.CalendarID,
-          StuID: context.stuid,
-          ProductID: context.ProductID,
-        });
-      } catch (e) {
-        warnings.push(e instanceof Error ? e.message : "下一学习任务尚未解锁");
-      }
     if (!context.isAbility && Number(meta.BusType) === 1)
       try {
         await mathPost("/api/c_paper/RelPaperByStuID1", {

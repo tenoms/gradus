@@ -115,26 +115,6 @@ test("recommendation materials and additional topics join actual original questi
   assert.equal(result.topics[0].specialList[0].existing, true);
   assert.equal(result.topics[0].specialList[1].existing, false);
 });
-test("new-topic selection waits for all existing groups and keeps the original eight-opportunity cap", () => {
-  const group = { isFinish: true, AddTime: "2026-10-29 10:00:00" };
-  assert.deepEqual(
-    model.recommendationCanAddTopic([{ ...group, isFinish: false }]),
-    { additional: 0, remaining: 8, allowed: false },
-  );
-  const groups = [
-    group,
-    ...Array.from({ length: 8 }, (_, i) => ({
-      ...group,
-      AddTime: `2026-10-29 10:${String(i + 2).padStart(2, "0")}:00`,
-    })),
-  ];
-  assert.deepEqual(model.recommendationCanAddTopic(groups), {
-    additional: 8,
-    remaining: 0,
-    allowed: false,
-  });
-  assert.equal(model.recommendationCanAddTopic([]).allowed, false);
-});
 test("recommendation answers retain BusType3 identities and use mastery states instead of ordinary exam points", () => {
   const record = model.buildRecommendationRecord(
     context,
@@ -308,26 +288,14 @@ test("topic metadata uses source POST and super AutoModel command without creati
   assert.equal(calls[0].command, "GetSuperSpecialList");
   assert.equal(superResult.info.length, 1);
 });
-test("completion saves first then unlocks; a failed unlock reports a warning without losing the completed study record", async () => {
+test("completion saves the actual whole-paper study record without requesting a content unlock", async () => {
   const calls = [];
-  globalThis.__recommendPost = async (path, data) => {
-    calls.push({ path, data });
-    if (path.includes("Unlock")) throw new Error("fixture unlock unavailable");
-    return { data: 9 };
-  };
+  globalThis.__recommendPost = async (path, data) => { calls.push({ path, data }); return { data: 9 }; };
   const result = await api.complete(context);
-  assert.equal(
-    calls[0].path,
-    "/api/c_course_users_record/Inner_c_course_users_record",
-  );
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].path, "/api/c_course_users_record/Inner_c_course_users_record");
   assert.equal(calls[0].data.IsFinished, 1);
-  assert.equal(calls[1].path, "/api/c_course_calendar/UnlockCalendarByStuID");
-  assert.deepEqual(calls[1].data, {
-    ID: 303,
-    StuID: "student",
-    ProductID: 404,
-  });
-  assert.match(result.warning, /fixture unlock/);
+  assert.equal(result.data, 9);
 });
 test("ordinary and super append use the matching source endpoint and user-selected single topic", async () => {
   const calls = [];

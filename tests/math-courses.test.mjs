@@ -63,7 +63,7 @@ test("calendar exams retain the original required entry and exit completion reco
   assert.equal(calendarFinished(calendar), true);
 });
 
-test("gap review blocks the next paper until grading and assigned training are finished", () => {
+test("gap review describes the returned grading and assigned training states", () => {
   assert.equal(leakPaperState({}), 0);
   assert.equal(leakPaperState({ _c_paper_student: { StuState: 0 } }), 1);
   assert.equal(
@@ -82,31 +82,17 @@ test("gap review blocks the next paper until grading and assigned training are f
 
 import {
   courseMinutes,
-  packetAuthorization,
+  packetTreeRows,
   completedCourseAssignments,
   courseResumeTarget,
   packetResumeEntry,
-  courseAccessError,
 } from "../src/components/math/course-model.mjs";
-test("third generation chapter authorization follows FunctionID and cannot be bypassed by a descendant", () => {
-  const rows = [
-    { ID: 1, PID: "" },
-    { ID: 2, PID: 1 },
-    { ID: 3, PID: 2 },
-    { ID: 4, PID: 3, CourseID: 50 },
-    { ID: 5, PID: 2 },
-    { ID: 6, PID: 5, CourseID: 60 },
-  ];
-  const granted = packetAuthorization(rows, 2633, [{ FunctionID: 3 }]);
-  assert.equal(granted.find((r) => r.ID === 3).hasAuth, true);
-  assert.equal(granted.find((r) => r.ID === 4).hasAuth, true);
-  assert.equal(granted.find((r) => r.ID === 5).hasAuth, false);
-  assert.equal(granted.find((r) => r.ID === 6).hasAuth, false);
-  assert.equal(granted.find((r) => r.ID === 6)._authChapterID, 5);
-  assert.equal(
-    packetAuthorization(rows, 99, []).every((r) => r.hasAuth),
-    true,
-  );
+test("packet tree presentation retains every returned chapter and depth regardless of entitlement flags", () => {
+  const rows = [{ ID: 1, PID: "" }, { ID: 2, PID: 1 }, { ID: 3, PID: 2, hasAuth: false }, { ID: 4, PID: 3, CourseID: 50 }];
+  const tree = packetTreeRows(rows);
+  assert.deepEqual(tree.map(row => row.ID), [1, 2, 3, 4]);
+  assert.deepEqual(tree.map(row => row._depth), [0, 1, 2, 3]);
+  assert.equal(tree[3].CourseID, 50);
 });
 test("course continuation reads the latest actual row and original mini-program route without opening its URL", () => {
   const target = courseResumeTarget([
@@ -190,25 +176,9 @@ test("completed assignment summary distinguishes teacher publication and finishe
   assert.equal(result.rows[1].Score, 90);
   assert.equal(result.rows[1].CalendarID, 2);
 });
-test("course durations display seconds as minutes and original product availability dates remain enforced", () => {
+test("course durations display seconds as minutes", () => {
   assert.equal(courseMinutes(5400), 90);
   assert.equal(courseMinutes(0), 0);
-  const now = Date.parse("2026-10-29T04:00:00Z");
-  assert.match(
-    courseAccessError({ StateaTime: "2026-10-30 00:00:00" }, now),
-    /尚未开始/,
-  );
-  assert.match(
-    courseAccessError({ EndTime: "2026-10-29 11:00:00" }, now),
-    /已结束/,
-  );
-  assert.equal(
-    courseAccessError(
-      { StateaTime: "0001-01-01T00:00:00", EndTime: "1900-01-01 00:00:00" },
-      now,
-    ),
-    "",
-  );
 });
 
 import {
@@ -270,7 +240,6 @@ test("packet continuation writes the original packet progress type and verifies 
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
 globalThis.__courseFixture = {
-  freeCourseClaim,
   mathCommand: (...args) => globalThis.__courseCommand(...args),
   mathGet: (...args) => globalThis.__courseGet(...args),
   mathPost: (...args) => globalThis.__coursePost(...args),
@@ -288,20 +257,18 @@ const courseSource = await readFile(
     })
     .outputText.replace(/import \{[^}]+\} from ['"][^'"]+['"];?/g, "");
 const courseAdapter = await import(
-  `data:text/javascript;base64,${Buffer.from("const {freeCourseClaim,mathCommand,mathGet,mathPost}=globalThis.__courseFixture;" + courseOutput).toString("base64")}`
+  `data:text/javascript;base64,${Buffer.from("const {mathCommand,mathGet,mathPost}=globalThis.__courseFixture;" + courseOutput).toString("base64")}`
 );
-test("chapter entitlement uses Model while original resume and history queries keep their scopes", async () => {
+test("resume and history queries keep their original scopes", async () => {
   const calls = [];
   globalThis.__courseCommand = async (...args) => {
     calls.push(args);
     return { data: [[]] };
   };
-  await courseAdapter.courseApi.chapterAuth("s");
   await courseAdapter.courseApi.packetLast("s", 10, 20);
   await courseAdapter.courseApi.last("s", 10, 20, 30);
   await courseAdapter.courseApi.history("s", 40, 3);
   assert.deepEqual(calls, [
-    ["GetSysUser3ChapterAuthList", { StuID: "s", System_Station_ID: 1 }, true],
     [
       "GetCoursePacketLastStudy",
       { StuID: "s", ProductID: 10, CoursePacketID: 20 },
@@ -316,40 +283,7 @@ test("chapter entitlement uses Model while original resume and history queries k
     ],
   ]);
 });
-
-import {
-  zeroPriceCourse,
-  freeCourseClaim,
-  courseVipActive,
-} from "../src/components/math/course-model.mjs";
-test("zero-price course activation requires both actual price fields while member courses retain their separate gate", () => {
-  assert.equal(zeroPriceCourse({}), false);
-  assert.equal(zeroPriceCourse({ Proce: false, DiscountPrice: false }), false);
-  assert.equal(zeroPriceCourse({ Proce: null, DiscountPrice: null }), false);
-  assert.equal(zeroPriceCourse({ Proce: 0 }), false);
-  assert.equal(zeroPriceCourse({ Proce: "", DiscountPrice: "" }), false);
-  assert.equal(zeroPriceCourse({ Proce: 0, DiscountPrice: 0 }), true);
-  assert.equal(zeroPriceCourse({ Proce: "0", DiscountPrice: "0" }), true);
-  assert.equal(zeroPriceCourse({ Proce: 100, DiscountPrice: 0 }), false);
-  assert.equal(
-    courseVipActive(
-      { VipEndTime: "2026-10-29 13:00:00" },
-      Date.parse("2026-10-29T04:00:00Z"),
-    ),
-    true,
-  );
-  assert.deepEqual(
-    freeCourseClaim("s", 10, Date.parse("2026-10-29T04:00:00Z")),
-    {
-      CourseProductID: 10,
-      StuID: "s",
-      Source: "系统支付开通",
-      Room: "系统开通202610",
-      System_Station_ID: 1,
-    },
-  );
-});
-test("course catalogues only read and activation retains the two original non-payment contracts", async () => {
+test("course catalogues only read without activating subscriptions", async () => {
   const calls = [];
   globalThis.__courseGet = async (...args) => {
     calls.push(["get", ...args]);
@@ -369,8 +303,6 @@ test("course catalogues only read and activation retains the two original non-pa
     calls.some((c) => c[0] === "post"),
     false,
   );
-  await courseAdapter.courseApi.claim("s", 10);
-  await courseAdapter.courseApi.freeClaim("s", 11);
   assert.deepEqual(calls[0], [
     "get",
     "/api/c_course_product/GetProductByStuID2",
@@ -383,14 +315,8 @@ test("course catalogues only read and activation retains the two original non-pa
     },
   ]);
   assert.equal(calls[1][1], "GetCourseProductRecordCounts");
-  assert.deepEqual(calls[2], [
-    "post",
-    "/api/c_course_product/VIPProductByStuid",
-    { StuID: "s", CourseProductID: 10 },
-  ]);
-  assert.equal(calls[3][1], "/api/c_course_users/Inner_c_course_users");
-  assert.equal(calls[3][2].CourseProductID, 11);
-  assert.equal(calls[3][2].Source, "系统支付开通");
+  assert.equal(Object.hasOwn(courseAdapter.courseApi, "claim"), false);
+  assert.equal(Object.hasOwn(courseAdapter.courseApi, "freeClaim"), false);
 });
 
 import { courseQuestionRecord } from "../src/components/math/course-model.mjs";

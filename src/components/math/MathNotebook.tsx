@@ -19,7 +19,6 @@ import {
   X,
 } from "lucide-react";
 import RichContent from "../RichContent";
-import { useSession } from "../../lib/session";
 import {
   mathFreshCommand as mathCommand,
   mathGet,
@@ -35,7 +34,6 @@ import {
   noteQuestionRow,
   noteRecordId,
   notePrintHistoryParams,
-  notePrintLogRecords,
   noteWasPrinted,
   sortCatalogPayload,
 } from "./notebook-model.mjs";
@@ -75,7 +73,6 @@ export default function MathNotebook({
   initialKind: NoteKind;
   renderQuestion: (row: MathRow) => ReactNode;
 }) {
-  const { session } = useSession();
   const [kind, setKind] = useState<NoteKind>(initialKind),
     [origin, setOrigin] = useState("book"),
     [bank, setBank] = useState(0),
@@ -101,8 +98,7 @@ export default function MathNotebook({
     [limit, setLimit] = useState(30),
     [exports, setExports] = useState<
       { name: string; count: number; url: string; recordIds: string[] }[]
-    >([]),
-    [exportReady, setExportReady] = useState<Record<string, boolean>>({});
+    >([]);
   const categories = useNotes(`catalogs:${stuid}:${kind}:${subject}`, () =>
     mathCommand("GetSysUserBookCatalog", {
       StuID: stuid,
@@ -190,10 +186,6 @@ export default function MathNotebook({
     selected.includes(noteRecordId(r, origin)),
   );
   const currentCatalog = catalogs.find((c) => String(c.ID) === catalog);
-  const vip =
-    !!session.platforms.math.user?.VipEndTime &&
-    Date.parse(String(session.platforms.math.user.VipEndTime)) > Date.now();
-  const downloadCount = Number(tables[1]?.[0]?.count || 0);
   useEffect(() => {
     setKind(initialKind);
   }, [initialKind]);
@@ -279,47 +271,16 @@ export default function MathNotebook({
   }
   function exportNotes() {
     setError("");
-    setExportReady({});
     try {
-      if (printHistory.loading || printHistory.error)
-        throw new Error("请先读取平台打印记录后再导出。");
       setExports(
         noteExportLinks(selectedRows, {
           origin,
           kind,
           stuid,
-          vip,
-          downloadCount,
         }),
       );
     } catch (e: any) {
       setError(e.message);
-    }
-  }
-  async function openExport(file: { url: string; recordIds: string[] }) {
-    setBusy(true);
-    setError("");
-    const popup = window.open("about:blank", "_blank");
-    if (popup) popup.opener = null;
-    try {
-      const items = selectedRows.filter((row) =>
-        file.recordIds.includes(noteRecordId(row, origin)),
-      );
-      const logs = notePrintLogRecords(items, { origin, stuid });
-      if (!logs.length) throw new Error("所选记录已变化，请重新准备导出。");
-      await mathPost("/api/sys_user_record/InnerAll_sys_user_record", {
-        Content: JSON.stringify(logs),
-      });
-      setExportReady((v) => ({ ...v, [file.url]: true }));
-      setNotice("本批题目已登记打印记录，下载页已准备。");
-      printHistory.reload();
-      entries.reload();
-      if (popup) popup.location.href = file.url;
-    } catch (e: any) {
-      popup?.close();
-      setError(e.message);
-    } finally {
-      setBusy(false);
     }
   }
   if (open)
@@ -753,9 +714,7 @@ export default function MathNotebook({
             className="icon-button"
             disabled={
               !selectedRows.length ||
-              busy ||
-              printHistory.loading ||
-              !!printHistory.error
+              busy
             }
             aria-label="导出所选记录PDF"
             title="导出所选记录PDF"
@@ -797,32 +756,9 @@ export default function MathNotebook({
           <div className="mn-export">
             <h3>平台 PDF 导出</h3>
             <p>
-              每批最多30题。明确打开后登记原平台打印记录，再进入下载页面，沿用账号下载额度。
+              按所选记录生成下载链接，记录较多时会拆成多个文件。
             </p>
-            {exports.map((file, i) =>
-              exportReady[file.url] ? (
-                <a
-                  className="btn btn-secondary"
-                  href={file.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  key={i}
-                >
-                  <FileDown size={15} />
-                  再次打开 · {file.name} · {file.count} 题
-                </a>
-              ) : (
-                <button
-                  className="btn btn-secondary"
-                  disabled={busy || entries.loading}
-                  onClick={() => void openExport(file)}
-                  key={i}
-                >
-                  <FileDown size={15} />
-                  登记并打开 · {file.name} · {file.count} 题
-                </button>
-              ),
-            )}
+            {exports.map((file, i) => <a className="btn btn-secondary" href={file.url} target="_blank" rel="noreferrer" key={i}><FileDown size={15} />打开 · {file.name} · {file.count} 题</a>)}
           </div>
         )}
         {entries.loading ? (

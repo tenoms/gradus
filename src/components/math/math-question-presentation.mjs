@@ -19,11 +19,11 @@ export function mathQuestionPrompt(question, stem = []) {
   return { content: blocks, image };
 }
 
-export function mathQuestionChoice(options, question = {}, { readOnly = false, lockAnalysis = false } = {}) {
+export function mathQuestionChoice(options, question = {}, { readOnly = false } = {}) {
   const answers = options.filter(option => Number(option.IsAnswer) === 1);
   const names = [question.Type, question.QuestionType, ...options.map(option => option.Name)].join(" ");
   const multiple = answers.length > 1 || /多选/.test(names);
-  return { multiple, immediate: options.length > 0 && answers.length === 1 && !multiple && !readOnly && !lockAnalysis };
+  return { multiple, immediate: options.length > 0 && answers.length === 1 && !multiple && !readOnly };
 }
 
 /** BusValue may contain a Polyv VID or a direct video URL in the original schema. */

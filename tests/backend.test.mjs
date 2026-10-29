@@ -296,7 +296,7 @@ test("comment reactions preserve the recipient author while other writes bind th
   );
 });
 
-test("known own profile writes update session display and entitlement actions reread only the current user", async () => {
+test("known own profile writes update session display without entitlement checks", async () => {
   const calls = [];
   await serve(
     {
@@ -345,22 +345,8 @@ test("known own profile writes update session display and entitlement actions re
       ).platforms.math.user;
       assert.equal(user.UserNick, "新昵称");
       assert.equal(user.SubjectType, "数二");
-      await write("/api/sys_users/ExperienceVip", {
-        StuID: "other-student",
-        System_Station_ID: 1,
-      });
-      user = (
-        await (
-          await request("/api/learning/auth/session", { headers: { cookie, "X-Study-User": userId } })
-        ).json()
-      ).platforms.math.user;
-      assert.equal(user.VipEndTime, "2030-01-01");
       assert.equal(user.Pwd, undefined);
-      assert.equal(
-        JSON.parse(calls.at(-1).input.data.data).StuID,
-        "current-student",
-      );
-      assert.equal(typeof JSON.parse(calls.at(-1).input.data.data).t, "number");
+      assert.equal(calls.some(call => call.input.data.command === "GetUserInfoByStuID"), false);
     },
   );
 });

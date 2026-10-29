@@ -1,5 +1,3 @@
-import { ensureMathBookAnalysisAccess } from "../../platforms/math-access";
-import { useSession } from "../../lib/session";
 import { bookViewPayload } from "./reading-progress.mjs";
 import MathQuestionInsights from "./MathQuestionInsights";
 import { useEffect, useRef, useState } from "react";
@@ -131,12 +129,10 @@ function QuestionReader({
   practice,
   onAnswered,
   readOnly,
-  lockAnalysis,
   onAnalysisViewed,
   noteSource,
   isCourse,
   selfAssessmentOnly = false,
-  analysisSource,
 }: {
   row: MathRow;
   book?: MathRow;
@@ -145,9 +141,7 @@ function QuestionReader({
   next?: () => void;
   practice?: boolean;
   selfAssessmentOnly?: boolean;
-  analysisSource?: string;
   readOnly?: boolean;
-  lockAnalysis?: boolean;
   onAnalysisViewed?: () => void;
   noteSource?: string;
   isCourse?: boolean;
@@ -157,7 +151,6 @@ function QuestionReader({
     details?: { question: MathRow; options: MathRow[] },
   ) => Promise<void>;
 }) {
-  const { session } = useSession();
   const qid = mathQuestionId(row);
   const remote = useRemote(`question-${qid}`, async () => {
     const results = await Promise.allSettled([
@@ -205,7 +198,7 @@ function QuestionReader({
   const correctIds = options
     .filter((r) => Number(r.IsAnswer) === 1)
     .map((r) => String(r.ID));
-  const { multiple, immediate: immediateChoice } = mathQuestionChoice(options, q, { readOnly, lockAnalysis });
+  const { multiple, immediate: immediateChoice } = mathQuestionChoice(options, q, { readOnly });
   const prompt = mathQuestionPrompt(q, stem);
   const answerKey = String(q.TypeAnswer ?? q.Answer ?? "");
   const needsSelfAssessment =
@@ -232,25 +225,12 @@ function QuestionReader({
     );
   };
   const loadAnalysis = async () => {
-    if (lockAnalysis || analysisLoading) return;
+    if (analysisLoading) return;
     setTab("解析");
     if (analysis) return;
     setAnalysisLoading(true);
     setAnalysisError("");
     try {
-      await ensureMathBookAnalysisAccess({
-        stuid,
-        qid,
-        bookId: Number(book?.ID || q.BookID || row.BookID || 0),
-        user: session.platforms.math.user || {},
-        source:
-          analysisSource ||
-          row._mathAnalysisSource ||
-          noteSource ||
-          row.Source ||
-          "电子书",
-        preview: row._mathPreview === true,
-      });
       setAnalysis(mathRows(await mathApi.analysis(qid)));
       onAnalysisViewed?.();
       syncBookView();
@@ -260,10 +240,6 @@ function QuestionReader({
         title: `${book ? mathTitle(book) + " · " : ""}第 ${row.QuestionSort || q.QuestionID || qid} 题解析`,
         path: "/study/question-bank",
       });
-      if (stuid)
-        mathApi
-          .view(stuid, Number(book?.ID || q.BookID || row.BookID || 0), qid)
-          .catch(() => {});
     } catch (e) {
       setAnalysisError(msg(e));
     } finally {
@@ -288,17 +264,15 @@ function QuestionReader({
     try {
       if (onAnswered)
         await onAnswered(mine, correct!, { question: q, options });
-      setResult(lockAnalysis ? undefined : correct);
+      setResult(correct);
       setNotice(
-        lockAnalysis
-          ? "答案草稿已保存，提交测试后可查看解析。"
-          : canGrade
+        canGrade
             ? correct
               ? "回答正确，继续保持。"
               : "这道题还需要巩固，可以打开解析复盘。"
             : "已记录作答，请对照解析核对答案。",
       );
-      if (!lockAnalysis && !recordedPractice.current) {
+      if (!recordedPractice.current) {
         recordStudy({
           platform: "math",
           type: "practice",
@@ -323,7 +297,7 @@ function QuestionReader({
       previous={prev}
       next={next}
       disabled={saving || remote.loading || !!noteKind || newQa}
-      tools={!lockAnalysis && (
+      tools={(
         <button
           type="button"
           className="learning-tool-button"
@@ -386,7 +360,7 @@ function QuestionReader({
       <div className="tabs math-question-tabs">
         {[
           "题目",
-          ...(!lockAnalysis ? ["解析", "举一反三", "专项模块"] : []),
+          "解析", "举一反三", "专项模块",
           "讨论",
         ].map((t) => (
           <button
@@ -465,8 +439,7 @@ function QuestionReader({
                 className={result === true ? "active" : ""}
                 disabled={saving}
                 onClick={() => {
-                  if (lockAnalysis) { setResult(true); setNotice(""); }
-                  else void submit(true);
+                  void submit(true);
                 }}
               >
                 回答正确
@@ -475,8 +448,7 @@ function QuestionReader({
                 className={result === false ? "active" : ""}
                 disabled={saving}
                 onClick={() => {
-                  if (lockAnalysis) { setResult(false); setNotice(""); }
-                  else void submit(false);
+                  void submit(false);
                 }}
               >
                 需要巩固
@@ -484,7 +456,7 @@ function QuestionReader({
             </div>
           )}
           <div className="math-answer-actions">
-            {!readOnly && (!selfAssessmentOnly || options.length > 0) && (!immediateChoice || saveFailed) && (!needsSelfAssessment || lockAnalysis) && (
+            {!readOnly && (!selfAssessmentOnly || options.length > 0) && (!immediateChoice || saveFailed) && !needsSelfAssessment && (
               <button
                 className="btn btn-primary"
                 disabled={
@@ -498,9 +470,8 @@ function QuestionReader({
             <button
               className="btn btn-secondary"
               onClick={loadAnalysis}
-              disabled={lockAnalysis}
             >
-              {lockAnalysis ? "提交测试后解锁解析" : "查看解析"}
+              查看解析
             </button>
           </div>
           {immediateChoice && <p className="math-answer-hint">{saving ? "正在保存答案…" : onAnswered ? "选择选项后直接核对并保存答案。" : "选择选项后直接核对答案。"}</p>}
@@ -514,7 +485,7 @@ function QuestionReader({
           )}
         </div>
       )}
-      {tab === "解析" && !lockAnalysis && (
+      {tab === "解析" && (
         <div className="math-question-body math-question-analysis" aria-label="题目解析">
           <State
             loading={analysisLoading}
@@ -522,9 +493,7 @@ function QuestionReader({
             empty={!analysisLoading && !analysisError && !analysis?.length}
             reload={loadAnalysis}
           />
-          {analysis
-            ?.filter((a) => a.IsValid !== 0)
-            .map((a, i) => (
+          {analysis?.map((a, i) => (
               <AnalysisBlock
                 key={a.ID || i}
                 row={{
@@ -573,7 +542,6 @@ function QuestionReader({
             stuid={stuid}
             qid={qid}
             bookId={Number(book?.ID || q.BookID || row.BookID || 0)}
-            analysisViewed={!!analysis && !analysisError}
           />
           {remote.data?.files?.length ? (
             <div className="math-file-list">
@@ -597,11 +565,10 @@ function QuestionReader({
         <MathExtrapolation
           sourceQuestionId={qid}
           stuid={stuid}
-          renderQuestion={(question, viewed) => (
+          renderQuestion={(question) => (
             <MathQuestionReader
               row={question}
               stuid={stuid}
-              onAnalysisViewed={viewed}
             />
           )}
         />

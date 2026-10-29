@@ -1,50 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  qaStudentCanFollow,
   qaTeacherRights,
   qaVoicePayload,
   qaReportDetailParams,
 } from "../src/platforms/math-qa.ts";
-test("student followup uses service EndTime instead of extending it from teacher update time", () => {
-  const now = Date.parse("2026-10-29T12:00:00+08:00");
-  assert.equal(
-    qaStudentCanFollow(
-      {
-        State: 2,
-        EndTime: "2026-10-29 11:59:00",
-        UpdateTime: "2026-10-29 11:00:00",
-      },
-      now,
-    ),
-    false,
-  );
-  assert.equal(
-    qaStudentCanFollow({ State: 2, EndTime: "2026-10-29 12:01:00" }, now),
-    true,
-  );
-});
-test("only the assigned teacher can edit, history is read only and answer editing expires after three hours", () => {
-  const now = Date.parse("2026-10-29T12:00:00+08:00");
-  const info = { State: 2, TeacherID: 7, UpdateTime: "2026-10-29 10:00:00" };
-  assert.equal(
-    qaTeacherRights(info, { TeacherID: "7" }, false, now).editAnswer,
-    true,
-  );
-  assert.equal(
-    qaTeacherRights(info, { TeacherID: 8 }, false, now).write,
-    false,
-  );
-  assert.equal(qaTeacherRights(info, { TeacherID: 7 }, true, now).write, false);
-  assert.equal(
-    qaTeacherRights(
-      { ...info, UpdateTime: "2026-10-29 08:59:00" },
-      { TeacherID: 7 },
-      false,
-      now,
-    ).editAnswer,
-    false,
-  );
+test("teacher editing keeps author ownership without local response expiry", () => {
+  const info = { State: 2, TeacherID: 7, UpdateTime: "2000-01-01 00:00:00" };
+  assert.equal(qaTeacherRights(info, { TeacherID: "7" }).editAnswer, true);
+  assert.equal(qaTeacherRights(info, { TeacherID: "7" }).follow, true);
+  assert.equal(qaTeacherRights(info, { TeacherID: 8 }).write, false);
+  assert.equal(qaTeacherRights(info, { TeacherID: 7 }, true).write, false);
 });
 test("voice answers and followup use original independent records and never send the teacher as a student", () => {
   const input = {

@@ -32,15 +32,11 @@ import {
   videoProgressRecord,
   leakPaperState,
   courseMinutes,
-  packetAuthorization,
+  packetTreeRows,
   completedCourseAssignments,
   courseResumeTarget,
   packetResumeEntry,
-  courseAccessError,
-  courseTasksFinished,
   packetVisitRecord,
-  courseVipActive,
-  zeroPriceCourse,
   courseQuestionRecord,
 } from "./course-model.mjs";
 import { MathCoursePaper } from "./MathExams";
@@ -120,7 +116,7 @@ function Status({
       <div className="empty-state">
         <BookOpen size={30} />
         <h3>当前账号暂无相关内容</h3>
-        <p>课程与学习记录按原平台已有权限同步。</p>
+        <p>课程与学习记录同步到当前学习账号。</p>
       </div>
     );
   return null;
@@ -278,7 +274,7 @@ function VodPlayer({
           autoplay: false,
           forceH5: true,
         };
-        // Web authorizations are accepted only when returned by the learning platform.
+        // Playback parameters are taken from the returned course data.
         const playsafe =
           data.playsafe || data.PlaySafe || data.playSafe || data.PlayToken;
         if (playsafe) options.playsafe = playsafe;
@@ -316,7 +312,7 @@ function VodPlayer({
         });
         const fail = () => {
           if (active)
-            setError("视频未获播放授权或暂不可用，请确认当前账号的课程权限。");
+            setError("视频暂时无法播放，请重试或检查来源服务。");
         };
         player.on("serverError", fail);
         player.on("s2j_onPlayerError", fail);
@@ -427,13 +423,11 @@ function QuestionTask({
   onSaved: () => void;
   recordProgress?: boolean;
 }) {
-  const query = useContent(`course-q-${task.BusID}`, () =>
-      Promise.all([mathApi.question(task.BusID), mathApi.analysis(task.BusID)]),
-    ),
+  const query = useContent(`course-q-${task.BusID}`, () => mathApi.question(task.BusID)),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [previous, setPrevious] = useState<Row>((task._record || [])[0] || {});
-  const q = query.data ? mathRows(query.data[0])[0] || task.Data || {} : {};
+  const q = query.data ? mathRows(query.data)[0] || task.Data || {} : task.Data || {};
   async function save(
     answer: string,
     correct: boolean,
@@ -473,12 +467,6 @@ function QuestionTask({
           String(task.Data?.ID || task.BusID),
       );
       if (current?._record?.length) setPrevious(current._record[0]);
-      if (questions.length && questions.every((row) => row._record?.length))
-        await courseApi.unlock(
-          context.StuID,
-          context.CalendarID,
-          context.ProductID,
-        );
       onSaved();
     } catch (e: any) {
       setError(`本题已保存，日程进度暂未同步：${e.message}`);
@@ -491,11 +479,10 @@ function QuestionTask({
         error={query.error || error}
         reload={query.reload}
       />
-      {!query.loading && !query.error && (
+      {!query.loading && (query.data || task.Data) && (
         <MathQuestionReader
           row={{ ...q, QuestionID: task.BusID, MyAnswer: previous.Answer }}
           stuid={context.StuID}
-          analysisSource="课程"
           isCourse={false}
           practice
           selfAssessmentOnly
@@ -624,9 +611,7 @@ function TaskList({
         ProductID: selected.ProductID ?? context.ProductID,
       }
     : context;
-  const visible = tasks.filter(
-    (t) => !/直播/.test(String(t.BusValue || "") + courseLabel(t)),
-  );
+  const visible = tasks;
   return (
     <>
       {openError && <p className="mc-error">{openError}</p>}
@@ -766,27 +751,10 @@ function CalendarCourse({
         String(resumeTarget?.CourseID) === String(course.ID),
     );
   async function open(item: Row) {
+    setCalendar(item);
     setStarting(true);
     setError("");
     try {
-      const access = courseAccessError(product);
-      if (access) throw new Error(access);
-      if (Number(product.IsPay) !== 1 && Number(item.IsExperience) !== 1)
-        throw new Error("此日程需要当前账号已有课程权限。");
-      const position = all.findIndex((c) => c.ID === item.ID),
-        previous = all[position - 1];
-      if (
-        previous &&
-        !calendarFinished(previous) &&
-        !Number(product.IsSkip) &&
-        !(item.c_course_users_progressList || []).length
-      ) {
-        const checked = mathData(
-          await courseApi.unlock(stuid, previous.ID, product.ID),
-        );
-        if (Number(checked?.State) !== 1)
-          throw new Error(checked?.Msg || "请先完成前一个学习日程。");
-      }
       if (!(item.c_course_users_progressList || []).length)
         await courseApi.progress({
           StuID: stuid,
@@ -796,7 +764,6 @@ function CalendarCourse({
           IsFinished: 0,
           ProductID: product.ID,
         });
-      setCalendar(item);
       await courseApi.visit({
         StuID: stuid,
         CourseID: course.ID,
@@ -1075,9 +1042,6 @@ function Packet({
     tree = useContent(`tree-${product.ID}-${packet.ID}`, () =>
       courseApi.packetTree(packet.ID, product.ID),
     ),
-    auth = useContent(`chapter-auth-${stuid}`, () =>
-      courseApi.chapterAuth(stuid),
-    ),
     last = useContent(`packet-last-${stuid}-${product.ID}-${packet.ID}`, () =>
       courseApi.packetLast(stuid, product.ID, packet.ID),
     );
@@ -1090,87 +1054,19 @@ function Packet({
           ? courseApi.exams(stuid, packet.ID, product.ID)
           : Promise.resolve({ data: [] }),
   );
-  const allNodes = packetAuthorization(
-      mathRows(tree.data),
-      product.ID,
-      mathRows(auth.data),
-    ),
+  const allNodes = packetTreeRows(mathRows(tree.data)),
     nodes = allNodes.filter(
       (n) =>
         Number(n.ID) !== Number(packet.ID) &&
-        n.PID !== "" &&
-        Number(n.IsValid ?? 1) !== 0,
+        n.PID !== "",
     ),
     lastRow = mathRows(last.data)[0];
   async function select(row: Row, resume = false) {
     setError("");
-    const access = courseAccessError(product);
-    if (access) {
-      setError(access);
-      return;
-    }
     const bound = allNodes.find((n) => String(n.ID) === String(row.ID)) || row;
-    if (
-      bound.hasAuth === false ||
-      ([2633, 2634, 2635].includes(Number(product.ID)) &&
-        bound._authChapterID !== undefined &&
-        !mathRows(auth.data).some(
-          (a) => String(a.FunctionID) === String(bound._authChapterID),
-        ))
-    ) {
-      setError("当前账号尚未获得这一章节的学习权限。");
-      return;
-    }
-    if (
-      row.CourseID &&
-      [2633, 2634, 2635].includes(Number(product.ID)) &&
-      bound._authChapterID === undefined
-    ) {
-      setError("暂时无法核实这一课时所属章节的权限，请从章节目录进入。");
-      return;
-    }
     if (row.CourseID) {
       setLoading(true);
       try {
-        if (Object.hasOwn(row, "Json") && Number(row.Json) !== 1)
-          throw new Error("这个课时尚未开放正式学习内容。");
-        const entries = packetSections.current.length
-            ? packetSections.current.flatMap(
-                (section) => section._c_course_packet || [],
-              )
-            : allNodes.filter((node) => node.CourseID),
-          position = entries.findIndex(
-            (entry) => String(entry.ID) === String(row.ID),
-          ),
-          previous = entries[position - 1];
-        if (!Number(product.IsSkip) && previous && Number(row.State) !== 2) {
-          const previousDetails =
-            previous._c_course_list?._c_course_calendar_detail || [];
-          if (previousDetails.length === 1) {
-            const tasks = mathRows(
-              await courseApi.tasks(
-                stuid,
-                previousDetails[0].CalendarID,
-                product.ID,
-              ),
-            );
-            if (!courseTasksFinished(tasks))
-              throw new Error("请先完成之前的学习日程。");
-          } else {
-            const sections = mathRows(
-                await courseApi.chapters(stuid, previous.CourseID, product.ID),
-              ),
-              calendars = sections.flatMap(
-                (section) => section.CalendarList || [],
-              );
-            if (!calendars.length || !calendars.every(calendarFinished))
-              throw new Error("请先完成之前的学习日程。");
-          }
-        }
-        if (Number(row.State) !== 2)
-          await courseApi.progress(
-            packetVisitRecord(stuid, product.ID, packet.ID, row),
-          );
         const details = row._c_course_list?._c_course_calendar_detail || [];
         setCourse({
           ...row._c_course_list,
@@ -1185,6 +1081,8 @@ function Packet({
               }
             : {}),
         });
+        if (Number(row.State) !== 2)
+          await courseApi.progress(packetVisitRecord(stuid, product.ID, packet.ID, row));
       } catch (e: any) {
         setError(e.message);
       } finally {
@@ -1205,35 +1103,7 @@ function Packet({
         target = sections.find((s) => String(s.ID) === String(row.ID));
       const visible = target ? [target] : sections;
       packetSections.current = sections;
-      setExpanded(
-        visible.map((section) => ({
-          ...section,
-          _c_course_packet: (section._c_course_packet || []).map(
-            (entry: Row) => {
-              const leaf = allNodes.find(
-                  (n) => String(n.ID) === String(entry.ID),
-                ),
-                group = allNodes.find(
-                  (n) => String(n.ID) === String(section.ID),
-                ),
-                chapterID =
-                  leaf?._authChapterID ??
-                  group?._authChapterID ??
-                  bound._authChapterID;
-              return {
-                ...entry,
-                _authChapterID: chapterID,
-                hasAuth:
-                  ![2633, 2634, 2635].includes(Number(product.ID)) ||
-                  (chapterID !== undefined &&
-                    mathRows(auth.data).some(
-                      (a) => String(a.FunctionID) === String(chapterID),
-                    )),
-              };
-            },
-          ),
-        })),
-      );
+      setExpanded(visible);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -1248,11 +1118,6 @@ function Packet({
       const chapter = allNodes.find(
         (node) => String(node.ID) === String(lastRow.ChapterID2),
       );
-      if (
-        [2633, 2634, 2635].includes(Number(product.ID)) &&
-        (!chapter || chapter.hasAuth === false)
-      )
-        throw new Error("当前账号尚未获得上次学习章节的权限。");
       const response = await courseApi.packetChapter(
         stuid,
         product.ID,
@@ -1263,14 +1128,7 @@ function Packet({
       const found = packetResumeEntry(packetSections.current, lastRow);
       if (!found)
         throw new Error("原学习位置暂未出现在当前目录，可手动选择章节。");
-      await select(
-        {
-          ...found.entry,
-          _authChapterID: chapter?._authChapterID,
-          hasAuth: chapter?.hasAuth,
-        },
-        true,
-      );
+      await select(found.entry, true);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -1282,14 +1140,13 @@ function Packet({
       autoResume &&
       !autoResumed.current &&
       !last.loading &&
-      !auth.loading &&
       !tree.loading &&
       lastRow
     ) {
       autoResumed.current = true;
       void resumeLast();
     }
-  }, [autoResume, last.data, auth.data, tree.data]);
+  }, [autoResume, last.data, tree.data]);
   if (course)
     return course.BusType === "真题查漏补缺" ? (
       <LeakCourse
@@ -1345,7 +1202,7 @@ function Packet({
           </span>
           <button
             className="btn btn-primary"
-            disabled={loading || auth.loading}
+            disabled={loading}
             onClick={() => void resumeLast()}
           >
             <Play size={15} />
@@ -1373,12 +1230,11 @@ function Packet({
       {tab === "tree" ? (
         <div className="panel">
           <Status
-            loading={tree.loading || auth.loading}
-            error={tree.error || auth.error}
+            loading={tree.loading}
+            error={tree.error}
             empty={!tree.loading && !tree.error && !nodes.length}
             reload={() => {
               tree.reload();
-              auth.reload();
             }}
           />
           <div className="mc-tree">
@@ -1386,25 +1242,16 @@ function Packet({
               <button
                 className="mc-task"
                 key={row.ID || i}
-                disabled={auth.loading || row.hasAuth === false}
                 style={{
                   paddingLeft: `${Math.max(0, Number(row._depth) - 1) * 18}px`,
                 }}
                 onClick={() => void select(row)}
               >
-                {row.hasAuth === false ? (
-                  <LockKeyhole size={19} />
-                ) : (
-                  <BookOpen size={19} />
-                )}
+                <BookOpen size={19} />
                 <span>
                   <strong>{courseLabel(row)}</strong>
                   <small>
-                    {row.hasAuth === false
-                      ? "尚未获得本章节权限"
-                      : row.CourseID
-                        ? "进入学习日程"
-                        : "展开章节"}
+                    {row.CourseID ? "进入学习日程" : "展开章节"}
                   </small>
                 </span>
                 <ChevronRight size={16} />
@@ -1418,7 +1265,6 @@ function Packet({
                 <button
                   className="mc-task"
                   key={row.ID || j}
-                  disabled={row.hasAuth === false}
                   onClick={() => void select(row)}
                 >
                   <BookOpen size={18} />
@@ -1803,28 +1649,6 @@ function LeakCourse({
   };
   function open(row: Row, index: number) {
     setError("");
-    const access = courseAccessError(product);
-    if (access) {
-      setError(access);
-      return;
-    }
-    if (Number(product.IsPay) !== 1) {
-      setError("此查漏补缺课程需要当前账号已有学习权限。");
-      return;
-    }
-    if (row.leakState === 2) {
-      setError("老师正在阅卷，请稍后刷新查看报告。");
-      return;
-    }
-    if (
-      row.leakState === 0 &&
-      index > 0 &&
-      !Number(product.IsSkip) &&
-      tasks[index - 1].leakState !== 4
-    ) {
-      setError("请先完成之前的查漏补缺及其训练计划。");
-      return;
-    }
     setSelected(row);
     setView(row.leakState >= 3 ? "report" : "exam");
   }
@@ -1925,49 +1749,10 @@ function Product({
       ...(Array.isArray(raw) ? raw[0] || {} : raw || {}),
     },
     packets: Row[] = product._c_course_packet || [],
-    courses: Row[] = product.CourseList || product._c_course_list || [],
-    authorized = Number(product.IsPay) === 1 && !courseAccessError(product);
-  const { session } = useSession(),
-    vip = courseVipActive(session.platforms.math.user || {}),
-    [claiming, setClaiming] = useState(false),
-    [confirmClaim, setConfirmClaim] = useState(false),
-    [claimNotice, setClaimNotice] = useState("");
-  const free = zeroPriceCourse(product),
-    claimable =
-      free ||
-      ["免费产品", "VIP精品课程"].includes(String(product.Type)) ||
-      ["free", "vip"].includes(String(initial._entitlementKind));
-  async function claim() {
-    setClaiming(true);
-    setResumeError("");
-    try {
-      const result = await (free
-        ? courseApi.freeClaim(stuid, product.ID)
-        : courseApi.claim(stuid, product.ID));
-      if (!free && mathData(result) !== "成功")
-        throw new Error(
-          typeof mathData(result) === "string"
-            ? mathData(result)
-            : "平台未确认课程启用，请重试。",
-        );
-      setConfirmClaim(false);
-      setClaimNotice("课程已启用，正在重新读取你的课程权限。");
-      remote.reload();
-    } catch (e: any) {
-      setResumeError(e.message);
-    } finally {
-      setClaiming(false);
-    }
-  }
+    courses: Row[] = product.CourseList || product._c_course_list || [];
   useEffect(() => {
     if (!resume || resuming.current || remote.loading || !remote.data) return;
     resuming.current = true;
-    if (!authorized || courseAccessError(product)) {
-      setResumeError(
-        courseAccessError(product) || "当前账号不再拥有这门课程的学习权限。",
-      );
-      return;
-    }
     if (resume.CoursePacketID) {
       const found = packets.find(
         (p) => String(p.ID) === String(resume.CoursePacketID),
@@ -2033,9 +1818,6 @@ function Product({
       <div className="panel mc-product">
         <span className="eyebrow">MATH COURSE</span>
         <h2>{courseLabel(product)}</h2>
-        {courseAccessError(product) && (
-          <p className="mc-error">{courseAccessError(product)}</p>
-        )}
         <RichContent
           content={product.Intro || product.Remark || product.Description}
         />
@@ -2070,62 +1852,11 @@ function Product({
         error={remote.error || resumeError}
         reload={remote.reload}
       />
-      {claimNotice && <p className="mc-notice">{claimNotice}</p>}
-      {!remote.loading && !authorized && claimable && (
-        <div className="panel mc-task-reader">
-          <h3>{free ? "免费启用课程" : "启用已有会员可领课程"}</h3>
-          <p className="mc-notice">
-            {free
-              ? "原平台标记本课程为零价，可直接申请免费启用。"
-              : vip
-                ? "你当前的会员权益可向原平台申请启用此课程。"
-                : "当前账号没有有效数学会员权益，尚不能领取这门会员课程。"}
-          </p>
-          <button
-            className="btn btn-primary"
-            disabled={
-              (!free && !vip) || claiming || !!courseAccessError(product)
-            }
-            onClick={() => setConfirmClaim(true)}
-          >
-            {free ? "免费启用课程" : "领取并启用课程"}
-          </button>
-          {confirmClaim && (
-            <div className="mc-claim-confirm">
-              <p>
-                确认将「{courseLabel(product)}
-                」启用到当前学习账号？有效期及范围以原平台核实结果为准。
-              </p>
-              <button
-                className="btn btn-secondary"
-                disabled={claiming}
-                onClick={() => setConfirmClaim(false)}
-              >
-                取消
-              </button>
-              <button
-                className="btn btn-primary"
-                disabled={claiming}
-                onClick={() => void claim()}
-              >
-                {claiming ? "正在启用…" : "确认启用"}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-      {!remote.loading && !authorized && (
-        <p className="mc-notice">
-          <LockKeyhole size={16} />
-          当前账号尚未获得本课程学习权限。
-        </p>
-      )}
       <div className="mc-grid">
         {packets.map((p, i) => (
           <button
             className="panel mc-card"
             key={p.ID || i}
-            disabled={!authorized}
             onClick={() => setPacket(p)}
           >
             <BookOpen size={25} />
@@ -2141,7 +1872,6 @@ function Product({
           <button
             className="panel mc-card"
             key={c.ID || i}
-            disabled={!!courseAccessError(product)}
             onClick={() => setCourse(c)}
           >
             <BookOpen size={25} />
@@ -2261,8 +1991,8 @@ export default function MathCourses({ stuid }: { stuid: string }) {
         <div className="tabs">
           {[
             ["owned", "我的课程"],
-            ["free", "免费课程"],
-            ["vip", "会员可领课程"],
+            ["free", "公开课程"],
+            ["vip", "精品课程"],
             ["catalog", "课程目录"],
             ["handouts", "课程资料"],
             ["ability", "能力测评"],

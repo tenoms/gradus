@@ -1,4 +1,3 @@
-import { freeCourseClaim } from "./course-model.mjs";
 import { mathCommand, mathGet, mathPost } from "../../platforms/math";
 import type { MathRow } from "../../platforms/math";
 export const courseApi = {
@@ -16,16 +15,6 @@ export const courseApi = {
       BusType,
       Type: "VIP精品课程",
       ProductName,
-    }),
-  freeClaim: (StuID: string, CourseProductID: number | string) =>
-    mathPost(
-      "/api/c_course_users/Inner_c_course_users",
-      freeCourseClaim(StuID, CourseProductID),
-    ),
-  claim: (StuID: string, CourseProductID: number | string) =>
-    mathPost("/api/c_course_product/VIPProductByStuid", {
-      StuID,
-      CourseProductID,
     }),
   products: (StuID: string) =>
     mathGet("/api/c_course_product/GetProductByStuID", {
@@ -88,12 +77,6 @@ export const courseApi = {
       "/api/c_course_users_progress/Inner_c_course_users_progress",
       data,
     ),
-  unlock: (StuID: string, ID: number | string, ProductID: number | string) =>
-    mathPost("/api/c_course_calendar/UnlockCalendarByStuID", {
-      StuID,
-      ID,
-      ProductID,
-    }),
   visit: (data: MathRow) =>
     mathPost("/api/c_course_product_log/Inner_c_course_product_log2", data),
   records: (data: MathRow) =>
@@ -159,12 +142,6 @@ export const courseApi = {
       CoursePacketID,
     }),
   userLast: (StuID: string) => mathCommand("GetUserLastStudyCourse", { StuID }),
-  chapterAuth: (StuID: string) =>
-    mathCommand(
-      "GetSysUser3ChapterAuthList",
-      { StuID, System_Station_ID: 1 },
-      true,
-    ),
   history: (StuID: string, CourseID: number | string, BusType: number) =>
     mathCommand("GetCourseThrillerPaperList", {
       StuID,

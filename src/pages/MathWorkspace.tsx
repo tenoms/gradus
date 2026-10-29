@@ -62,7 +62,6 @@ import {
   mathTitle,
 } from "../platforms/math";
 import type { MathRow, NoteKind } from "../platforms/math";
-import { mathChoicePracticeAllowed } from "../platforms/math-access-model";
 import "./MathWorkspace.css";
 
 function useRemote<T>(key: string, load: () => Promise<T>) {
@@ -700,7 +699,6 @@ function PracticeCenter({ stuid }: { stuid: string }) {
   );
 }
 function Practice({ stuid }: { stuid: string }) {
-  const { session } = useSession();
   const [subject, setSubject] = useState("数一");
   const [mode, setMode] = useState("真题模式");
   const [type, setType] = useState("精选10题");
@@ -730,9 +728,6 @@ function Practice({ stuid }: { stuid: string }) {
     setCreating(true);
     setError("");
     try {
-      const latestHistory = await mathApi.practiceHistory(stuid, subject, mode, type);
-      if (!mathChoicePracticeAllowed(session.platforms.math.user || {}, mathRows(latestHistory).length))
-        throw new Error("当前账号的免费练习次数已用完，可以继续复习已有练习。");
       const res = await mathApi.createPractice(
         stuid,
         subject,

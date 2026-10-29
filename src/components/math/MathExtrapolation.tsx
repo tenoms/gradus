@@ -13,13 +13,12 @@ export default function MathExtrapolation({
 }: {
   stuid: string;
   sourceQuestionId: number | string;
-  renderQuestion: (row: MathRow, onAnalysisViewed: () => void) => ReactNode;
+  renderQuestion: (row: MathRow) => ReactNode;
 }) {
   const [rows, setRows] = useState<MathRow[]>([]);
   const [current, setCurrent] = useState<MathRow>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [viewed, setViewed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [state, setState] = useState<number>();
@@ -47,16 +46,11 @@ export default function MathExtrapolation({
   }, [sourceQuestionId, stuid]);
   const select = (row: MathRow) => {
     setCurrent({ ...row, QuestionID: row.ID || row.QuestionID });
-    setViewed(false);
     setNotice("");
     setState(undefined);
   };
   const assess = async (State: number) => {
     if (!current) return;
-    if (State !== 3 && !viewed) {
-      setNotice("请先查看解析，再判断是否已掌握。");
-      return;
-    }
     setBusy(true);
     setNotice("");
     try {
@@ -108,7 +102,7 @@ export default function MathExtrapolation({
           <ArrowLeft size={15} />
           返回同类推荐
         </button>
-        {renderQuestion(current, () => setViewed(true))}
+        {renderQuestion(current)}
         <div className="panel mrq-extrapolation-result">
           <span>
             {state
@@ -117,7 +111,7 @@ export default function MathExtrapolation({
           </span>
           <button
             className="btn btn-primary"
-            disabled={busy || !viewed}
+            disabled={busy}
             onClick={() => assess(1)}
           >
             <Check size={15} />
@@ -125,7 +119,7 @@ export default function MathExtrapolation({
           </button>
           <button
             className="btn btn-secondary"
-            disabled={busy || !viewed}
+            disabled={busy}
             onClick={() => assess(2)}
           >
             需要巩固

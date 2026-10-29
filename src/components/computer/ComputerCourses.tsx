@@ -6,10 +6,8 @@ import {
   ArrowLeft,
   ArrowRight,
   BookOpen,
-  Check,
   FileText,
   LoaderCircle,
-  LockKeyhole,
   MessageCircle,
   Play,
   RefreshCw,
@@ -28,8 +26,6 @@ import {
 import type { ComputerRecord as R } from "../../platforms/computer";
 import {
   courseAttachments,
-  isCourseOwned,
-  lessonCanPlay,
   lessonProgress,
   maskCourseReviewer,
   orderedSubcourses,
@@ -101,14 +97,14 @@ function Status({
       <div className="empty-state">
         <BookOpen size={30} />
         <h3>当前还没有课程内容</h3>
-        <p>可以切换分类，或选择其他已授权课程继续学习。</p>
+        <p>可以切换分类，或选择其他课程继续学习。</p>
       </div>
     );
   return null;
 }
 export default function ComputerCourses() {
   const catalogRef = useRef<HTMLDivElement>(null);
-  const [scope, setScope] = useState("joined"),
+  const [scope, setScope] = useState("catalog"),
     [courseType, setCourseType] = useState("all"),
     [course, setCourse] = useState<R | null>(null),
     [subcourse, setSubcourse] = useState(""),
@@ -138,12 +134,6 @@ export default function ComputerCourses() {
     id: course?.id,
     courseCode: course?.courseCode,
   });
-  const permission = useResource(
-    course?.courseCode && scope !== "joined"
-      ? "/api/exam/wx/course/isOwnCourse/"
-      : "",
-    { courseCode: course?.courseCode },
-  );
   const comments = useResource(
     course && tab === "comments" ? "/api/exam/wx/course/comment/list" : "",
     { courseId: course?.id, pageNum: commentPage, pageSize: 50 },
@@ -152,7 +142,6 @@ export default function ComputerCourses() {
     lastSave = useRef(0),
     playStart = useRef(0),
     studySeconds = useRef(0);
-  const owned = isCourseOwned(course, permission.data, scope === "joined");
   const subcourses = course ? orderedSubcourses(course) : [];
   const files = courseAttachments(lesson, detail.data);
   const lessonRows = records(lessons.data);
@@ -168,12 +157,9 @@ export default function ComputerCourses() {
       1,
   );
   async function play(item: R) {
-    if (!lessonCanPlay(item, owned)) {
-      setError(
-        item.mediaId
-          ? "当前账号尚未拥有该课时的学习权限，可选择标记为试听的课时。"
-          : "此课时尚未上线。",
-      );
+    const directUrl = safeLink(item.videoUrl || item.playUrl);
+    if (!String(item.mediaId || "").trim() && !directUrl) {
+      setError("平台未返回此课时的播放地址或媒体编号。");
       return;
     }
     setLoading(true);
@@ -183,13 +169,13 @@ export default function ComputerCourses() {
     setNotice("");
     setLesson({ ...item, _studyCourseId: groupCourseId });
     try {
-      const data = await request(
+      const data = directUrl ? null : await request(
         item.storagePlatform === "Tencent"
           ? "/api/exam/wx/course/vod/get_play_info"
           : "/api/exam/wx/course/get_play_info/v2",
         { mediaId: String(item.mediaId || "").trim(), format: "m3u8" },
       );
-      const url = safeLink(
+      const url = directUrl || safeLink(
         Array.isArray(data)
           ? data[0]?.url
           : data?.mediaList?.[0]?.playURL || data?.url || data?.playUrl,
@@ -244,10 +230,7 @@ export default function ComputerCourses() {
     )
     .filter(
       (item) =>
-        (scope === "joined" ||
-          ([2, 4, 5, 7, 8].includes(Number(item.courseType)) &&
-            (courseType === "all" ||
-              Number(item.courseType) === Number(courseType)))) &&
+        (scope === "joined" || courseType === "all" || Number(item.courseType) === Number(courseType)) &&
         (!search ||
           `${label(item)} ${item.courseBrief || ""}`.includes(search)),
     );
@@ -396,16 +379,7 @@ export default function ComputerCourses() {
               <h2>{label(course)}</h2>
               <p>{plain(course.courseBrief || course.description || "")}</p>
             </div>
-            <span className={`pill ${owned ? "success" : ""}`}>
-              {owned ? <Check size={13} /> : <LockKeyhole size={13} />}{" "}
-              {owned ? "课程已授权" : "试听与课程介绍"}
-            </span>
           </div>
-          <Status
-            loading={permission.loading}
-            error={permission.error}
-            retry={permission.reload}
-          />
           <div className="computer-course-layout">
             <div className="panel computer-player">
               <h3>{label(lesson || course)}</h3>
@@ -486,11 +460,7 @@ export default function ComputerCourses() {
               ) : (
                 <div className="empty-state">
                   <Play size={33} />
-                  <p>
-                    {owned
-                      ? "从课时目录选择内容，继续你的学习。"
-                      : "可查看课程介绍，标记为“试听”的课时可以直接学习。"}
-                  </p>
+                  <p>从课时目录选择内容，继续你的学习。</p>
                 </div>
               )}
               {notice && (
@@ -538,39 +508,12 @@ export default function ComputerCourses() {
                 </div>
               ) : tab === "files" ? (
                 <div className="cc-files">
-                  {files.length ? (
-                    files.map((file, i) =>
-                      owned && (!lesson || lesson.mediaId) ? (
-                        <a
-                          className="computer-file-link"
-                          href={file.url}
-                          key={i}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          <FileText size={16} />
-                          {file.name}
-                          <ArrowRight size={14} />
-                        </a>
-                      ) : (
-                        <div className="cc-file-locked" key={i}>
-                          <LockKeyhole size={16} />
-                          {file.name}
-                          <small>
-                            {owned ? "课时尚未上线" : "需要课程学习权限"}
-                          </small>
-                        </div>
-                      ),
-                    )
-                  ) : (
-                    <div className="cc-small-empty">
-                      <FileText size={25} />
-                      <p>
-                        {lesson
-                          ? "当前课时没有附带课件。"
-                          : "选择具体课时后查看所附资料。"}
-                      </p>
-                    </div>
+                  {files.length ? files.map((file, i) => (
+                    <a className="computer-file-link" href={file.url} key={i} target="_blank" rel="noreferrer">
+                      <FileText size={16} />{file.name}<ArrowRight size={14} />
+                    </a>
+                  )) : (
+                    <div className="cc-small-empty"><FileText size={25} /><p>{lesson ? "当前课时没有附带课件。" : "选择具体课时后查看所附资料。"}</p></div>
                   )}
                 </div>
               ) : (
@@ -684,24 +627,15 @@ export default function ComputerCourses() {
                 <div className="cc-lesson-row" key={item.id || i}>
                   <button
                     className={`computer-lesson ${lesson?.id === item.id ? "active" : ""}`}
-                    disabled={
-                      loading ||
-                      permission.loading ||
-                      !lessonCanPlay(item, owned)
-                    }
+                    disabled={loading}
                     onClick={() => void play(item)}
                   >
-                    {lessonCanPlay(item, owned) ? (
-                      <Play size={15} />
-                    ) : (
-                      <LockKeyhole size={15} />
-                    )}
+                    <Play size={15} />
                     <div>
                       <strong>{label(item)}</strong>
                       <span>
                         {item.progress || "尚未学习"}{" "}
-                        {Number(item.isFree) === 2 ? "· 可试听" : ""}
-                        {!item.mediaId ? " · 尚未上线" : ""}
+                        {!item.mediaId && !safeLink(item.videoUrl || item.playUrl) ? " · 暂无视频地址" : ""}
                       </span>
                     </div>
                   </button>
@@ -710,24 +644,9 @@ export default function ComputerCourses() {
                       <summary>
                         课件 · {records(item.attachmentList).length}
                       </summary>
-                      {courseAttachments(item, null).map((file, j) =>
-                        owned && item.mediaId ? (
-                          <a
-                            href={file.url}
-                            key={j}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            <FileText size={12} />
-                            {file.name}
-                          </a>
-                        ) : (
-                          <span key={j}>
-                            <LockKeyhole size={12} />
-                            {file.name}
-                          </span>
-                        ),
-                      )}
+                      {courseAttachments(item, null).map((file, j) => (
+                        <a href={file.url} key={j} target="_blank" rel="noreferrer"><FileText size={12} />{file.name}</a>
+                      ))}
                     </details>
                   )}
                 </div>

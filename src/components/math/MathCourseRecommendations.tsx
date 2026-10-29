@@ -26,7 +26,6 @@ import type {
 } from "./math-course-recommendations";
 import {
   buildRecommendationRecord,
-  recommendationCanAddTopic,
   recommendationGroups,
   recommendationMetadata,
   recommendationOptions,
@@ -228,7 +227,6 @@ export default function MathCourseRecommendations({
     [encore, setEncore] = useState(false),
     [attemptSaved, setAttemptSaved] = useState<string[]>([]),
     [answers, setAnswers] = useState<Record<string, string>>({}),
-    [revealed, setRevealed] = useState(false),
     [showSheet, setShowSheet] = useState(false),
     [showTopics, setShowTopics] = useState(false),
     [selectedTopic, setSelectedTopic] = useState(""),
@@ -254,8 +252,6 @@ export default function MathCourseRecommendations({
       (!encore || attemptSaved.includes(qid)),
     answer =
       answers[qid] ?? String(question._c_course_users_record?.Answer || ""),
-    cap = recommendationCanAddTopic(groups),
-    allComplete = groups.length > 0 && groups.every((g) => g.isFinish),
     title = String(meta.Name || "个性推荐练习").replace(
       /_智推练习/g,
       " · 查漏补缺练习",
@@ -328,14 +324,12 @@ export default function MathCourseRecommendations({
     setReview(false);
     setEncore(false);
     setAttemptSaved([]);
-    setRevealed(false);
     setError("");
     setNotice("");
   }
   function move(next: number) {
     if (next < 0 || next >= questions.length) return;
     setIndex(next);
-    setRevealed(review);
     setShowSheet(false);
     setError("");
     setNotice("");
@@ -348,7 +342,6 @@ export default function MathCourseRecommendations({
     setAttemptSaved([]);
     setView("question");
     setIndex(0);
-    setRevealed(false);
     setAnswers((previous) => {
       const next = { ...previous };
       for (const q of questions) next[questionId(q)] = "";
@@ -359,11 +352,9 @@ export default function MathCourseRecommendations({
     if (encore || completionSaved.current) return;
     const nextGroups = recommendationGroups(nextRows, isSuper);
     if (!nextGroups.length || !nextGroups.every((g) => g.isFinish)) return;
-    const result = await recommendationApi.complete(context);
+    await recommendationApi.complete(context);
     completionSaved.current = true;
-    if (result.warning)
-      setNotice(`全部题组已保存，下一任务更新提示：${result.warning}`);
-    else setNotice("全部题组已完成，下一学习任务已解锁。");
+    setNotice("全部题组已保存，学习记录已同步。");
   }
   async function save(
     correct = 0,
@@ -377,8 +368,6 @@ export default function MathCourseRecommendations({
     try {
       if (givenOptions.length && !givenAnswer)
         throw new Error("请先选择答案。");
-      if (!givenOptions.length && !revealed)
-        throw new Error("请先查看解析，再记录掌握情况。");
       const payload = buildRecommendationRecord(
           context,
           { ...question, options: givenOptions },
@@ -391,7 +380,6 @@ export default function MathCourseRecommendations({
       else next = mathRows(await recommendationApi.questions(context));
       setRows(next);
       setAttemptSaved((ids) => [...new Set([...ids, qid])]);
-      setRevealed(true);
       setAnswers((a) => ({ ...a, [qid]: givenAnswer }));
       setNotice(
         Number(record.AnswerState) === 1
@@ -605,18 +593,17 @@ export default function MathCourseRecommendations({
               </article>
             ))}
           </div>
-          {!isSuper && decorated.topics.length > 0 && (
+          {decorated.topics.length > 0 && (
             <div className="panel mcr-more-topics">
               <div>
                 <h3>获取更多专题练习</h3>
                 <p>
-                  完成当前所有题组后，每次选择一个专题。当前还可选择{" "}
-                  {cap.remaining} 个新专题。
+                  从已返回的考点中选择专题，继续追加练习。
                 </p>
               </div>
               <button
                 className="btn btn-primary"
-                disabled={!cap.allowed || busy}
+                disabled={busy}
                 onClick={() => setShowTopics(!showTopics)}
               >
                 选择新专题
@@ -683,7 +670,6 @@ export default function MathCourseRecommendations({
             }
             noteSource="课程"
             isCourse={false}
-            onAnalysisViewed={() => setRevealed(true)}
             onAnswered={async (givenAnswer, correct, details) => {
               await save(Number(correct), givenAnswer, details?.options || []);
             }}
@@ -742,7 +728,6 @@ export default function MathCourseRecommendations({
                   setEncore(false);
                   setView("question");
                   setIndex(i);
-                  setRevealed(true);
                 }}
               >
                 {i + 1}
@@ -757,7 +742,6 @@ export default function MathCourseRecommendations({
                 setEncore(false);
                 setView("question");
                 setIndex(0);
-                setRevealed(true);
               }}
             >
               查看解析
@@ -814,7 +798,7 @@ export default function MathCourseRecommendations({
           <div className="mcr-actions">
             <button
               className="btn btn-primary"
-              disabled={busy || !selectedTopic || !allComplete}
+              disabled={busy || !selectedTopic}
               onClick={() => void append(selectedTopic)}
             >
               确认追加所选专题

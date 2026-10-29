@@ -542,7 +542,7 @@ export default function ExerciseSession({
       {finished && !finalReport && (
         <div className="computer-notice"><p>试卷已提交。报告需要从学习平台读取。</p><button className="btn btn-secondary" disabled={loading} onClick={() => void refreshSubmittedReport()}><RefreshCw size={15} />重试读取报告</button></div>
       )}
-      <div className={`computer-question-columns ${hasSubmitted || finished ? "with-analysis" : ""}`}>
+      <div className="computer-question-columns with-analysis">
       <div className="computer-question-answer">
       <RichContent
         content={String(
@@ -551,7 +551,7 @@ export default function ExerciseSession({
         className="computer-question-stem"
       />
       {!hasSubmitted && <p className="computer-answer-hint">{isPaper
-        ? "答案保留为草稿，交卷后显示解析。"
+        ? "答案保留为草稿，可随时查看已返回的解析。"
         : immediateChoice
           ? "点选答案即保存，并显示解析。"
           : type === 2 ? "本题可多选，选好后提交。" : "完成后提交答案，也可按 Ctrl / ⌘ + Enter。"}</p>}
@@ -694,17 +694,13 @@ export default function ExerciseSession({
         </div>
       )}
       </div>
-      {(hasSubmitted || finished) && (
-        <div className="computer-analysis" aria-label="答案与解析">
+      <div className="computer-analysis" aria-label="答案与解析">
           <h3>答案与解析</h3>
           {skipped.includes(id) && <p className="computer-dim">本题已跳过，未计为实际作答。</p>}
           {launch.voice && safeLink(answer.split("$-$")[0]) && (
             <audio controls src={safeLink(answer.split("$-$")[0])} />
           )}
-          <p>
-            参考答案：
-            <strong>{plain(question.exerciseAnswer) || "见下方解析"}</strong>
-          </p>
+          {plain(question.exerciseAnswer) && <p>参考答案：<strong>{plain(question.exerciseAnswer)}</strong></p>}
           <RichContent
             content={
               question.exerciseAnalysis ||
@@ -715,7 +711,7 @@ export default function ExerciseSession({
             }
           />
           <ComputerKnowledgeTags question={question} majorId={launch.majorId} />
-          <ComputerQuestionVideo key={id} question={question} majorId={question.majorId || launch.majorId} examCategory={category} schoolPermission={launch.data.schoolPermission || question.schoolPermission} />
+          <ComputerQuestionVideo key={id} question={question} />
           {submitted[id]?.llmAnswer && (
             <div>
               <h4>批阅反馈</h4>
@@ -740,7 +736,6 @@ export default function ExerciseSession({
             </div>
           )}
         </div>
-      )}
       </div>
       {noteVisible && (
         <div className="computer-note">

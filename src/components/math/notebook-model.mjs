@@ -25,21 +25,6 @@ export function sortCatalogPayload(rows) {
 export function notePrintHistoryParams(stuid, catalogId = 0) {
   return { StuID: stuid, BusKey: Number(catalogId) || 0 };
 }
-export function notePrintLogRecords(rows, { origin = "book", stuid }) {
-  return rows.map((row) => {
-    const qid = origin === "bank" ? row.QID || row.QuestionID : row.QuestionID;
-    if (!qid) throw new Error("当前记录缺少题目编号，无法登记导出。");
-    return {
-      BusValue: "收藏错题打印",
-      Question_ID: qid,
-      BusKey: row.CatalogID || 0,
-      BookID: row.bookID ?? row.BookID ?? 0,
-      System_Station_ID: 1,
-      StuID: stuid,
-      BusID: qid,
-    };
-  });
-}
 export function noteWasPrinted(row, history, origin = "book") {
   const qid = origin === "bank" ? row.QID || row.QuestionID : row.QuestionID,
     book = row.bookID ?? row.BookID ?? 0;
@@ -51,12 +36,9 @@ export function noteWasPrinted(row, history, origin = "book") {
 }
 export function noteExportLinks(
   rows,
-  { origin = "book", kind = "错题", stuid, vip = false, downloadCount = 0 },
+  { origin = "book", kind = "错题", stuid },
 ) {
   if (!rows.length) throw new Error("请先选择需要导出的记录。");
-  if (!vip && Number(downloadCount) > 100)
-    throw new Error("当前账号的下载额度已用完。");
-  if (!vip && rows.length > 6) throw new Error("当前账号每次最多导出 6 道题。");
   const groups = new Map();
   for (const row of rows) {
     const key = origin === "bank" ? "" : String(row.CatalogID || 0);

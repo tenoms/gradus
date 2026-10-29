@@ -51,7 +51,7 @@ function MathPolyvQuestionVideo({ row }: { row: MathRow }) {
         const fail = () => {
           if (active)
             setError(
-              "此视频暂时无法播放，请确认当前账号的学习权限或稍后重试。",
+              "视频加载失败，请重试或检查学习平台返回的播放地址。",
             );
         };
         player.on("serverError", fail);

@@ -1,26 +1,3 @@
-export function courseAlbumAllowed(info, user, chapterCount, now = Date.now()) {
-  if (chapterCount === 1) return true;
-  if (Number(info?.Authority) === 1) {
-    if (!info.FreeEndTime) return true;
-    const text = String(info.FreeEndTime);
-    return (
-      Date.parse(
-        /[zZ]|[+-]\d\d:\d\d$/.test(text)
-          ? text
-          : text.replace(" ", "T") + "+08:00",
-      ) > now
-    );
-  }
-  const text = String(user?.VipEndTime || "");
-  return (
-    !!text &&
-    Date.parse(
-      /[zZ]|[+-]\d\d:\d\d$/.test(text)
-        ? text
-        : text.replace(" ", "T") + "+08:00",
-    ) > now
-  );
-}
 export function courseAlbumTree(rows) {
   const copies = rows.map((row) => ({ ...row, children: [] })),
     byID = new Map(copies.map((row) => [String(row.ID), row]));

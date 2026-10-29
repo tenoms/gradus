@@ -2,17 +2,11 @@ import { useEffect, useState } from "react";
 import { Check, LoaderCircle, X } from "lucide-react";
 import {
   mathApi,
-  mathCommand,
-  mathGet,
   mathData,
   mathRows,
 } from "../../platforms/math";
 import type { NoteKind } from "../../platforms/math";
 import { useSession } from "../../lib/session";
-import {
-  mathNoteQuotaAllowed,
-  mathVipActive,
-} from "../../platforms/math-access-model";
 import { AttachmentInput } from "./MathQuestions";
 function msg(error: unknown) {
   return error instanceof Error ? error.message : String(error);
@@ -88,26 +82,12 @@ export default function MathNoteEditor({
 }) {
   const { session } = useSession();
   const user = session.platforms.math.user || {};
-  const vip = mathVipActive(user);
   const remote = useRemote(`note-edit-${kind}-${qid}`, async () => {
-    const [catalogs, notes, config, count] = await Promise.all([
+    const [catalogs, notes] = await Promise.all([
       mathApi.noteCatalogs(stuid, kind, user.SubjectType || "数一"),
       mathApi.questionNotes(stuid, kind, qid),
-      mathGet("/api/wx_xcx_info/GetListByAll", { System_Station_ID: 1 }),
-      !vip && kind !== "笔记"
-        ? mathCommand("GeSysUserBookQuestionCount", {
-            StuID: stuid,
-            Type: kind,
-            System_Station_ID: 1,
-          })
-        : Promise.resolve({ data: [] }),
     ]);
-    return {
-      catalogs: mathRows(catalogs),
-      notes: mathRows(notes),
-      config: mathRows(config)[0] || {},
-      count: Number(mathRows(count)[0]?.count || 0),
-    };
+    return { catalogs: mathRows(catalogs), notes: mathRows(notes) };
   });
   const [catalogId, setCatalogId] = useState("");
   const [newCatalog, setNewCatalog] = useState("默认分类");
@@ -136,20 +116,7 @@ export default function MathNoteEditor({
     setSaving(true);
     setError("");
     try {
-      if (!remote.data) throw new Error("请先读取当前笔记与额度");
-      if (
-        !mathNoteQuotaAllowed(kind, remote.data.count, remote.data.config, user)
-      )
-        throw new Error(
-          `当前账号的${kind}数量已达到可用额度，请在已有权益中核对后再保存。`,
-        );
-      if (Number(remote.data.config.Parm2) === 1) {
-        const result = await mathGet("/api/base/ScanText2", {
-          txt: (catalogId ? "" : newCatalog.trim()) + content,
-        });
-        if (result.Data?.Labels || result.Data?.Reason)
-          throw new Error("笔记内容未通过平台检查，请调整后重试");
-      }
+      if (!remote.data) throw new Error("请先读取当前笔记");
       let id = Number(catalogId);
       if (!id) {
         const result = await mathApi.createNoteCatalog(

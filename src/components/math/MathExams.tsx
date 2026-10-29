@@ -24,7 +24,6 @@ import {
   buildMathExamRecord,
   correctOptionIds,
   durationText,
-  examDeadline,
   examName,
   existingRecord,
   mathExamApi,
@@ -195,7 +194,6 @@ function PaperRunner({
     [draftReady, setDraftReady] = useState(false);
   const startAt = useRef(Date.now()),
     questionAt = useRef(Date.now()),
-    timerExpired = useRef(false),
     recorded = useRef(false),
     draftKey = `study:math:exam:${session.user?.id || "guest"}:${context.stuid}:${context.kind}:${context.DryID || 0}:${context.PaperID}:${context.CalendarID || 0}`;
   const teacherMark = loaded.data?.teacherMark || false,
@@ -207,21 +205,12 @@ function PaperRunner({
     max = questionMax(question),
     old = existingRecord(context, question),
     saved = !!old.ID,
-    reviewAllowed = !(teacherMark && Number(paperlog.IsLookScore) !== 1),
     totalScore = questions.reduce(
       (sum, q) =>
         sum + Number(recordScore(context, existingRecord(context, q)) || 0),
       0,
     ),
-    maxTotal = questions.reduce((sum, q) => sum + questionMax(q), 0),
-    roomEnd = loaded.data?.unifiedTime ? serverDate(room.ExamEndTime) : NaN,
-    { limit, remaining, expired, forceSubmit } = examDeadline(
-      context,
-      meta,
-      elapsed,
-      roomEnd,
-    ),
-    timeLocked = started && !finished && expired && forceSubmit;
+    maxTotal = questions.reduce((sum, q) => sum + questionMax(q), 0);
   useEffect(() => {
     if (!loaded.data) return;
     const d = loaded.data,
@@ -292,20 +281,6 @@ function PaperRunner({
     return () => clearInterval(timer);
   }, [started, finished]);
   useEffect(() => {
-    if (
-      started &&
-      !finished &&
-      expired &&
-      forceSubmit &&
-      !loading &&
-      !timerExpired.current
-    ) {
-      timerExpired.current = true;
-      setSheet(true);
-      void finish(true);
-    }
-  }, [started, finished, expired, forceSubmit, loading]);
-  useEffect(() => {
     if (!questions[current] || options.length || question._resolved) return;
     let active = true;
     mathExamApi
@@ -367,7 +342,6 @@ function PaperRunner({
     setNotice("");
   }
   async function save() {
-    if (timeLocked) return;
     setLoading(true);
     setError("");
     setNotice("");
@@ -533,8 +507,7 @@ function PaperRunner({
     teacherRecommendations &&
     context.kind === "course" &&
     context.isTeacher &&
-    finished &&
-    reviewAllowed
+    finished
   )
     return (
       <MathTeacherRecommendations
@@ -605,7 +578,7 @@ function PaperRunner({
           </span>
           <span>
             <Clock3 size={20} />
-            {limit > 0 ? `${Math.round(limit / 60)} 分钟` : "自主计时"}
+            自主计时
           </span>
         </div>
         <RichContent
@@ -639,13 +612,9 @@ function PaperRunner({
           返回
         </button>
         <strong>{examName(meta)}</strong>
-        <span className={`math-exam-timer ${remaining < 600 ? "warning" : ""}`}>
+        <span className="math-exam-timer">
           <Clock3 size={16} />
-          {finished
-            ? "已提交"
-            : limit || Number.isFinite(roomEnd)
-              ? `剩余 ${durationText(remaining)}`
-              : durationText(elapsed)}
+          {finished ? "已提交" : durationText(elapsed)}
         </span>
         <button className="btn btn-secondary" onClick={() => setSheet(!sheet)}>
           答题卡 {current + 1}/{questions.length}
@@ -660,8 +629,8 @@ function PaperRunner({
       </div>
       {finished && (
         <div className="math-exam-report">
-          <h3>{teacherMark && !reviewAllowed ? "等待教师阅卷" : "测评报告"}</h3>
-          {reviewAllowed && (
+          <h3>测评报告</h3>
+          {(
             <div className="math-exam-summary">
               <span>
                 得分{" "}
@@ -688,13 +657,11 @@ function PaperRunner({
             </div>
           )}
           <p>
-            {teacherMark && !reviewAllowed
-              ? "教师公布成绩后，可在测评历史中查看成绩与解析。"
-              : "从答题卡选择题目回顾作答与解析。"}
+            从答题卡选择题目回顾作答与解析。
           </p>
         </div>
       )}
-      {finished && reviewAllowed && (
+      {finished && (
         <MathExamReport
           context={context}
           meta={meta}
@@ -725,7 +692,7 @@ function PaperRunner({
           ))}
         </div>
       )}
-      {(!finished || reviewAllowed) && (
+      {(
         <>
           <div id="math-exam-question" className="math-exam-question-title">
             <span className="math-exam-badge">第 {current + 1} 题</span>
@@ -746,7 +713,7 @@ function PaperRunner({
                   multiple = correctOptionIds(question).length > 1;
                 return (
                   <button
-                    disabled={finished || loading || timeLocked}
+                    disabled={finished || loading}
                     className={`math-exam-option ${selected ? "active" : ""}`}
                     key={option.ID || i}
                     onClick={() =>
@@ -795,7 +762,7 @@ function PaperRunner({
                 }
                 placeholder="记录解题过程"
                 rows={5}
-                disabled={finished || loading || timeLocked}
+                disabled={finished || loading}
               />
               {teacherMark && !finished && (
                 <label className="btn btn-secondary math-exam-upload">
@@ -803,26 +770,18 @@ function PaperRunner({
                   <input
                     type="file"
                     accept="image/*"
-                    disabled={loading || timeLocked}
+                    disabled={loading}
                     onChange={(e) => void upload(e.target.files?.[0])}
                   />
                 </label>
               )}
-              {!teacherMark && !finished && (
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setReveal(!reveal)}
-                >
-                  {reveal ? "收起解析" : "查看解析并自评"}
-                </button>
-              )}
             </div>
           )}
-          {((reveal && !teacherMark) || (finished && reviewAllowed)) && (
+          {!finished && <button className="btn btn-secondary" aria-expanded={reveal} onClick={() => setReveal(value => !value)}>{reveal ? "收起解析" : "查看解析"}</button>}
+          {(reveal || finished) && (
             <div className="math-exam-analysis">
               <h3>答案与解析</h3>
               {finished &&
-                reviewAllowed &&
                 context.kind === "course" &&
                 context.isTeacher && (
                   <button
@@ -875,7 +834,7 @@ function PaperRunner({
                     max={max}
                     step={0.5}
                     value={scores[id] ?? ""}
-                    disabled={loading || timeLocked}
+                    disabled={loading}
                     onChange={(e) =>
                       setScores((s) => ({ ...s, [id]: e.target.value }))
                     }
@@ -903,7 +862,7 @@ function PaperRunner({
             {!finished && (
               <button
                 className="btn btn-primary"
-                disabled={loading || timeLocked}
+                disabled={loading}
                 onClick={() => void save()}
               >
                 保存本题
@@ -923,7 +882,7 @@ function PaperRunner({
                 disabled={loading}
                 onClick={() => {
                   if (window.confirm("确认提交测评？提交后将生成学习报告。"))
-                    void finish(timeLocked);
+                    void finish();
                 }}
               >
                 提交试卷
@@ -1053,10 +1012,7 @@ function DryApplication({
     registration = table(info.data?.registration)[0] || {},
     history = table(info.data?.detail, 3)[0] || {},
     enrolled = !!registration.ID,
-    subjectJson = parseExamJson(detail.Json),
-    afterDeadline =
-      Number.isFinite(serverDate(detail.AppleEndTime)) &&
-      Date.now() > serverDate(detail.AppleEndTime);
+    subjectJson = parseExamJson(detail.Json);
   useEffect(() => {
     if (info.data) {
       setSchool(registration.BusValue || "");
@@ -1073,7 +1029,6 @@ function DryApplication({
     try {
       if (!school || !major || !undergrad || !status || !year || !room)
         throw new Error("请完善报名信息并选择考场。");
-      if (afterDeadline) throw new Error("本场考试报名已截止。");
       const payload: R = {
         BusType: "考试用户",
         FunctionID: exam.ID,
@@ -1107,35 +1062,7 @@ function DryApplication({
     }
   }
   function begin() {
-    const selected = rooms.find((r) => String(r.ID) === room),
-      userRoot = Number(registration.UserRoot || 0),
-      teacher = userRoot >= 2 && userRoot <= 6,
-      start = serverDate(selected?.ExamStartTime || detail.ExamStartTime),
-      end = serverDate(
-        !teacher && detail.SelfEndTime
-          ? detail.SelfEndTime
-          : selected?.ExamEndTime || detail.ExamEndTime,
-      );
-    if (!enrolled) {
-      setError("请先完成报名。");
-      return;
-    }
-    if (Date.now() < start) {
-      setError("本场考试尚未开始。");
-      return;
-    }
-    if (Date.now() > end && !Number(history.IsSubmit)) {
-      setError("本场考试已结束。");
-      return;
-    }
-    if (
-      !history.ID &&
-      Number(detail.ExamLongNoUp) > 0 &&
-      Date.now() - start > Number(detail.ExamLongNoUp) * 60000
-    ) {
-      setError("已超过本场考试允许的入场时间。");
-      return;
-    }
+    const userRoot = Number(registration.UserRoot || 0);
     onStart({
       kind: "dry",
       stuid,
@@ -1182,9 +1109,7 @@ function DryApplication({
               <ArrowRight size={15} />
             </a>
           )}
-          {enrolled &&
-            Number(detail.IsAnswerCard) === 1 &&
-            paper.AswerPdfFiles && (
+          {paper.AswerPdfFiles && (
               <MathReportDownloads
                 sources={[{ AswerPdfFiles: paper.AswerPdfFiles }]}
               />
@@ -1258,15 +1183,10 @@ function DryApplication({
               >
                 <option value="">请选择考场</option>
                 {rooms
-                  .filter((r) => Number(r.IsValid) === 1 || r.IsValid == null)
                   .map((r, i) => (
                     <option
                       key={i}
                       value={r.ID}
-                      disabled={
-                        Number(r.counts) >= Number(r.RoomPeopleNum) &&
-                        Number(r.RoomPeopleNum) > 0
-                      }
                     >
                       {r.Name || r.RoomName || `场次 ${i + 1}`} ·{" "}
                       {r.ExamStartTime || ""}
@@ -1280,11 +1200,11 @@ function DryApplication({
             <div className="math-exam-form-actions">
               <button
                 className="btn btn-primary"
-                disabled={loading || afterDeadline}
+                disabled={loading}
               >
                 {enrolled ? "保存报名信息" : "确认报名"}
               </button>
-              {enrolled && (
+              {(
                 <button
                   className="btn btn-secondary"
                   type="button"
@@ -1453,7 +1373,7 @@ function WeeklyCreator({
       </button>
       <h2>智能组卷</h2>
       <p className="math-exam-muted">
-        按已选范围和备考阶段生成试卷，使用当前账号已有的测评权益。
+        按已选范围和备考阶段生成试卷。
       </p>
       <AsyncStatus
         loading={configs.loading || scopes.loading}

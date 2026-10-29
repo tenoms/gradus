@@ -88,9 +88,8 @@ export default function MathSchoolCoursePractice(props: Props) {
     ).length;
   async function finish() {
     await courseApi.saveRecord(schoolCompletionRecord(context));
-    await courseApi.unlock(stuid, CalendarID, ProductID);
     setCompleted(true);
-    setNotice("本组训练已完成，后续课程进度已更新。");
+    setNotice("本组训练已完成，学习记录已保存。");
     onCompleted?.();
   }
   async function save(
@@ -203,7 +202,6 @@ export default function MathSchoolCoursePractice(props: Props) {
               stuid={stuid}
               practice
               selfAssessmentOnly
-              analysisSource="课程"
               noteSource="电子书"
               isCourse={false}
               readOnly={busy || Number(row._c_course_users_record?.ID) > 0}

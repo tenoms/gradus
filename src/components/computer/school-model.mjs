@@ -91,8 +91,7 @@ export function targetSchoolIds(value) {
 export function targetSchoolPayload(ids, schools) {
   const selected = [...new Set(ids.map(String))],
     allowed = new Set(schools.map((s) => String(s.id)));
-  if (!selected.length || selected.length > 3)
-    throw new Error("请选择 1 至 3 所目标院校");
+  if (!selected.length) throw new Error("请选择目标院校");
   if (selected.some((id) => !allowed.has(id)))
     throw new Error("所选院校不在原目标目录，请重新选择");
   return { schoolId: selected.join(",") };

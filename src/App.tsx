@@ -169,7 +169,7 @@ function PlatformGate({
           <Check size={15} /> 数学与计算机统一入口
         </span>
         <span>
-          <Check size={15} /> 保留原账号内容权限
+          <Check size={15} /> 直接读取学习平台内容
         </span>
         <span>
           <Check size={15} /> 题库、课程和复习记录

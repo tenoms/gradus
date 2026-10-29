@@ -1,156 +1,49 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
-  mathBookAnalysisAllowed,
-  mathBookNeedsUsageCheck,
-  mathQrcodeRequestPlan,
-  mathVipActive,
-  mathChoicePracticeAllowed,
-} from "../src/platforms/math-access-model.ts";
-const now = Date.parse("2026-10-29T12:00:00+08:00"),
-  book = { IsActCode: 1, ActBusCount: 2, IsVipActCode: 0 };
-test("book analysis retains exact trial allowance, already-viewed IDs and activated actor rights", () => {
-  assert.equal(
-    mathBookAnalysisAllowed({ book, user: {}, qid: 3, viewed: [1, 2], now }),
-    false,
-  );
-  assert.equal(
-    mathBookAnalysisAllowed({ book, user: {}, qid: 2, viewed: [1, 2], now }),
-    true,
-  );
-  assert.equal(
-    mathBookAnalysisAllowed({ book, user: {}, qid: 3, viewed: [1], now }),
-    true,
-  );
-  assert.equal(
-    mathBookAnalysisAllowed({
-      book,
-      user: { IsAct: 2 },
-      qid: 3,
-      viewed: [1, 2],
-      now,
-    }),
-    true,
-  );
-});
-test("VIP bypass applies only when the original book explicitly permits VIP activation", () => {
-  const user = { VipEndTime: "2026-10-30 00:00:00" };
-  assert.equal(mathVipActive(user, now), true);
-  assert.equal(
-    mathBookAnalysisAllowed({ book, user, qid: 3, viewed: [1, 2], now }),
-    false,
-  );
-  assert.equal(
-    mathBookAnalysisAllowed({
-      book: { ...book, IsVipActCode: 1 },
-      user,
-      qid: 3,
-      viewed: [1, 2],
-      now,
-    }),
-    true,
-  );
-  assert.equal(
-    mathVipActive({ VipEndTime: "2026-10-28 00:00:00" }, now),
-    false,
-  );
-});
-test("actual free preview and already authorized course sources preserve their independent rights", () => {
-  for (const source of ["课程", "专辑", "选择题库", "考试"])
-    assert.equal(
-      mathBookAnalysisAllowed({
-        book,
-        user: {},
-        qid: 3,
-        viewed: [1, 2],
-        source,
-        now,
-      }),
-      true,
-    );
-  assert.equal(
-    mathBookAnalysisAllowed({
-      book,
-      user: {},
-      qid: 3,
-      viewed: [1, 2],
-      preview: true,
-      now,
-    }),
-    true,
-  );
+import { readFile } from "node:fs/promises";
+import ts from "typescript";
+import { mergeMathLibraryCatalog } from "../src/platforms/math-library.ts";
+import { mathResponseData, mathResponseError } from "../src/platforms/math-response.ts";
+
+const compile = source => ts.transpileModule(source, {
+  compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
+}).outputText;
+const source = await readFile(new URL("../src/platforms/math.ts", import.meta.url), "utf8");
+const output = compile(source)
+  .replace(/import \{ platformRequest, studyFetch \} from ["']\.\.\/lib\/api["'];?/, "const platformRequest=(...args)=>globalThis.__mathContentRequest(...args); const studyFetch=()=>{throw new Error('unexpected upload')};")
+  .replace(/import \{ mergeMathLibraryCatalog \} from ["']\.\/math-library["'];?/, "const {mergeMathLibraryCatalog}=globalThis.__mathContentFixture;")
+  .replace(/import \{ mathResponseData, mathResponseError \} from ["']\.\/math-response["'];?/, "const {mathResponseData,mathResponseError}=globalThis.__mathContentFixture;");
+globalThis.__mathContentFixture = { mergeMathLibraryCatalog, mathResponseData, mathResponseError };
+const adapter = await import(`data:text/javascript;base64,${Buffer.from(output).toString("base64")}`);
+globalThis.__mathContentFixture.mathCommand = adapter.mathCommand;
+globalThis.__mathContentFixture.mathRows = adapter.mathRows;
+const qrOutput = compile(await readFile(new URL("../src/platforms/math-access.ts", import.meta.url), "utf8"))
+  .replace(/import \{ mathCommand, mathRows \} from ["']\.\/math["'];?/, "const {mathCommand,mathRows}=globalThis.__mathContentFixture;");
+const qr = await import(`data:text/javascript;base64,${Buffer.from(qrOutput).toString("base64")}`);
+
+test("the library keeps all returned books without fetching course grants or allocations", async () => {
+  const seen = [];
+  const books = [{ ID: 721, Name: "配套教材", IsActCode: 1 }, { ID: 2170, Name: "测评资料" }, { ID: 4893, Name: "另一教材" }];
+  globalThis.__mathContentRequest = async (platform, request) => {
+    seen.push(request.data.command);
+    return { SuccessResponse: true, data: request.data.command === "GetBookPaperListOfVip" ? books : [{ ID: 9900, Name: "历年试卷", BusType: "试卷" }] };
+  };
+  const result = adapter.mathRows(await adapter.mathApi.books());
+  assert.deepEqual(result.map(row => row.ID), [721, 2170, 4893, 9900]);
+  assert.deepEqual(seen.sort(), ["GetBookListCountAndLookCount_New", "GetBookPaperListOfVip"]);
+  assert.equal(books.length, 3);
 });
 
-test("a quota-bearing book always reads existing usage before accepting another question", () => {
-  assert.equal(mathBookNeedsUsageCheck(book, {}, now), true);
-  assert.equal(
-    mathBookNeedsUsageCheck({ ...book, IsActCode: 0 }, {}, now),
-    false,
-  );
-  assert.equal(mathBookNeedsUsageCheck(book, { IsAct: 2 }, now), false);
-});
-test("both original QR lookups use Model while course validation remains a separate original command", () => {
-  const plan = mathQrcodeRequestPlan("fixture-code");
-  assert.equal(plan.mapping.model, true);
-  assert.equal(plan.content.model, true);
-  assert.equal(plan.mapping.command, "CheckQrcodeQuestionInZhenTiList2");
-  assert.deepEqual(plan.content.params, { qrcode: "fixture-code" });
-});
-test("nonmember note limits retain original distinct error/favorite caps and do not restrict plain notes", async () => {
-  const { mathNoteQuotaAllowed } =
-    await import("../src/platforms/math-access-model.ts");
-  const config = { IsNotVipErrorQuestion: 10, IsNotVipCollectQuestion: 20 };
-  assert.equal(mathNoteQuotaAllowed("错题", 10, config, {}, now), true);
-  assert.equal(mathNoteQuotaAllowed("错题", 11, config, {}, now), false);
-  assert.equal(mathNoteQuotaAllowed("收藏", 15, config, {}, now), true);
-  assert.equal(mathNoteQuotaAllowed("笔记", 100, config, {}, now), true);
-  assert.equal(
-    mathNoteQuotaAllowed(
-      "错题",
-      100,
-      config,
-      { VipEndTime: "2026-10-30" },
-      now,
-    ),
-    true,
-  );
-});
-test("album permission keeps permanent free, valid free, expired free, VIP-only and PID4 scopes distinct", async () => {
-  const { mathAlbumAllowed } =
-    await import("../src/platforms/math-access-model.ts");
-  assert.equal(mathAlbumAllowed({ Authority: 1 }, {}, now), true);
-  assert.equal(
-    mathAlbumAllowed(
-      { Authority: 1, FreeEndTime: "2026-10-30T00:00:00" },
-      {},
-      now,
-    ),
-    true,
-  );
-  assert.equal(
-    mathAlbumAllowed(
-      { Authority: 1, FreeEndTime: "2026-10-28T00:00:00" },
-      {},
-      now,
-    ),
-    false,
-  );
-  assert.equal(mathAlbumAllowed({ Authority: 0 }, {}, now), false);
-  assert.equal(
-    mathAlbumAllowed(
-      { Authority: 0 },
-      { VipEndTime: "2026-10-30T00:00:00" },
-      now,
-    ),
-    true,
-  );
-  assert.equal(mathAlbumAllowed({ Authority: 0, PID: 4 }, {}, now), true);
-});
-
-test("ordinary choice practice keeps the original three-free-paper allowance and active membership", () => {
-  assert.equal(mathChoicePracticeAllowed({}, 0, now), true);
-  assert.equal(mathChoicePracticeAllowed({}, 2, now), true);
-  assert.equal(mathChoicePracticeAllowed({}, 3, now), false);
-  assert.equal(mathChoicePracticeAllowed({ VipEndTime: "2026-10-28 00:00:00" }, 3, now), false);
-  assert.equal(mathChoicePracticeAllowed({ VipEndTime: "2026-10-30 00:00:00" }, 20, now), true);
+test("QR lookup requests content directly and preserves every returned row", async () => {
+  const seen = [];
+  const rows = [{ ID: 1, IsLogin: 1 }, { ID: 2, IsActCode: 1 }];
+  globalThis.__mathContentRequest = async (platform, request) => {
+    seen.push(request);
+    return { SuccessResponse: true, data: rows };
+  };
+  assert.deepEqual(await qr.resolveMathBookQrcode("fixture-code"), rows);
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].path, "/api/Master/Model");
+  assert.equal(seen[0].data.command, "GetCourseQrcodeInfo");
+  assert.deepEqual(JSON.parse(seen[0].data.data), { qrcode: "fixture-code" });
 });

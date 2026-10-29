@@ -16,8 +16,6 @@ export function noteExportLinks(
     origin?: string;
     kind?: string;
     stuid: string;
-    vip?: boolean;
-    downloadCount?: number;
   },
 ): { name: string; count: number; url: string; recordIds: string[] }[];
 
@@ -25,10 +23,6 @@ export function notePrintHistoryParams(
   stuid: string,
   catalogId?: string | number,
 ): Record<string, any>;
-export function notePrintLogRecords(
-  rows: Record<string, any>[],
-  options: { origin?: string; stuid: string },
-): Record<string, any>[];
 export function noteWasPrinted(
   row: Record<string, any>,
   history: Record<string, any>[],

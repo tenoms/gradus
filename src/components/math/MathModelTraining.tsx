@@ -30,7 +30,6 @@ import {
   mergeMathQuestion,
 } from "../../platforms/math-grading";
 import { useSession } from "../../lib/session";
-import { mathVipActive } from "../../platforms/math-access";
 import { mathContentLikeDelete } from "../../platforms/math-content-marks";
 import { recordStudy } from "../../lib/store";
 import {
@@ -55,7 +54,7 @@ export interface ModelReaderProps {
     correct: boolean,
     details?: { question: MathRow; options: MathRow[] },
   ) => Promise<void>;
-  onAnalysisViewed: () => void;
+  onAnalysisViewed?: () => void;
   readOnly?: boolean;
 }
 interface Props {
@@ -67,7 +66,6 @@ interface Props {
   questionId?: string | number;
   kind?: "module" | "album";
   isLeadFill?: boolean;
-  allowPractice?: boolean;
   context?: MathModelContext;
   onClose?: () => void;
   onCompleted?: () => void;
@@ -161,19 +159,11 @@ export default function MathModelTraining({
   questionId,
   kind = "module",
   isLeadFill = false,
-  allowPractice = false,
   context = {},
   onClose,
   onCompleted,
   renderQuestion,
 }: Props) {
-  const { session } = useSession();
-  const mayPractice =
-    isLeadFill ||
-    allowPractice ||
-    Number(context.ProductID) > 0 ||
-    mathVipActive(session.platforms.math.user || {});
-  const [accessNotice, setAccessNotice] = useState("");
   const info = useData(`module-info-${fileId}-${albumId}`, async () => {
     const file = fileId
       ? mathRows(
@@ -225,18 +215,6 @@ export default function MathModelTraining({
         );
     }
   }, [content.data, context.LeadFillID]);
-  if (group && !mayPractice)
-    return (
-      <div className="panel math-state">
-        <p>当前账号暂未开通这组专项训练权限。</p>
-        <button
-          className="btn btn-secondary"
-          onClick={() => (groupId ? onClose?.() : setGroup(undefined))}
-        >
-          返回模块内容
-        </button>
-      </div>
-    );
   if (group)
     return (
       <ModulePractice
@@ -307,20 +285,9 @@ export default function MathModelTraining({
                 </button>
               </div>
             )}
-            {accessNotice && (
-              <p className="math-error-text" role="alert">
-                {accessNotice}
-              </p>
-            )}
             <ModuleNodes
               rows={modelContentTree(nodes)}
               onPractice={(r, initial) => {
-                if (!mayPractice) {
-                  setAccessNotice(
-                    "当前账号暂未开通这组专项训练权限，可在已有权益中核对。",
-                  );
-                  return;
-                }
                 setGroup({
                   ...r,
                   AlbumID: r.AlbumID || info.data.albumId,
@@ -467,7 +434,6 @@ function ModulePractice({
   );
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, MathRow>>({});
-  const [viewed, setViewed] = useState(false);
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
   const [completed, setCompleted] = useState(false);
@@ -481,7 +447,6 @@ function ModulePractice({
         ),
       );
       setAnswers({});
-      setViewed(false);
     }
   }, [remote.data, questionId]);
   const rows = mathRows(remote.data).map((r) => ({
@@ -497,8 +462,6 @@ function ModulePractice({
     details?: { question: MathRow; options: MathRow[] },
   ) => {
     if (!row) return;
-    if (!details?.options?.length && !viewed && !row.AnswerID)
-      throw new Error("请先查看解析，再记录自己的掌握程度");
     setSaving(true);
     setNotice("");
     try {
@@ -553,7 +516,6 @@ function ModulePractice({
   };
   const move = (to: number) => {
     setIndex(to);
-    setViewed(false);
     setNotice("");
   };
   return (
@@ -594,7 +556,6 @@ function ModulePractice({
           renderQuestion({
             row: { ...row, Answer: undefined, MyAnswer: row.MyAnswerIDs },
             onAnswered: save,
-            onAnalysisViewed: () => setViewed(true),
             prev: index > 0 ? () => move(index - 1) : undefined,
             next: index < rows.length - 1 ? () => move(index + 1) : undefined,
             readOnly: !!row.AnswerID,
@@ -606,7 +567,6 @@ function ModulePractice({
             stuid={stuid}
             isCourse={isLeadFill}
             onSave={save}
-            onViewed={() => setViewed(true)}
             onPrevious={index > 0 ? () => move(index - 1) : undefined}
             onNext={index < rows.length - 1 ? () => move(index + 1) : undefined}
           />
@@ -620,12 +580,29 @@ function ModulePractice({
     </div>
   );
 }
+export async function loadModuleQuestion(row: MathRow) {
+  const parts = await Promise.allSettled([
+    row._question_list ? Promise.resolve({ data: [row._question_list] }) : mathApi.question(row.QuestionID),
+    mathApi.resolve(row.QuestionID),
+    mathApi.analysis(row.QuestionID),
+  ]);
+  const value = (index: number) => {
+    const part = parts[index];
+    return part.status === "fulfilled" ? mathRows(part.value) : [];
+  };
+  const labels = ["题干", "选项与题干", "解析"];
+  return {
+    question: value(0)[0] || row._question_list || row,
+    resolve: value(1),
+    analysis: value(2),
+    errors: parts.flatMap((part, index) => part.status === "rejected" ? [`${labels[index]}读取失败：${part.reason instanceof Error ? part.reason.message : String(part.reason)}`] : []),
+  };
+}
 function ModuleQuestion({
   row,
   stuid,
   isCourse,
   onSave,
-  onViewed,
   onPrevious,
   onNext,
 }: {
@@ -633,19 +610,10 @@ function ModuleQuestion({
   stuid: string;
   isCourse: boolean;
   onSave: ModelReaderProps["onAnswered"];
-  onViewed: () => void;
   onPrevious?: () => void;
   onNext?: () => void;
 }) {
-  const remote = useData(`module-question-${row.QuestionID}`, () =>
-    Promise.all([
-      row._question_list
-        ? Promise.resolve({ data: [row._question_list] })
-        : mathApi.question(row.QuestionID),
-      mathApi.resolve(row.QuestionID),
-      mathApi.analysis(row.QuestionID),
-    ]),
-  );
+  const remote = useData(`module-question-${row.QuestionID}`, () => loadModuleQuestion(row));
   const [selection, setSelection] = useState<string[]>(
     row.MyAnswerIDs ? String(row.MyAnswerIDs).split(",") : [],
   );
@@ -655,9 +623,9 @@ function ModuleQuestion({
   const [error, setError] = useState("");
   const q = mergeMathQuestion(
     row._question_list,
-    remote.data ? mathRows(remote.data[0])[0] : {},
+    remote.data?.question || {},
   );
-  const resolve = remote.data ? mathRows(remote.data[1]) : [];
+  const resolve: MathRow[] = remote.data?.resolve || [];
   const options = resolve.filter((r) => r.Type === "选项");
   const stems = resolve.filter((r) => r.Type === "题干");
   const choice = mathQuestionChoice(options, q, { readOnly: !!row.AnswerID });
@@ -667,11 +635,7 @@ function ModuleQuestion({
     const result = gradeMathAnswer(q, options, nextSelection, text);
     const correct = self ?? result.correct;
     if (correct === undefined) {
-      setError("请查看解析后，用“已掌握”或“需要巩固”记录本题。");
-      return;
-    }
-    if (!options.length && !showAnalysis) {
-      setError("请先查看解析，再判断掌握程度。");
+      setError("请选择“已掌握”或“需要巩固”记录本题。");
       return;
     }
     setBusy(true);
@@ -679,14 +643,13 @@ function ModuleQuestion({
     try {
       await onSave(result.answer, correct, { question: q, options });
       setShowAnalysis(true);
-      onViewed();
     } catch (e: any) {
       setError(e.message);
     } finally {
       setBusy(false);
     }
   };
-  const analysis = remote.data ? mathRows(remote.data[2]) : [];
+  const analysis: MathRow[] = remote.data?.analysis || [];
   return (
     <div className="panel mmt-question">
       <Status
@@ -696,6 +659,8 @@ function ModuleQuestion({
       />
       {remote.data && (
         <>
+          {remote.data.errors.map((message: string, index: number) => <p className="math-error-text" role="status" key={index}>{message}</p>)}
+          {remote.data.errors.length > 0 && <button className="btn btn-secondary" onClick={remote.reload}>重试未完成的读取</button>}
           <div className="math-question-top">
             <span className="math-tag">
               {q.QuestionType || q.Type || "专项训练"}
@@ -755,12 +720,11 @@ function ModuleQuestion({
                 className="btn btn-secondary"
                 onClick={() => {
                   setShowAnalysis(true);
-                  onViewed();
-                }}
+                            }}
               >
                 查看解析
               </button>
-              {!options.length && showAnalysis && (
+              {!options.length && (
                 <>
                   <button
                     className="btn btn-primary"

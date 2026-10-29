@@ -137,13 +137,7 @@ export default function MathPhotoSearch({
       const recognized = await recognize(file);
       setRecognition(recognized);
       const keys = { SearchKey1: recognized.feat, SearchKey2: recognized.ocr };
-      const result = teacher
-        ? await mathPost("/api/question_search_photo/SearchPhotoKey2", {
-            ...keys,
-            System_Station_ID: 1,
-            bookids: teacher.BusID,
-          })
-        : bookId
+      const result = bookId
           ? await mathPost("/api/question_search_photo/GetBookByID", {
               ...keys,
               BusID: bookId,
@@ -161,7 +155,7 @@ export default function MathPhotoSearch({
     }
   };
   const candidate = (row: MathRow) => {
-    if (teacher) {
+    if (teacher && indexOpen) {
       setChosen(row);
       setIndexOpen(true);
       setMetadata((v) => ({
@@ -172,11 +166,6 @@ export default function MathPhotoSearch({
       }));
     } else onQuestion(row);
   };
-  const allowedSourceBooks = teacher?.Notes
-    ? books.filter((b) =>
-        String(teacher.Notes).split(",").includes(String(b.ID)),
-      )
-    : books;
   const [manualSource, setManualSource] = useState("");
   const [manualPage, setManualPage] = useState("");
   const [manualNumber, setManualNumber] = useState("");
@@ -290,15 +279,11 @@ export default function MathPhotoSearch({
             搜索范围
             <select
               className="input"
-              value={teacher ? String(teacher.BusID) : bookId}
-              disabled={!!teacher}
+              value={bookId}
               onChange={(e) => setBookId(e.target.value)}
             >
-              {!teacher && <option value="">全部教辅与真题</option>}
-              {(teacher
-                ? books.filter((b) => String(b.ID) === String(teacher.BusID))
-                : books
-              ).map((b, i) => (
+              <option value="">全部教辅与真题</option>
+              {books.map((b, i) => (
                 <option key={b.ID || i} value={b.ID}>
                   {mathTitle(b)}
                 </option>
@@ -406,7 +391,7 @@ export default function MathPhotoSearch({
       )}
       {teacher && indexOpen && (
         <div className="panel math-photo-index">
-          <h3>授权书籍的图片索引维护</h3>
+          <h3>书籍图片索引维护</h3>
           <p>
             当前索引目标：
             {mathTitle(
@@ -423,7 +408,7 @@ export default function MathPhotoSearch({
               onChange={(e) => setManualSource(e.target.value)}
             >
               <option value="">选择来源书籍</option>
-              {allowedSourceBooks.map((b, i) => (
+              {books.map((b, i) => (
                 <option key={b.ID || i} value={b.ID}>
                   {mathTitle(b)}
                 </option>

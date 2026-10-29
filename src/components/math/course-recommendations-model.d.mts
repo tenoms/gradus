@@ -1,11 +1,6 @@
 type R = Record<string, any>;
 export function recommendationRecordComplete(row: R): boolean;
 export function recommendationGroups(rows: R[], isSuper?: boolean): R[];
-export function recommendationCanAddTopic(groups: R[]): {
-  additional: number;
-  remaining: number;
-  allowed: boolean;
-};
 export function recommendationMetadata(
   groups: R[],
   specialInfo: any,

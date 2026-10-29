@@ -1,45 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  courseAlbumAllowed,
   courseAlbumTree,
   courseAlbumWork,
   courseAlbumOperation,
   courseAlbumLog,
   courseAlbumFeedback,
 } from "../src/components/math/course-album-model.mjs";
-test("course album preserves the source single-chapter direct route and checks multi-chapter membership or free term", () => {
-  const now = Date.parse("2026-10-29T04:00:00Z");
-  assert.equal(courseAlbumAllowed({ Authority: 2 }, {}, 1, now), true);
-  assert.equal(courseAlbumAllowed({ Authority: 2 }, {}, 2, now), false);
-  assert.equal(
-    courseAlbumAllowed(
-      { Authority: 1, FreeEndTime: "2026-10-30 00:00:00" },
-      {},
-      2,
-      now,
-    ),
-    true,
-  );
-  assert.equal(
-    courseAlbumAllowed(
-      { Authority: 1, FreeEndTime: "2026-10-28 00:00:00" },
-      {},
-      2,
-      now,
-    ),
-    false,
-  );
-  assert.equal(
-    courseAlbumAllowed(
-      { Authority: 2 },
-      { VipEndTime: "2027-01-01 00:00:00" },
-      2,
-      now,
-    ),
-    true,
-  );
-});
 test("album work follows the parent group teacher flag and actual first child paper identity", () => {
   const content = [
     { ID: 1, PID: 0, Type: "作业", BusValue: 1 },
@@ -126,7 +93,7 @@ globalThis.__courseAlbumFixture = {
   courseAlbumWork,
   mathData: (r) => r.data ?? r.Data ?? r,
   mathRows: (r) => {
-    const d = r.data ?? r.Data ?? r;
+    const d = r?.data ?? r?.Data ?? r;
     return Array.isArray(d?.[0]) ? d[0] : Array.isArray(d) ? d : [];
   },
   mathApi: {
@@ -177,4 +144,35 @@ test("course album loads catalogue by AlbumID and chapter cache by CatalogID, re
   assert.equal(calls.find((c) => c[0] === "items")[1], 21);
   assert.equal(calls.find((c) => c[0] === "get")[2].CourseID, 10);
   assert.equal(calls.find((c) => c[0] === "get")[2].ProductID, 12);
+});
+
+test("course album preserves returned catalogues and chapter text when progress or likes fail", async () => {
+  globalThis.__albumCatalog = async () => ({ data: [{ ID: 21, Title: "返回目录" }] });
+  globalThis.__albumItems = async () => ({ data: [{ ID: 22, ContentList: [{ Content: "返回正文" }] }] });
+  globalThis.__albumGet = async () => { throw new Error("progress unavailable"); };
+  globalThis.__albumCommand = async command => {
+    if (command === "GetAlbumInfo") return { data: [{ Title: "返回专辑" }] };
+    throw new Error("likes unavailable");
+  };
+  const context = { stuid: "s", ProductID: 12, CourseID: 10, CalendarID: 11 };
+  const overview = await adapter.courseAlbumApi.load(20, context);
+  assert.equal(overview.info.Title, "返回专辑");
+  assert.equal(overview.catalogs[0].Title, "返回目录");
+  assert.match(overview.errors.progress, /progress unavailable/);
+  const chapter = await adapter.courseAlbumApi.chapter(20, 21, context);
+  assert.equal(chapter.rows[0].ContentList[0].Content, "返回正文");
+  assert.match(chapter.errors.log, /progress unavailable/);
+  assert.match(chapter.errors.likes, /likes unavailable/);
+  assert.equal(chapter.errors.content, undefined);
+});
+
+test("course album keeps successful auxiliary responses and reports a real content failure", async () => {
+  globalThis.__albumItems = async () => { throw new Error("content unavailable"); };
+  globalThis.__albumGet = async () => ({ data: [{ ID: 31, BusID: 32 }] });
+  globalThis.__albumCommand = async () => ({ data: [{ Counts: 4 }] });
+  const chapter = await adapter.courseAlbumApi.chapter(20, 21, { stuid: "s", ProductID: 12, CourseID: 10, CalendarID: 11 });
+  assert.deepEqual(chapter.rows, []);
+  assert.equal(chapter.log.ID, 31);
+  assert.equal(chapter.likes.Counts, 4);
+  assert.match(chapter.errors.content, /content unavailable/);
 });

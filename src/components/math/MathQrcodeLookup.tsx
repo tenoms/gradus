@@ -39,7 +39,7 @@ export default function MathQrcodeLookup({
             try {
               const qrcode = mathQrcodeKey(input);
               if (!qrcode) throw new Error("请先输入书籍二维码链接或编号");
-              const result = await resolveMathBookQrcode(qrcode, stuid);
+              const result = await resolveMathBookQrcode(qrcode);
               if (!result.length)
                 throw new Error(
                   "这个二维码暂未提供配套学习内容，请核对链接后重试",

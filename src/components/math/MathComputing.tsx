@@ -130,7 +130,6 @@ function ComputingPaper({
     [notice, setNotice] = useState(""),
     [sheet, setSheet] = useState(false),
     [seconds, setSeconds] = useState(0),
-    [revealed, setRevealed] = useState(0),
     [ready, setReady] = useState(false);
   const questionAt = useRef(Date.now()),
     started = useRef(Date.now()),
@@ -140,9 +139,7 @@ function ComputingPaper({
     answer = answers[id] || "",
     correct = computingCorrect(question, answer),
     record = question.record,
-    steps = question.steps || [],
-    reviewed =
-      finished || !!record?.AnswerState || (context.mistakes && !!record);
+    steps = question.steps || [];
   useEffect(() => {
     if (!loaded.data) return;
     const rows = loaded.data.questions as R[];
@@ -184,7 +181,6 @@ function ComputingPaper({
     return () => clearInterval(timer);
   }, [current]);
   useEffect(() => {
-    setRevealed(Number(question.record?.BusValue || 0));
     setNotice("");
     questionAt.current = Date.now();
     setSeconds(0);
@@ -231,7 +227,6 @@ function ComputingPaper({
           i === current ? { ...q, record: payload, questiontime: 0 } : q,
         ),
       );
-      setRevealed(Number(payload.BusValue || 0));
       setNotice(
         correct
           ? context.mistakes
@@ -440,20 +435,13 @@ function ComputingPaper({
               );
             })}
           </div>
-          {(reviewed || record) && (
+          {(
             <div className="computing-hints">
               <h3>
                 <Lightbulb size={18} />
                 分步提示与反馈
               </h3>
-              {steps
-                .slice(
-                  0,
-                  finished || context.mistakes
-                    ? steps.length
-                    : Math.max(1, revealed),
-                )
-                .map((step: R, i: number) => (
+              {steps.map((step: R, i: number) => (
                   <div className="computing-step" key={step.ID || i}>
                     <strong>提示 {i + 1}</strong>
                     <RichContent content={step.Content} />
@@ -495,16 +483,7 @@ function ComputingPaper({
                     </div>
                   </div>
                 ))}
-              {!finished && !context.mistakes && revealed < steps.length && (
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => void submit()}
-                >
-                  查看下一步提示
-                  <ArrowRight size={15} />
-                </button>
-              )}
-              {(finished || context.mistakes || revealed >= steps.length) && (
+              {(
                 <div className="computing-analysis">
                   <h4>完整解析</h4>
                   {(question.analyses || []).map((a: R, i: number) => (
@@ -585,13 +564,11 @@ function ComputingPaper({
 
 function ComputingInfo({
   catalog,
-  allowed,
   stuid,
   onClose,
   onStart,
 }: {
   catalog: R;
-  allowed: boolean;
   stuid: string;
   onClose: () => void;
   onStart: (context: ComputingContext) => void;
@@ -619,8 +596,6 @@ function ComputingInfo({
     setLoading(true);
     setError("");
     try {
-      if (!allowed)
-        throw new Error("当前账号尚未获得这部分计算课程的学习权限。");
       if (!detail.BusID) throw new Error("当前目录尚未配置计算卷。");
       if (retry) await computingApi.retry(context);
       if (!record || retry)
@@ -662,16 +637,11 @@ function ComputingInfo({
             />
           ),
       )}
-      {!allowed && (
-        <p className="computing-muted">
-          当前账号尚未获得此专题权限，已开放的学习内容可以从目录进入。
-        </p>
-      )}
       <Status loading={loading} error={error} />
       <div className="computing-actions">
         <button
           className="btn btn-primary"
-          disabled={loading || !allowed}
+          disabled={loading}
           onClick={() => void begin()}
         >
           {Number(record?.IsFinished) === 1
@@ -684,7 +654,7 @@ function ComputingInfo({
         {record && Number(record.IsFinished) === 1 && (
           <button
             className="btn btn-secondary"
-            disabled={loading || !allowed}
+            disabled={loading}
             onClick={() => {
               if (window.confirm("重新练习会重置本卷已有作答，确认继续？"))
                 void begin(true);
@@ -702,7 +672,6 @@ function ComputingInfo({
 export default function MathComputing({ stuid }: { stuid: string }) {
   const [tab, setTab] = useState("catalog"),
     [catalog, setCatalog] = useState<R | null>(null),
-    [allowed, setAllowed] = useState(false),
     [paper, setPaper] = useState<ComputingContext | null>(null),
     [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
@@ -752,7 +721,6 @@ export default function MathComputing({ stuid }: { stuid: string }) {
     return (
       <ComputingInfo
         catalog={catalog}
-        allowed={allowed}
         stuid={stuid}
         onClose={() => setCatalog(null)}
         onStart={setPaper}
@@ -833,16 +801,10 @@ export default function MathComputing({ stuid }: { stuid: string }) {
                       <strong>{parent.Title || parent.Name}</strong>
                       <span>{parent.children?.length || 0} 个计算专题</span>
                     </div>
-                    <span
-                      className={`computing-tag ${Number(parent.isapply) !== 1 ? "muted" : ""}`}
-                    >
-                      {Number(parent.isapply) === 1 ? "已开放" : "待开通"}
-                    </span>
                   </summary>
                   <button
                     className="computing-intro-button"
                     onClick={() => {
-                      setAllowed(false);
                       setCatalog(parent);
                     }}
                   >
@@ -854,7 +816,6 @@ export default function MathComputing({ stuid }: { stuid: string }) {
                       className="computing-catalog-row"
                       key={child.ID || index}
                       onClick={() => {
-                        setAllowed(Number(parent.isapply) === 1);
                         setCatalog(child);
                       }}
                     >

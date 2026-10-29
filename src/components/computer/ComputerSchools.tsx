@@ -349,7 +349,7 @@ function TargetSchools({ onClose }: { onClose: () => void }) {
         </button>
       </div>
       <p className="cs-muted">
-        从原院校真题目录中选择 1 至 3 所，已有选择会在这里显示。
+        从院校目录中选择目标院校，已有选择会在这里显示。
       </p>
       <State busy={busy} error={error} />
       {!busy && !error && (
@@ -362,7 +362,7 @@ function TargetSchools({ onClose }: { onClose: () => void }) {
                 <button
                   className={checked ? "active" : ""}
                   key={id}
-                  disabled={saving || (!checked && ids.length >= 3)}
+                  disabled={saving}
                   onClick={() => {
                     setConfirm(false);
                     setIds((v) =>
@@ -395,12 +395,11 @@ function TargetSchools({ onClose }: { onClose: () => void }) {
             disabled={
               saving ||
               ids.length === 0 ||
-              ids.length > 3 ||
               JSON.stringify(ids) === JSON.stringify(saved)
             }
             onClick={() => setConfirm(true)}
           >
-            保存目标院校（{ids.length}/3）
+            保存目标院校（{ids.length} 所）
           </button>
           {confirm && (
             <div
@@ -791,18 +790,7 @@ export default function ComputerSchools() {
     [selected, setSelected] = useState<Row[]>([]),
     [detail, setDetail] = useState<Row>(),
     [compare, setCompare] = useState(false),
-    [targetOpen, setTargetOpen] = useState(false),
-    [permissions, setPermissions] = useState<string[]>(),
-    [permissionError, setPermissionError] = useState("");
-  const hasAuth = permissions?.some((p) =>
-    ["tiku_unlock", "wx:school:select"].includes(p),
-  );
-  useEffect(() => {
-    schools
-      .permissions()
-      .then((data) => setPermissions(Array.isArray(data) ? data : []))
-      .catch((e) => setPermissionError(e.message));
-  }, []);
+    [targetOpen, setTargetOpen] = useState(false);
   useEffect(() => {
     let active = true;
     setBusy(true);
@@ -837,23 +825,8 @@ export default function ComputerSchools() {
     setSelected((v) => {
       if (v.some((r) => schoolRowKey(r) === schoolRowKey(row)))
         return v.filter((r) => schoolRowKey(r) !== schoolRowKey(row));
-      if (v.length >= 4) {
-        setNotice("一次最多比较 4 所院校或专业，请先移除一项。");
-        return v;
-      }
       return [...v, row];
     });
-  };
-  const checkPermission = () => {
-    if (hasAuth) return true;
-    setNotice(
-      permissionError
-        ? `无法核实院校详情权限：${permissionError}`
-        : permissions === undefined
-          ? "正在核实当前账号的院校详情权限，请稍后重试。"
-          : "当前账号没有原平台的院校详情权限。可继续使用公开筛选与招生摘要。",
-    );
-    return false;
   };
   const visible = rows.filter((row) => schoolHasFeature(row, feature));
   return (
@@ -1056,15 +1029,12 @@ export default function ComputerSchools() {
           </button>
         </p>
       )}
-      {permissionError && (
-        <p className="cs-muted">详情权限读取失败，可稍后重新进入。</p>
-      )}
       {selected.length > 0 && (
         <div className="panel cs-compare-tray">
           <div>
             <ArrowRightLeft size={17} />
             <strong>对比清单</strong>
-            <span>{selected.length}/4</span>
+            <span>{selected.length} 项</span>
           </div>
           <div className="cs-selected">
             {selected.map((row) => (
@@ -1081,10 +1051,8 @@ export default function ComputerSchools() {
             className="btn btn-primary"
             disabled={selected.length < 2}
             onClick={() => {
-              if (checkPermission()) {
-                setDetail(undefined);
-                setCompare(true);
-              }
+              setDetail(undefined);
+              setCompare(true);
             }}
           >
             比较招录数据
@@ -1168,9 +1136,7 @@ export default function ComputerSchools() {
                     </button>
                     <button
                       className="btn btn-primary"
-                      onClick={() => {
-                        if (checkPermission()) setDetail(row);
-                      }}
+                      onClick={() => setDetail(row)}
                     >
                       查看详情
                       <ChevronRight size={14} />

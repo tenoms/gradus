@@ -142,7 +142,7 @@ export function MathReportDownloads({ sources }: { sources: any[] }) {
           ))}
         </div>
       ) : (
-        <p className="mer-muted">当前试卷未返回已授权的下载地址。</p>
+        <p className="mer-muted">当前试卷未返回下载地址。</p>
       )}
       {error && <p className="mer-error">{error}</p>}
     </section>

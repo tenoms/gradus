@@ -3,7 +3,6 @@ import {
   Award,
   BookOpen,
   ChevronRight,
-  Gift,
   History,
   LoaderCircle,
   UserRound,
@@ -13,7 +12,6 @@ import RichContent from "../RichContent";
 import { mathCommand, mathRows, mathTitle } from "../../platforms/math";
 import type { MathRow } from "../../platforms/math";
 import MathStudyProfile from "./MathStudyProfile";
-import MathBenefits from "./MathBenefits";
 import MathStudyHistory from "./MathStudyHistory";
 
 export default function MathAccountTools({
@@ -32,7 +30,6 @@ export default function MathAccountTools({
         {[
           { name: "个人资料", icon: UserRound },
           { name: "学习记录", icon: History },
-          { name: "积分权益", icon: Gift },
           { name: "学习榜单", icon: Award },
         ].map((t) => (
           <button key={t.name} onClick={() => setTab(t.name)}>
@@ -61,7 +58,7 @@ export default function MathAccountTools({
               </button>
             </div>
             <div className="tabs math-account-tabs">
-              {["个人资料", "学习记录", "积分权益", "学习榜单"].map((t) => (
+              {["个人资料", "学习记录", "学习榜单"].map((t) => (
                 <button
                   key={t}
                   className={t === tab ? "active" : ""}
@@ -81,8 +78,6 @@ export default function MathAccountTools({
                   onQuestion(r);
                 }}
               />
-            ) : tab === "积分权益" ? (
-              <MathBenefits user={user} />
             ) : (
               <Rankings
                 onQuestion={(r) => {

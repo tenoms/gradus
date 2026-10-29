@@ -76,28 +76,17 @@ export function courseMinutes(seconds) {
     ? Number((value / 60).toFixed(1))
     : 0;
 }
-export function packetAuthorization(rows, productID, auth = []) {
-  const protectedProduct = [2633, 2634, 2635].includes(Number(productID)),
-    byID = new Map(rows.map((row) => [String(row.ID), row]));
+export function packetTreeRows(rows) {
+  const byID = new Map(rows.map((row) => [String(row.ID), row]));
   return rows.map((row) => {
-    const path = [row],
-      visited = new Set([String(row.ID)]);
+    const path = [row], visited = new Set([String(row.ID)]);
     let parent = byID.get(String(row.PID));
     while (parent && !visited.has(String(parent.ID))) {
       path.unshift(parent);
       visited.add(String(parent.ID));
       parent = byID.get(String(parent.PID));
     }
-    const chapterID = row._authChapterID ?? path[2]?.ID;
-    return {
-      ...row,
-      _depth: path.length - 1,
-      _authChapterID: chapterID,
-      hasAuth:
-        !protectedProduct ||
-        (chapterID === undefined && path.length < 3) ||
-        auth.some((item) => String(item.FunctionID) === String(chapterID)),
-    };
+    return { ...row, _depth: path.length - 1 };
   });
 }
 export function completedCourseAssignments(tasks) {
@@ -180,22 +169,6 @@ export function packetResumeEntry(sections, record) {
   }
   return undefined;
 }
-export function courseAccessError(product, now = Date.now()) {
-  const parse = (value) => {
-    const text = String(value || "");
-    if (!text || text.startsWith("0001-") || text.startsWith("1900-"))
-      return NaN;
-    return Date.parse(
-      /[zZ]|[+-]\d\d:\d\d$/.test(text)
-        ? text
-        : text.replace(" ", "T") + "+08:00",
-    );
-  };
-  if (parse(product.StateaTime) > now)
-    return "课程尚未开始，请按原开放时间进入。";
-  if (parse(product.EndTime) < now) return "当前课程的学习期限已结束。";
-  return "";
-}
 export function courseTasksFinished(tasks) {
   if (!tasks.length) return false;
   return tasks.every((task) => {
@@ -248,36 +221,6 @@ export function packetVisitRecord(
       .replace("T", " "),
   };
 }
-export function courseVipActive(user, now = Date.now()) {
-  const value = String(user?.VipEndTime || "");
-  if (!value) return false;
-  return (
-    Date.parse(
-      /[zZ]|[+-]\d\d:\d\d$/.test(value)
-        ? value
-        : value.replace(" ", "T") + "+08:00",
-    ) > now
-  );
-}
-export function zeroPriceCourse(product) {
-  const zero = (value) =>
-    (typeof value === "number" ||
-      (typeof value === "string" && value.trim() !== "")) &&
-    Number(value) === 0;
-  return zero(product?.Proce) && zero(product?.DiscountPrice);
-}
-export function freeCourseClaim(stuid, CourseProductID, now = Date.now()) {
-  return {
-    CourseProductID,
-    StuID: stuid,
-    Source: "系统支付开通",
-    Room:
-      "系统开通" +
-      new Date(now + 8 * 3600000).toISOString().slice(0, 7).replace("-", ""),
-    System_Station_ID: 1,
-  };
-}
-
 export function courseQuestionRecord(context, task, answer, previous = {}) {
   return {
     ...context,

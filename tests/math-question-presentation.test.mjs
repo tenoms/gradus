@@ -21,13 +21,12 @@ test("math prompt content keeps inline diagrams, HTML tables, formula-only stems
   assert.deepEqual(mathQuestionPrompt({ QuestionTxt: diagram }).content, [diagram]);
 });
 
-test("single math choices save on selection while multi-select, unknown keys and exams keep explicit submission", () => {
+test("single math choices save on selection while multi-select, unknown keys and existing records keep explicit submission", () => {
   const single = [{ ID: 11, IsAnswer: "1" }, { ID: 12, IsAnswer: 0 }];
   assert.deepEqual(mathQuestionChoice(single), { multiple: false, immediate: true });
   assert.deepEqual(mathQuestionChoice(single, { Type: "判断题" }), { multiple: false, immediate: true });
   assert.deepEqual(mathQuestionChoice([{ ID: 11, IsAnswer: 1 }, { ID: 12, IsAnswer: 1 }]), { multiple: true, immediate: false });
   assert.deepEqual(mathQuestionChoice(single, { QuestionType: "多选题" }), { multiple: true, immediate: false });
-  assert.equal(mathQuestionChoice(single, {}, { lockAnalysis: true }).immediate, false);
   assert.equal(mathQuestionChoice(single, {}, { readOnly: true }).immediate, false);
   assert.equal(mathQuestionChoice([{ ID: 11 }, { ID: 12 }]).immediate, false);
 });

@@ -1,5 +1,4 @@
 import { platformRequest, studyFetch } from "../lib/api";
-import { mathVisibleBooks } from "./math-book-visibility";
 import { mergeMathLibraryCatalog } from "./math-library";
 import { mathResponseData, mathResponseError } from "./math-response";
 
@@ -101,25 +100,15 @@ export const mathApi = {
       true,
     ),
   async books() {
-    const [response, papers, grants, allocations] = await Promise.all([
+    const [response, papers] = await Promise.all([
       mathApi.rawBooks(),
       mathApi.papers(),
-      mathCommand("GetUserBookBy1149", {}),
-      mathCommand("GetFunctionAllocationListAuto", {
-        BusType: "考试用户",
-        Notes: "",
-        System_Station_ID: station,
-      }),
     ]);
-    const allowed = mathVisibleBooks(
-        mergeMathLibraryCatalog(mathRows(response), mathRows(papers)),
-        mathRows(grants),
-        mathRows(allocations),
-      ),
-      data = mathData(response);
+    const books = mergeMathLibraryCatalog(mathRows(response), mathRows(papers));
+    const data = mathData(response);
     return {
       ...response,
-      data: Array.isArray(data?.[0]) ? [allowed, ...data.slice(1)] : allowed,
+      data: Array.isArray(data?.[0]) ? [books, ...data.slice(1)] : books,
     };
   },
   bookCatalog: (BookID: string | number) =>
@@ -301,14 +290,6 @@ export const mathApi = {
     }),
   exams: (StuID: string) =>
     mathCommand("GetDryRunInfoList", { StuID, System_Station_ID: station }),
-  view: (StuID: string, BookID: number, QuestionID: number | string) =>
-    mathPost("/api/course_qrcode_book/Inner_course_qrcode_book", {
-      StuID,
-      BookID,
-      QuestionID,
-      System_Station_ID: station,
-      Notes: "查看解析",
-    }),
   async photoSearch(image: File) {
     const form = new FormData();
     form.append("image", image);

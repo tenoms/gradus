@@ -2,8 +2,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   courseAttachments,
-  isCourseOwned,
-  lessonCanPlay,
   lessonProgress,
   maskCourseReviewer,
   orderedSubcourses,
@@ -13,25 +11,18 @@ test("subcourse order and active study identity follow source courseRelated inst
   const c = {
     id: "package",
     courseRelated: "b,a",
-    courses: [{ id: "a" }, { id: "b" }],
+    courses: [{ id: "a" }, { id: "b" }, { id: "extra" }],
   };
   assert.deepEqual(
     orderedSubcourses(c).map((x) => x.id),
-    ["b", "a"],
+    ["b", "a", "extra"],
   );
   assert.equal(studyCourseId(c), "b");
   assert.equal(studyCourseId(c, "a"), "a");
 });
-test("playback respects original joined/owned rights and explicitly free trial lessons", () => {
-  assert.equal(isCourseOwned({}, false), false);
-  assert.equal(isCourseOwned({}, true), true);
-  assert.equal(isCourseOwned({}, false, true), true);
-  assert.equal(lessonCanPlay({ mediaId: "media", isFree: 0 }, false), false);
-  assert.equal(lessonCanPlay({ mediaId: "media", isFree: 2 }, false), true);
-  assert.equal(lessonCanPlay({ isFree: 2 }, true), false);
-});
 test("attachments retain original attachmentList previewUrl and ignore non-http or duplicate paths", () => {
   const lesson = {
+    own: false, isFree: 0, mediaId: "",
     attachmentList: [
       { attachName: "课件.pdf", previewUrl: "https://example.com/a.pdf" },
       { attachName: "重复.pdf", previewUrl: "https://example.com/a.pdf" },
