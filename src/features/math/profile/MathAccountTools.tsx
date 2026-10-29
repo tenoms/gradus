@@ -7,22 +7,20 @@ import {
 import RichContent from "../../../shared/content/RichContent";
 import { mathCommand, mathRows, mathTitle } from "../api/math";
 import type { MathRow } from "../api/math";
-import MathStudyProfile from "./MathStudyProfile";
 import MathStudyHistory from "./MathStudyHistory";
 
 export default function MathAccountTools({
   user,
   onQuestion,
-  tab = "个人资料",
+  tab = "学习记录",
 }: {
   user: MathRow;
   onQuestion: (row: MathRow) => void;
   tab?: string;
 }) {
   const stuid = String(user.StuID || "");
-  if (tab === "学习记录") return <MathStudyHistory stuid={stuid} onQuestion={onQuestion} />;
   if (tab === "学习榜单") return <Rankings onQuestion={onQuestion} />;
-  return <MathStudyProfile user={user} />;
+  return <MathStudyHistory stuid={stuid} onQuestion={onQuestion} />;
 }
 function RemoteList({
   id,

@@ -1198,36 +1198,6 @@
 .math-account-tabs button {
   font-size: 12px !important;
 }
-.math-profile-head {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-.math-profile-head .math-connect-icon {
-  width: 65px;
-  height: 65px;
-  border-radius: 17px;
-  font: inherit;
-  line-height: 1;
-  display: grid;
-  place-items: center;
-  margin: 0;
-  overflow: hidden;
-}
-.math-profile-head img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.math-profile-head h4 {
-  font-size: 16px;
-  margin: 5px 0 8px;
-}
-.math-profile-head p {
-  font-size: 11px;
-  color: var(--muted);
-  margin: 0;
-}
 .math-account-notice {
   font-size: 12px;
   color: var(--accent);

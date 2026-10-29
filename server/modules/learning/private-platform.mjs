@@ -104,7 +104,7 @@ export async function createPrivatePlatformStore({ database, resourceStore, pers
     const { ID: localId, id, _importShelfRemoved, _importId, _imported, _sourceRecordId, _key, ...fields } = data;
     return { ...identity,...fields, ...(name === 'math' ? { ID: baseUser.ID, StuID:baseUser.StuID } : { userId:baseUser.userId }) };
   }
-  async function saveMathProfile(userId, account, details) {
+  async function saveAccountProfile(userId, account, details) {
     const removed = ['UserName','SchoolName','TargetSchool','IsCrossCourse','TargetScore','QQ','ElseQuestion','UseRestsApp','IsRealizeCourse','IsInActivities','IsJoinCourse','isJoinCourse','Source'];
     await database.query(`UPDATE ${table} SET data=data-$2::text[] WHERE user_id=$1 AND platform='math' AND collection='profile'`, [userId, removed]);
     await put(userId, 'math', 'profile', 'profile', account);
@@ -397,5 +397,5 @@ export async function createPrivatePlatformStore({ database, resourceStore, pers
     }
     return safe;
   }
-  return { handle,profile,list,put,rememberQuestions,saveMathProfile };
+  return { handle,profile,list,put,rememberQuestions,saveAccountProfile };
 }

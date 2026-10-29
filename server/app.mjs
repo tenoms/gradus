@@ -20,7 +20,7 @@ import { createRegistrationRouter } from "./modules/identity/routes.mjs";
 import { createSessionSpace } from "./modules/identity/session-space.mjs";
 import { createAdminRouter } from "./modules/admin/routes.mjs";
 import { createLearningRouter } from "./modules/learning/routes.mjs";
-import { createMathProfileStore } from "./modules/learning/math-profile.mjs";
+import { createAccountProfileStore } from "./modules/identity/account-profile.mjs";
 import { createRuntimeInsights } from "./infrastructure/runtime-insights.mjs";
 import { readRuntimeConfig } from "./infrastructure/runtime-config.mjs";
 export { injectMathUser, validatePlatformRequest, publicPlatformResponse } from "./integrations/platform-policy.mjs";
@@ -41,7 +41,7 @@ export async function createApp(overrides = {}) {
   const resourceSync = createResourceSync({ store: resourceStore, service, connections, configuration, accountPool });
   const personalSync = await createPersonalSync({ database, service, identities, tokenLifecycle });
   const privatePlatform = await createPrivatePlatformStore({ database, resourceStore, personalSync });
-  const mathProfile = createMathProfileStore({ database, identities, privatePlatform });
+  const accountProfile = createAccountProfileStore({ database, identities, privatePlatform });
   const adminAuth = createSessionSpace({ space: "admin", identities, connections, settings: runtimeConfig.session });
   const learningAuth = createSessionSpace({ space: "learning", identities, connections, settings: runtimeConfig.session, learningProfile: (user,name) => privatePlatform.profile(user.id,name,name === "math" ? { ID:user.id,StuID:user.id } : { userId:user.id },user.displayName) });
   const registration = await createRegistrationStore({ database, identities });
@@ -68,10 +68,10 @@ export async function createApp(overrides = {}) {
     res.status(201).json(await adminAuth.save(req, res, user));
   });
   app.use("/api/admin", createResourceRouter({ resourceStore, resourceSync, identities, service, connections, auth: adminAuth }));
-  app.use("/api/admin", createAdminRouter({ service, identities, connections, configuration, operations, accountPool, resourceSync, mathProfile, auth: adminAuth }));
+  app.use("/api/admin", createAdminRouter({ service, identities, connections, configuration, operations, accountPool, resourceSync, accountProfile, auth: adminAuth }));
   app.use(createRegistrationRouter({ registration, adminAuth, learningAuth }));
   app.use("/api/learning/personal-sync", createPersonalSyncRouter({ auth: learningAuth, personalSync }));
-  app.use("/api/learning", createLearningRouter({ service, identities, connections, accountPool, privatePlatform, mathProfile, resourceSync, personalSync, runtimeConfig, auth: learningAuth }));
+  app.use("/api/learning", createLearningRouter({ service, identities, connections, accountPool, privatePlatform, accountProfile, resourceSync, personalSync, runtimeConfig, auth: learningAuth }));
   app.use("/api", (req, res) => res.status(404).json({ error: "接口不存在" }));
   const dist = path.join(root, "dist");
   if (existsSync(path.join(dist, "index.html"))) {
@@ -95,7 +95,7 @@ export async function createApp(overrides = {}) {
   app.locals.registration = registration;
   app.locals.tokenLifecycle = tokenLifecycle;
   app.locals.privatePlatform = privatePlatform;
-  app.locals.mathProfile = mathProfile;
+  app.locals.accountProfile = accountProfile;
   app.locals.identityStore = identities;
   app.locals.configuration = configuration;
   app.locals.connections = connections;

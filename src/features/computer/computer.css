@@ -776,42 +776,6 @@
   font-size: 13px;
   color: var(--muted);
 }
-.computer-account-entry {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: -7px;
-}
-.computer-account-entry button {
-  border: 0;
-  background: none;
-  cursor: pointer;
-}
-.computer-account-form {
-  max-width: 540px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-.computer-account-form > label {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  font-size: 13px;
-  color: var(--muted);
-}
-.computer-account-form > .btn {
-  align-self: flex-start;
-}
-.computer-avatar {
-  width: 64px;
-  height: 64px;
-  object-fit: cover;
-  border-radius: 50%;
-}
-.computer-account-form .computer-upload {
-  align-self: flex-start;
-}
-
 .computer-cloze-inputs {
   width: 100%;
   display: flex;

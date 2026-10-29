@@ -13,3 +13,5 @@
 .admin-learning-profile dl > div { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 8px; font-size: 11px; line-height: 1.6; }
 .admin-learning-profile dt { color: var(--muted); }
 .admin-learning-profile dd { margin: 0; overflow-wrap: anywhere; }
+.admin-learning-profile-plan { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+.admin-learning-profile-plan h4 { margin: 0 0 12px; font-size: 12px; font-weight: 500; }

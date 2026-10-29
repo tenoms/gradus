@@ -6,7 +6,7 @@ import { startHttpApp, testLearner } from '../support/http-app.mjs';
 
 const avatar = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aHa4AAAAASUVORK5CYII=';
 const profile = {
-  nickname: 'Web 数学学习者', avatar, subject: '数三', examYear: '2027', province: '浙江省',
+  nickname: 'Web 学习者', avatar, examYear: '2027', province: '浙江省',
   major: '软件工程', preparationStatus: '应届', reviewMonth: '3月',
 };
 function offlineSources() {
@@ -20,8 +20,8 @@ async function json(app, route, options = {}, expected = 200) {
   assert.equal(response.status, expected, JSON.stringify(value));
   return value;
 }
-const read = (app, auth) => json(app, '/api/learning/profile/math', { auth }).then(value => value.profile);
-const save = (app, auth, body, expected = 200) => json(app, '/api/learning/profile/math', { auth, method: 'PUT', body }, expected);
+const read = (app, auth) => json(app, '/api/learning/profile', { auth }).then(value => value.profile);
+const save = (app, auth, body, expected = 200) => json(app, '/api/learning/profile', { auth, method: 'PUT', body }, expected);
 async function setup(app) {
   const admin = await app.setup();
   await app.createUser(admin, testLearner('profile.first', ''));
@@ -31,23 +31,28 @@ async function setup(app) {
   return { admin, first, second };
 }
 
-test('math profile syncs the Web identity and preparation settings, remains private and is visible to administrators without YYB', async () => {
+test('account profile syncs the Web identity independently of study settings and is private and visible to administrators without YYB', async () => {
   const sources = offlineSources(), app = await startHttpApp(sources);
   try {
     const { admin, first, second } = await setup(app);
     const before = await read(app, first);
     assert.equal(before.nickname, 'profile.first');
-    assert.equal(before.subject, '数一');
+    assert.equal(before.subject, undefined);
+    const initialManaged = await json(app, `/api/admin/users/${first.userId}/profile`, { auth: admin });
+    assert.deepEqual(initialManaged.mathPlan, { subject: '数一', stage: '基础' });
     const task = { id: 'profile-task', title: '复盘错题', platform: 'math', date: '2026-10-30', createdAt: '2026-10-30T00:00:00Z', done: false };
-    const study = { tasks: [task], activities: [], goalMinutes: 90, mathPlan: { subject: '数二', stage: '强化' } };
-    await json(app, '/api/learning/study/data', { auth: first, method: 'PUT', body: { data: study, revision: 0 } });
+    const activity = { id: 'profile-activity', at: '2026-10-30T00:00:00Z', platform: 'math', type: 'practice', title: '高等数学', correct: 1, total: 2 };
+    const study = { tasks: [task], activities: [activity], goalMinutes: 90, mathPlan: { subject: '数二', stage: '强化' } };
     await app.app.locals.privatePlatform.put(first.userId, 'math', 'profile', 'profile', {
-      EBookIDs: '42,43', PaperIDs: '50', SchoolName: '旧学校', TargetSchool: '旧目标', QQ: '旧补充资料',
+      EBookIDs: '42,43', PaperIDs: '50', AlbumIDs: '60', SubjectType: '数三', SchoolName: '旧学校', TargetSchool: '旧目标', QQ: '旧补充资料',
     });
+    const legacyPlan = await json(app, `/api/admin/users/${first.userId}/profile`, { auth: admin });
+    assert.deepEqual(legacyPlan.mathPlan, { subject: '数三', stage: '基础' });
+    await json(app, '/api/learning/study/data', { auth: first, method: 'PUT', body: { data: study, revision: 0 } });
     await app.app.locals.privatePlatform.put(first.userId, 'math', 'sys_users_info', 'legacy', {
       SchoolName: '旧学校', TargetSchool: '旧目标', UserName: '旧姓名', QQ: '旧补充资料', Province: '旧省份',
     });
-    const saved = await save(app, first, { ...profile, userId: second.userId, role: 'admin', SchoolName: '被删字段', TargetSchool: '被删字段', QQ: '被删字段' });
+    const saved = await save(app, first, { ...profile, subject: '数一', mathPlan: { subject: '数一', stage: '冲刺' }, userId: second.userId, role: 'admin', SchoolName: '被删字段', TargetSchool: '被删字段', QQ: '被删字段' });
     assert.deepEqual(saved.profile, profile);
     assert.deepEqual(await read(app, first), profile);
     const session = await json(app, '/api/learning/auth/session', { auth: first });
@@ -61,17 +66,20 @@ test('math profile syncs the Web identity and preparation settings, remains priv
     assert.equal(session.platforms.math.user.TargetSchool, undefined);
     assert.equal(session.platforms.math.user.EBookIDs, '42,43');
     assert.equal(session.platforms.math.user.PaperIDs, '50');
+    assert.equal(session.platforms.math.user.AlbumIDs, '60');
     const updatedStudy = await json(app, '/api/learning/study/data', { auth: first });
-    assert.deepEqual(updatedStudy, { data: { ...study, mathPlan: { subject: '数三', stage: '强化' } }, revision: 2 });
+    assert.deepEqual(updatedStudy, { data: study, revision: 1 }, 'account profile saving leaves the math plan, daily goal, tasks, activities and revision unchanged');
     const otherProfile = await read(app, second);
     assert.equal(otherProfile.nickname, 'profile.second');
     assert.equal(otherProfile.avatar, '');
     assert.equal(otherProfile.province, '');
     const independentLogin = await app.login('learning', 'profile.first', 'learner-password-123');
     assert.deepEqual(await read(app, independentLogin), profile);
-    const managed = await json(app, `/api/admin/users/${first.userId}/profile/math`, { auth: admin });
+    const managed = await json(app, `/api/admin/users/${first.userId}/profile`, { auth: admin });
     assert.deepEqual(managed.profile, profile);
     assert.equal(managed.user.displayName, profile.nickname);
+    assert.deepEqual(managed.mathPlan, study.mathPlan);
+    assert.equal(managed.profile.subject, undefined);
     const page = await json(app, `/api/admin/users?q=${encodeURIComponent(profile.nickname)}`, { auth: admin });
     assert.equal(page.users[0].id, first.userId);
     const details = await app.app.locals.privatePlatform.list(first.userId, 'math', 'sys_users_info');
@@ -81,24 +89,30 @@ test('math profile syncs the Web identity and preparation settings, remains priv
       assert.equal((await app.app.locals.privatePlatform.list(first.userId, 'math', 'profile'))[0][field], undefined);
     }
     await json(app, '/api/learning/study/data', { auth: independentLogin, method: 'PUT', body: { data: { ...updatedStudy.data, mathPlan: { subject: '数一', stage: '冲刺' } }, revision: updatedStudy.revision } });
-    assert.equal((await read(app, first)).subject, '数一', 'the preparation plan remains the authoritative math subject');
+    assert.deepEqual(await read(app, first), profile, 'preparation settings do not become account profile fields');
+    const updatedManaged = await json(app, `/api/admin/users/${first.userId}/profile`, { auth: admin });
+    assert.deepEqual(updatedManaged.mathPlan, { subject: '数一', stage: '冲刺' });
+    const secondStudy = await json(app, '/api/learning/study/data', { auth: second });
+    await save(app, second, { ...profile, nickname: '第二位学习者' });
+    assert.deepEqual(await json(app, '/api/learning/study/data', { auth: second }), secondStudy, 'saving account details does not create a preparation plan or advance the study revision');
+    assert.deepEqual(await read(app, first), profile);
     assert.deepEqual(sources.calls, []);
   } finally { await app.close(); }
 });
 
-test('math profile APIs enforce the application identity and validate before changing any Web state', async () => {
+test('account profile APIs enforce the application identity and validate before changing any Web state', async () => {
   const sources = offlineSources(), app = await startHttpApp(sources);
   try {
     const { admin, first, second } = await setup(app);
     await save(app, first, profile);
     const before = await json(app, '/api/learning/study/data', { auth: first });
-    await json(app, '/api/learning/profile/math', {}, 401);
-    await json(app, '/api/learning/profile/math', { method: 'PUT', body: profile }, 401);
-    await json(app, `/api/admin/users/${first.userId}/profile/math`, { auth: second }, 401);
-    await json(app, `/api/admin/users/missing/profile/math`, { auth: admin }, 404);
-    await json(app, '/api/learning/profile/math', { auth: first, headers: { 'X-Study-User': second.userId } }, 403);
+    await json(app, '/api/learning/profile', {}, 401);
+    await json(app, '/api/learning/profile', { method: 'PUT', body: profile }, 401);
+    await json(app, `/api/admin/users/${first.userId}/profile`, { auth: second }, 401);
+    await json(app, `/api/admin/users/missing/profile`, { auth: admin }, 404);
+    await json(app, '/api/learning/profile', { auth: first, headers: { 'X-Study-User': second.userId } }, 403);
     const invalid = [
-      { nickname: '' }, { nickname: 'x'.repeat(81) }, { subject: '数四' }, { province: {} }, { major: 'x'.repeat(101) },
+      { nickname: '' }, { nickname: 'x'.repeat(81) }, { province: {} }, { major: 'x'.repeat(101) },
       { examYear: '27年' }, { preparationStatus: 'unsupported' }, { reviewMonth: '13月' },
       { avatar: 'javascript:alert(1)' }, { avatar: 'data:image/svg+xml;base64,PHN2Zy8+' },
       { avatar: 'data:image/png;base64,' + 'A'.repeat(256 * 1024) },
@@ -116,7 +130,7 @@ test('math profile APIs enforce the application identity and validate before cha
   } finally { await app.close(); }
 });
 
-test('Web math profile and avatar survive a backend restart with the same database', async () => {
+test('Web account profile and avatar survive a backend restart with the same database', async () => {
   const schemaPrefix = `test_${randomUUID().replaceAll('-', '')}`;
   let database = await createDatabase({ schemaPrefix });
   let app = await startHttpApp({ ...offlineSources(), database });

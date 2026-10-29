@@ -62,7 +62,7 @@ export default function PersonalLearningAccount() {
   return <div className="personal-connection personal-sync">
     <section className="panel settings-panel personal-sync-intro">
       <span className="personal-sync-icon"><BookOpen size={23} /></span>
-      <div><h2>把小程序里的学习积累带到 Web</h2><p>关联自己的微信账号，单向导入书架、收藏、错题、笔记和历史记录。导入后归当前 Web 账号保存，在 Web 学习产生的新记录也保存在这里。</p><p className="muted">题目等学习资源由系统账号池自动补齐，使用 Web 无需先关联个人账号。</p></div>
+      <div><h2>把小程序里的学习积累带到 Web</h2><p>关联自己的微信账号，单向导入书架、收藏、错题、笔记和历史记录。导入后归当前 Web 账号保存，在 Web 学习产生的新记录也保存在这里。</p><p>Web 个人资料独立管理，关联仅导入本人学习记录。</p><p className="muted">题目等学习资源由系统账号池自动补齐，使用 Web 无需先关联个人账号。</p></div>
     </section>
 
     {error && <div className="error-banner" role="alert"><CircleAlert size={17} /><span>{error}</span>{!status && <button className="text-link" onClick={() => void action("load", async () => { await readStatus(true); })}>重新读取</button>}</div>}
@@ -108,9 +108,9 @@ export default function PersonalLearningAccount() {
             {!!accounts.length && <>
               <label className="personal-account-select">选择自己的微信账号<select className="input" value={ref} disabled={disabled} onChange={event => { setRef(event.target.value); setReplaceRef(""); }}><option value="">请选择要关联的账号</option>{accounts.map(account => <option key={account.ref} value={account.ref} disabled={!account.openid}>{account.nickname || "微信账号"} · {account.openid ? maskedIdentity(account.openid) : "缺少微信标识，无法关联"}{account.status === "alive" ? "" : " · 会话待检查"}</option>)}</select></label>
               <p className="muted">同一个微信账号更换 YYB 地址后可继续原有关联，不会重复导入。请确认所选账号属于自己。</p>
-              <button className="btn btn-primary" disabled={disabled || !selected?.openid} onClick={() => void bind()}>{busy === "binding" ? <LoaderCircle size={16} className="spin" /> : <Link2 size={16} />}关联这个微信账号</button>
+              <button className="btn btn-primary" disabled={disabled || connectionChanged || !selected?.openid} onClick={() => void bind()}>{busy === "binding" ? <LoaderCircle size={16} className="spin" /> : <Link2 size={16} />}关联这个微信账号</button>
             </>}
-            {replaceRef && <div className="personal-sync-replace"><p>你正在关联另一个微信账号。切换后更新新账号的记录，原账号已导入的内容继续保留。</p><div className="personal-sync-actions"><button className="btn btn-primary" disabled={disabled} onClick={() => void bind(true)}>切换关联并保留已导入记录</button><button className="btn btn-secondary" disabled={disabled} onClick={() => setReplaceRef("")}>取消切换</button></div></div>}
+            {replaceRef && <div className="personal-sync-replace"><p>你正在关联另一个微信账号。切换后更新新账号的记录，原账号已导入的内容继续保留。</p><div className="personal-sync-actions"><button className="btn btn-primary" disabled={disabled || connectionChanged} onClick={() => void bind(true)}>切换关联并保留已导入记录</button><button className="btn btn-secondary" disabled={disabled} onClick={() => setReplaceRef("")}>取消切换</button></div></div>}
           </div>
         </details>
       </section>

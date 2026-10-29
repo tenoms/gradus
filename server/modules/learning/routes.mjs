@@ -7,7 +7,7 @@ import { publicYybSettings,userYybOverride } from "../accounts/user-yyb.mjs";
 import { readRuntimeConfig } from "../../infrastructure/runtime-config.mjs";
 
 /** Web sessions own learning; a source account is acquired only for a cache miss or explicit upload. */
-export function createLearningRouter({service,identities,connections,auth,accountPool,privatePlatform,mathProfile,resourceSync,personalSync,runtimeConfig=readRuntimeConfig()}) {
+export function createLearningRouter({service,identities,connections,auth,accountPool,privatePlatform,accountProfile,resourceSync,personalSync,runtimeConfig=readRuntimeConfig()}) {
   const router=express.Router(),authenticated=auth.require;
   router.use('/auth',auth.router);
   router.get('/account/yyb',authenticated,async(req,res)=>res.json(publicYybSettings(await identities.yybSettings(req.studySession.user.id),req.studySession.user.yybRef)));
@@ -36,8 +36,8 @@ export function createLearningRouter({service,identities,connections,auth,accoun
   router.get('/study/data',authenticated,async(req,res)=>res.json(await identities.studyData(req.studySession.user.id)));
   router.put('/study/data',authenticated,async(req,res)=>res.json(await identities.saveStudyData(req.studySession.user.id,req.body?.data,req.body?.revision)));
   router.get('/announcements',authenticated,async(req,res)=>res.json({announcements:await identities.listAnnouncements()}));
-  router.get('/profile/math',authenticated,async(req,res)=>res.json({profile:(await mathProfile.read(req.studySession.user.id)).profile}));
-  router.put('/profile/math',authenticated,async(req,res)=>res.json({profile:await mathProfile.save(req.studySession.user.id,req.body)}));
+  router.get('/profile',authenticated,async(req,res)=>res.json({profile:(await accountProfile.read(req.studySession.user.id)).profile}));
+  router.put('/profile',authenticated,async(req,res)=>res.json({profile:await accountProfile.save(req.studySession.user.id,req.body)}));
   const positionId = value => {
     if (!['string','number'].includes(typeof value) || !/^\d+$/.test(String(value)) || !Number.isSafeInteger(Number(value)) || Number(value)<=0) throw new ApiError('书籍和题目标识需为正整数',400);
     return Number(value);

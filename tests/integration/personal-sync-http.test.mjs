@@ -117,6 +117,44 @@ test('personal preview does not persist; imports are idempotent, private and nev
   }finally{await app.close();}
 });
 
+test('own YYB binding, bookshelf import and unlinking preserve the independent Web account profile',async()=>{
+  const f=sourceFixture(),readMath=f.mathRequest;
+  f.mathRequest=async(...args)=>{
+    const response=await readMath(...args);
+    if(args[1].data?.command==='GetUserInfoByStuID')Object.assign(response.data[0][0],{
+      UserNick:'原平台昵称',HeadImg:'https://personal-source.example/avatar.png',SubjectType:'数一',
+      Score2:'2026',Province:'原平台省份',CourseName:'原平台专业',IsWorkStudy:'在职',GoOverTime:'1月',
+    });
+    return response;
+  };
+  const app=await startHttpApp(f);
+  try{
+    const {a}=await users(app);
+    const profile={nickname:'Web 学习者',avatar:'https://web.example/avatar.png',examYear:'2027',province:'浙江省',major:'软件工程',preparationStatus:'应届',reviewMonth:'3月'};
+    const study={tasks:[],activities:[],goalMinutes:90,mathPlan:{subject:'数三',stage:'强化'}};
+    await json(app,'/api/learning/study/data',{auth:a,method:'PUT',body:{data:study,revision:0}});
+    assert.deepEqual((await json(app,'/api/learning/profile',{auth:a,method:'PUT',body:profile})).profile,profile);
+    const unchanged=async()=>{
+      assert.deepEqual((await json(app,'/api/learning/profile',{auth:a})).profile,profile);
+      assert.deepEqual(await json(app,'/api/learning/study/data',{auth:a}),{data:study,revision:1});
+      const session=await json(app,'/api/learning/auth/session',{auth:a});
+      assert.equal(session.user.displayName,profile.nickname);
+      assert.equal(session.user.avatar,profile.avatar);
+      assert.equal(session.platforms.math.user.StuID,a.userId);
+    };
+    await configure(app,a);await bind(app,a);await unchanged();
+    await settings(app,a,true,['bookshelf']);
+    const imported=await refresh(app,a,'bookshelf');assert.equal(imported.added,1);
+    assert.equal((await records(app,a,'bookshelf')).records.length,1);
+    assert.equal((await json(app,'/api/learning/auth/session',{auth:a})).platforms.math.user.EBookIDs,'book-1');
+    await unchanged();
+    await json(app,`${ROOT}/binding`,{auth:a,method:'DELETE'});
+    assert.equal((await status(app,a)).binding,null);
+    assert.equal((await records(app,a,'bookshelf')).records.length,1);
+    await unchanged();
+  }finally{await app.close();}
+});
+
 test('personal binding requires an explicit account and a real directory openid',async()=>{
   const f=sourceFixture(),app=await startHttpApp(f);
   try{

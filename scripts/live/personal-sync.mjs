@@ -43,6 +43,23 @@ try{
   const a=await login('sync.first'),b=await login('sync.second');assert.equal(calls.length,0);
   assert.equal((await value(ROOT,{auth:a})).settings.enabled,false);
   record('Web登录与个人同步状态读取不访问YYB',{sourceRequests:0});
+  const webProfile={nickname:'Web账号资料验收',avatar:'',examYear:'2027',province:'浙江省',major:'软件工程',preparationStatus:'应届',reviewMonth:'3月'};
+  const studyBeforeProfile=await value('/api/learning/study/data',{auth:a});
+  const profileSaved=await value('/api/learning/profile',{auth:a,method:'PUT',body:webProfile});
+  assert.deepEqual(profileSaved.profile,webProfile);
+  const assertWebProfile=async name=>{
+    const sourceRequestsBefore=calls.length;
+    assert.deepEqual((await value('/api/learning/profile',{auth:a})).profile,webProfile);
+    const session=await value('/api/learning/auth/session',{auth:a});
+    assert.equal(session.user.displayName,webProfile.nickname);
+    assert.equal(session.user.avatar,webProfile.avatar);
+    assert.equal(session.platforms.math.user.UserNick,webProfile.nickname);
+    assert.deepEqual(await value('/api/learning/study/data',{auth:a}),studyBeforeProfile);
+    assert.equal(calls.length,sourceRequestsBefore);
+    record(name,{profileFields:Object.keys(webProfile).length,studyRevision:studyBeforeProfile.revision,mathPlan:studyBeforeProfile.data.mathPlan||null,additionalSourceRequests:0});
+  };
+  await assertWebProfile('通用Web资料保存后会话昵称一致且学习计划与版本不变');
+  assert.equal(calls.length,0);
   const runtime=app.locals.configuration.snapshot();
   await request(`${ROOT}/connection`,{auth:a,method:'PUT',body:{baseUrl:runtime.yyb.baseUrl,apiKey:runtime.yyb.apiKey}});
   assert.equal(calls.length,0);record('保存个人YYB连接不触发同步',{sourceRequests:0});
@@ -51,6 +68,7 @@ try{
   const binding=await value(`${ROOT}/binding`,{auth:a,body:{ref:selected.ref}});
   const serialized=JSON.stringify(binding);assert.equal(serialized.includes('access_token'),false);assert.equal(serialized.includes('refresh_token'),false);
   record('个人关联使用真实目录openid及两科学习身份',{accountIdentityHash:createHash('sha256').update(selected.openid).digest('hex').slice(0,12)});
+  await assertWebProfile('本人YYB绑定后Web资料和会话昵称保持独立');
   const resourceBefore=await value('/api/admin/resource-sync',{auth:admin});assert.equal(resourceBefore.settings.enabled,false);
   await value(`${ROOT}/settings`,{auth:a,method:'PUT',body:{enabled:true,scopes:['bookshelf','favorites','mistakes','notes','answers','reports','progress']}});
   assert.equal((await value('/api/admin/resource-sync',{auth:admin})).settings.enabled,false);
@@ -95,6 +113,7 @@ try{
   assert.ok((await records(a,'math','reports')).records.length>0,'访问个人历史页面自动导入对应范围');
   assert.equal(calls.slice(beforeOnDemand).filter(call=>call.command==='GetCatalogHistoryList').length,1);
   record('真实数学历史页面触发单向按需更新',{imported:(await records(a,'math','reports')).records.length,returned:Array.isArray(reports.data?.[0])?reports.data[0].length:null});
+  await assertWebProfile('本人两科学习记录导入后Web资料和会话昵称不变');
   const resourceAfter=await value('/api/admin/resource-sync',{auth:admin});assert.equal(resourceAfter.resources.total,resourceBefore.resources.total);
   record('个人导入未写入公共资源库',{publicResources:resourceAfter.resources.total});
   const beforeIdle=calls.length;await value(ROOT,{auth:a});assert.equal(calls.length,beforeIdle);record('查看同步状态不会后台遍历学习记录',{additionalSourceRequests:0});
@@ -109,6 +128,7 @@ try{
   record('来源不可用仍可读导入记录且Web会话有效');
   await value(`${ROOT}/binding`,{auth:a,method:'DELETE'});assert.equal((await value(ROOT,{auth:a})).binding,null);assert.equal((await records(a,'computer','reports')).records.length,reportRows.length);
   record('解除个人关联保留Web拥有的导入数据');
+  await assertWebProfile('解除本人YYB关联后Web资料和会话昵称仍保留');
 }catch(error){results.push({name:'验收失败',passed:false,message:error.message});console.error(error.message);process.exitCode=1;}
 finally{
   if(results.some(row=>!row.passed))process.exitCode=1;
