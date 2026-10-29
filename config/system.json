@@ -14,13 +14,10 @@
         ".env",
         ".env.*",
         "*.{crt,pem}",
-        "**/.git/**",
-        "**/config/defaults.json",
-        "**/config/local*.json"
+        "**/.git/**"
       ]
     },
     "database": {
-      "url": "",
       "schemaPrefix": "study",
       "maxConnections": 10,
       "connectionTimeoutMs": 5000
@@ -44,10 +41,51 @@
       "recentRequests": 100
     }
   },
-  "platforms": {
+  "public": {
+    "math": {
+      "externalBaseUrl": "https://web.math-upstream.invalid/External/",
+      "printStationId": 1
+    },
+    "computer": {
+      "subjects": [
+        {
+          "id": "701769479767592960",
+          "name": "数据结构",
+          "examCategory": 1
+        },
+        {
+          "id": "701769719702753280",
+          "name": "组成原理",
+          "examCategory": 1
+        },
+        {
+          "id": "704332467330486272",
+          "name": "操作系统",
+          "examCategory": 1
+        },
+        {
+          "id": "707889875399086080",
+          "name": "计算机网络",
+          "examCategory": 1
+        },
+        {
+          "id": "708024163360706560",
+          "name": "C语言程序设计",
+          "examCategory": 1
+        }
+      ]
+    },
+    "media": {
+      "polyvSdkUrl": "https://player.polyv.net/resp/vod-player/latest/player.js"
+    },
+    "catalogCache": {
+      "maxAgeMs": 60000,
+      "maxEntries": 80
+    }
+  },
+  "initialPlatforms": {
     "yyb": {
-      "baseUrl": "",
-      "apiKey": ""
+      "baseUrl": ""
     },
     "math": {
       "enabled": true,
@@ -55,19 +93,14 @@
       "appId": "<math-app-id>",
       "stationId": 1,
       "loginId": 2,
-      "ocrUrl": "https://photo.math-upstream.invalid/predict",
-      "ocrUsername": "",
-      "ocrPassword": ""
+      "ocrUrl": "https://photo.math-upstream.invalid/predict"
     },
     "computer": {
       "enabled": true,
       "baseUrl": "https://teach.computer-upstream.invalid",
       "appId": "<computer-app-id>",
       "tenantCode": "1",
-      "oauthClientId": "web_app",
-      "oauthClientSecret": "",
-      "videoKey": "",
-      "videoIv": ""
+      "oauthClientId": "web_app"
     }
   }
 }

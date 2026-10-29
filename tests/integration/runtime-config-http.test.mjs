@@ -4,7 +4,7 @@ import { readRuntimeConfig } from '../../server/infrastructure/runtime-config.mj
 import { startHttpApp } from '../support/http-app.mjs';
 
 test('configured session, payload, resource, account and diagnostic policies reach the HTTP application', async () => {
-  const runtimeConfig = readRuntimeConfig({ env: {}, configFile: false });
+  const runtimeConfig = readRuntimeConfig({ env: {} });
   runtimeConfig.session = { lifetimeMs: 45_000, secureCookies: true };
   runtimeConfig.http.jsonBodyLimit = 256;
   runtimeConfig.http.uploadBodyLimit = 32;

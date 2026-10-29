@@ -5,26 +5,22 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
 
-test('development serves public settings while rejecting default and selected private configuration', async () => {
+test('development serves nonsecret system settings while protecting deployment credentials', async () => {
   const root = fileURLToPath(new URL('../../../', import.meta.url));
   const directory = await mkdtemp(path.join(root, 'config/deployment-test-'));
-  const filename = path.join(directory, 'settings.json');
-  await writeFile(filename, JSON.stringify({ runtime: { http: { port: 39123 } } }));
-  const previous = process.env.STUDY_CONFIG_FILE;
+  const filename = path.join(directory, '.env');
+  await writeFile(filename, 'DATABASE_URL=postgresql://fixture:private@localhost/test');
   let server;
   try {
-    process.env.STUDY_CONFIG_FILE = filename;
     server = await createServer({ logLevel: 'silent', server: { host: '127.0.0.1', port: 0 } });
-    assert.equal(server.config.server.proxy['/api'].target, 'http://127.0.0.1:39123');
     await server.listen();
     const base = `http://127.0.0.1:${server.httpServer.address().port}`;
-    const selectedPath = '/' + path.relative(root, filename).split(path.sep).join('/');
+    const envPath = '/' + path.relative(root, filename).split(path.sep).join('/');
     for (const [route, expected] of [
-      ['/config/defaults.json', 403],
-      [selectedPath, 403],
-      [selectedPath + '?import', 403],
+      [envPath, 403],
+      [envPath + '?import', 403],
       ['/@fs' + filename, 403],
-      ['/config/public.json', 200],
+      ['/config/system.json', 200],
     ]) {
       const response = await fetch(base + route);
       assert.equal(response.status, expected, route);
@@ -32,8 +28,6 @@ test('development serves public settings while rejecting default and selected pr
     }
   } finally {
     await server?.close();
-    if (previous === undefined) delete process.env.STUDY_CONFIG_FILE;
-    else process.env.STUDY_CONFIG_FILE = previous;
     await rm(directory, { recursive: true, force: true });
   }
 });

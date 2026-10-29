@@ -1,12 +1,10 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
-// Vite evaluates this file in Node; only config/public.json enters browser code.
+// Vite evaluates deployment settings in Node; browser code uses system.public.
 import { readRuntimeConfig } from "./server/infrastructure/runtime-config.mjs";
-import { deploymentConfigPath } from "./server/infrastructure/configuration.mjs";
 export default defineConfig(({ mode }) => {
   const env = { ...loadEnv(mode, process.cwd(), ""), ...process.env };
   const runtime = readRuntimeConfig({ env });
-  const deploymentFile = deploymentConfigPath({ env });
   const apiHost = ["0.0.0.0", "::"].includes(runtime.http.host) ? "localhost" : runtime.http.host;
   const apiTarget = `http://${apiHost.includes(":") ? `[${apiHost}]` : apiHost}:${runtime.http.port}`;
   return {
@@ -29,7 +27,7 @@ export default defineConfig(({ mode }) => {
   server: {
     host: runtime.development.host,
     port: runtime.development.port,
-    fs: { deny: [...runtime.development.fsDeny, ...(deploymentFile ? [deploymentFile] : [])] },
+    fs: { deny: runtime.development.fsDeny },
     watch: {
       ignored: ["**/docs/**", "**/artifacts/**"],
     },

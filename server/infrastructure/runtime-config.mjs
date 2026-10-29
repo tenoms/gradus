@@ -1,4 +1,4 @@
-import { readFileConfiguration } from './configuration.mjs';
+import system from '../../config/system.json' with { type: 'json' };
 
 const fail = (field, requirement) => { throw new Error(`运行配置 ${field} ${requirement}`); };
 const integer = (value, field, minimum = 0, maximum = Number.MAX_SAFE_INTEGER) => {
@@ -12,15 +12,15 @@ const bodyLimit = (value, field) => {
   if (typeof value !== 'string' || !/^\d+(?:\.\d+)?\s*(?:b|kb|mb|gb)$/i.test(value) || parseFloat(value) <= 0) fail(field, '必须为正数字节数或带单位的大小');
 };
 
-/** One deployment snapshot supplies server-only operational settings. */
-export function readRuntimeConfig({ env = process.env, configFile } = {}) {
-  const runtime = readFileConfiguration({ env, configFile }).runtime;
+/** Deployment environment supplies connections; release policy comes from one settings file. */
+export function readRuntimeConfig({ env = process.env } = {}) {
+  const runtime = structuredClone(system.runtime);
+  runtime.database.url = env.DATABASE_URL || '';
   const override = (name, target, key, convert = value => value) => {
     if (env[name] !== undefined && env[name] !== '') target[key] = convert(env[name]);
   };
   override('HOST', runtime.http, 'host');
   override('PORT', runtime.http, 'port', Number);
-  override('DATABASE_URL', runtime.database, 'url');
   override('STUDY_SCHEMA_PREFIX', runtime.database, 'schemaPrefix');
   override('COOKIE_SECURE', runtime.session, 'secureCookies', value => {
     if (['1', 'true'].includes(String(value))) return true;
@@ -28,6 +28,10 @@ export function readRuntimeConfig({ env = process.env, configFile } = {}) {
     fail('session.secureCookies', '必须为布尔值，COOKIE_SECURE 只接受 0/1/false/true');
   });
 
+  return validateRuntimeConfig(runtime);
+}
+
+export function validateRuntimeConfig(runtime) {
   text(runtime.http.host, 'http.host');
   integer(runtime.http.port, 'http.port', 0, 65535);
   bodyLimit(runtime.http.jsonBodyLimit, 'http.jsonBodyLimit');
