@@ -30,6 +30,7 @@ export interface IntegrationConfiguration {
   revision: number;
   config: IntegrationConfig;
   secretStatus: Record<SecretPath, boolean>;
+  environmentFields: string[];
   affectedPlatforms?: ("math" | "computer")[];
 }
 

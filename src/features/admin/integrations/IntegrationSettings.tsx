@@ -27,20 +27,20 @@ const dateTime = (value: string) => {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false });
 };
 
-function Field({ label, help, children, wide = false }: { label: string; help?: string; children: ReactNode; wide?: boolean }) {
+function Field({ label, help, children, wide = false, environmentControlled = false }: { label: string; help?: string; children: ReactNode; wide?: boolean; environmentControlled?: boolean }) {
   return <label className={`field-label integration-field ${wide ? "integration-field-wide" : ""}`}>
-    <span>{label}</span>{children}{help && <small>{help}</small>}
+    <span>{label}{environmentControlled && <small> · .env 控制</small>}</span>{children}{help && <small>{help}</small>}{environmentControlled && <small>请修改 .env 中的对应值并重启服务。</small>}
   </label>;
 }
 
-function SecretField({ path, label, help, configured, value, clear, disabled, onChange, onClear }: {
-  path: PlatformSecretPath; label: string; help?: string; configured: boolean; value: string; clear: boolean; disabled: boolean;
+function SecretField({ path, label, help, configured, value, clear, disabled, environmentControlled, onChange, onClear }: {
+  path: PlatformSecretPath; label: string; help?: string; configured: boolean; value: string; clear: boolean; disabled: boolean; environmentControlled: boolean;
   onChange: (value: string) => void; onClear: (clear: boolean) => void;
 }) {
   return <div className="integration-secret-field">
-    <div className="integration-secret-label"><label htmlFor={`integration-${path}`}>{label}</label><span className={`integration-secret-status ${configured ? "is-configured" : ""}`}><KeyRound size={12} />{clear ? "保存时清空" : configured ? "已配置" : "未配置"}</span></div>
-    <input id={`integration-${path}`} className="input" type="password" autoComplete="new-password" spellCheck={false} value={value} disabled={disabled || clear} onChange={event => onChange(event.target.value)} placeholder={clear ? "此项将在保存时清空" : configured ? "留空保留现有值，输入新值替换" : "输入配置值"} />
-    <div className="integration-secret-help"><small>{help || "已保存的值不会返回浏览器。"}</small>{configured && <label><input type="checkbox" aria-label={`清空${label}`} checked={clear} disabled={disabled} onChange={event => onClear(event.target.checked)} />清空此项</label>}</div>
+    <div className="integration-secret-label"><label htmlFor={`integration-${path}`}>{label}</label><span className={`integration-secret-status ${configured ? "is-configured" : ""}`}><KeyRound size={12} />{environmentControlled ? `${configured ? "已配置" : "未配置"} · .env 控制` : clear ? "保存时清空" : configured ? "已配置" : "未配置"}</span></div>
+    <input id={`integration-${path}`} className="input" type="password" autoComplete="new-password" spellCheck={false} value={environmentControlled ? "" : value} disabled={disabled || clear || environmentControlled} onChange={event => onChange(event.target.value)} placeholder={environmentControlled ? "由 .env 提供" : clear ? "此项将在保存时清空" : configured ? "留空保留现有值，输入新值替换" : "输入配置值"} />
+    <div className="integration-secret-help"><small>{environmentControlled ? "请在 .env 中修改或清空此项，并重启服务。" : help || "已保存的值不会返回浏览器。"}</small>{configured && <label><input type="checkbox" aria-label={`清空${label}`} checked={!environmentControlled && clear} disabled={disabled || environmentControlled} onChange={event => onClear(event.target.checked)} />清空此项</label>}</div>
   </div>;
 }
 
@@ -61,6 +61,7 @@ export default function IntegrationSettings() {
   const [accountsLoading, setAccountsLoading] = useState(false);
   const [accountsError, setAccountsError] = useState("");
   const [accountRef, setAccountRef] = useState("");
+  const environmentControlled = (path: string) => !!saved?.environmentFields?.includes(path);
   const dirty = !!saved && !!draft && (JSON.stringify(saved.config) !== JSON.stringify(draft) || secretPaths.some(path => secrets[path] !== "") || clearSecrets.length > 0);
   const busy = loading || saving || !!probing;
 
@@ -77,13 +78,16 @@ export default function IntegrationSettings() {
   useEffect(() => { void load(); }, []);
 
   function setField<T extends PlatformTarget, K extends keyof IntegrationConfig[T]>(target: T, key: K, value: IntegrationConfig[T][K]) {
+    if (environmentControlled(`${target}.${String(key)}`)) return;
     setDraft(current => current ? { ...current, [target]: { ...current[target], [key]: value } } : current);
     setNotice("");
   }
   function setSecret(path: PlatformSecretPath, value: string) {
+    if (environmentControlled(path)) return;
     setSecrets(current => ({ ...current, [path]: value })); setNotice("");
   }
   function clearSecret(path: PlatformSecretPath, clear: boolean) {
+    if (environmentControlled(path)) return;
     setClearSecrets(current => clear ? [...current.filter(value => value !== path), path] : current.filter(value => value !== path));
     if (clear) setSecrets(current => ({ ...current, [path]: "" }));
     setNotice("");
@@ -96,12 +100,12 @@ export default function IntegrationSettings() {
       math: { ...draft.math }, computer: { ...draft.computer },
     };
     for (const path of secretPaths) {
-      if (!secrets[path]) continue;
+      if (environmentControlled(path) || !secrets[path]) continue;
       const [target, field] = path.split(".");
       config[target as PlatformTarget][field] = secrets[path];
     }
     try {
-      const value = await api<IntegrationConfiguration>("/api/admin/configuration", { method: "PUT", body: JSON.stringify({ revision: saved.revision, config, clearSecrets }) });
+      const value = await api<IntegrationConfiguration>("/api/admin/configuration", { method: "PUT", body: JSON.stringify({ revision: saved.revision, config, clearSecrets: clearSecrets.filter(path => !environmentControlled(path)) }) });
       const affected = value.affectedPlatforms || [];
       accept(value); setProbe(undefined); setProbeError("");
       setAccounts([]); setAccountRef(""); setAccountsError("");
@@ -129,34 +133,35 @@ export default function IntegrationSettings() {
     } catch (cause) { setProbeError(message(cause)); }
     finally { setProbing(undefined); }
   }
-  const renderSecret = (path: PlatformSecretPath, label: string, help?: string) => <SecretField key={path} path={path} label={label} help={help} configured={!!saved?.secretStatus[path]} value={secrets[path]} clear={clearSecrets.includes(path)} disabled={busy} onChange={value => setSecret(path, value)} onClear={clear => clearSecret(path, clear)} />;
+  const renderSecret = (path: PlatformSecretPath, label: string, help?: string) => <SecretField key={path} path={path} label={label} help={help} configured={!!saved?.secretStatus[path]} value={secrets[path]} clear={clearSecrets.includes(path)} disabled={busy} environmentControlled={environmentControlled(path)} onChange={value => setSecret(path, value)} onClear={clear => clearSecret(path, clear)} />;
   const probeButton = (target: PlatformTarget) => <button className="btn btn-secondary integration-probe-link" type="button" disabled={!!probing || busy} onClick={() => void check(target)}>{probing === target ? <LoaderCircle size={15} className="spin" /> : <Link2 size={15} />}检查{labels[target]}</button>;
 
   if (!draft || !saved) return <section className="panel integration-initial-state">{loading ? <><LoaderCircle size={25} className="spin" /><p>正在读取平台配置…</p></> : <><CircleAlert size={26} /><p role="alert">{error || "配置暂时不可用"}</p><button className="btn btn-secondary" onClick={() => void load()}><RefreshCw size={15} />重新读取</button></>}</section>;
 
   return <div className="integration-settings">
     <div className="integration-toolbar" role="group" aria-label="平台配置操作"><span className="integration-revision">配置版本 {saved.revision}</span><button className="btn btn-secondary" type="button" disabled={busy || dirty} onClick={() => void load()}><RefreshCw size={14} />读取最新配置</button></div>
+    {!!saved.environmentFields?.length && <p className="muted">标记“.env 控制”的字段由服务器环境配置提供；其他字段可在此编辑。</p>}
     {notice && <div className="integration-notice" role="status"><Check size={18} /><p>{notice}</p><button className="icon-button" aria-label="关闭保存提示" onClick={() => setNotice("")}><X size={16} /></button></div>}
     {error && <div className="integration-error" role="alert"><CircleAlert size={18} /><div><p>{error}</p>{conflict && <button className="text-link" disabled={busy} onClick={() => void load()}>放弃当前编辑并读取最新配置</button>}</div></div>}
     <div className="integration-layout">
       <form className="integration-form" onSubmit={save}>
         <section className={`panel integration-card ${!draft.math.enabled ? "platform-disabled" : ""}`} aria-labelledby="integration-math-title">
-          <div className="integration-card-heading"><span className="integration-platform-icon math"><Sigma size={24} /></span><div><h2 id="integration-math-title">考研数学</h2></div><label className="integration-toggle"><input type="checkbox" aria-label="启用考研数学" checked={draft.math.enabled} disabled={busy} onChange={event => setField("math", "enabled", event.target.checked)} /><span aria-hidden="true" /><strong>{draft.math.enabled ? "已启用" : "已停用"}</strong></label></div>
-          <fieldset disabled={busy}><div className="integration-fields"><Field label="平台地址" wide><input className="input" type="url" required value={draft.math.baseUrl} onChange={event => setField("math", "baseUrl", event.target.value)} spellCheck={false} /></Field><Field label="微信 App ID" help="数学小程序在微信开放平台的 App ID。" wide><input className="input" value={draft.math.appId} onChange={event => setField("math", "appId", event.target.value)} required pattern="wx[0-9a-fA-F]{16}" maxLength={18} spellCheck={false} /></Field><Field label="站点 ID"><input className="input" type="number" min={1} step={1} required value={draft.math.stationId} onChange={event => setField("math", "stationId", Number(event.target.value))} /></Field><Field label="登录 ID"><input className="input" type="number" min={1} step={1} required value={draft.math.loginId} onChange={event => setField("math", "loginId", Number(event.target.value))} /></Field></div>
-            <details className="integration-subsection" open><summary>图片识别服务 <span>OCR</span></summary><div className="integration-fields"><Field label="OCR 接口地址" help="用于数学拍照搜题，填写完整识别接口地址。" wide><input className="input" type="url" value={draft.math.ocrUrl} onChange={event => setField("math", "ocrUrl", event.target.value)} spellCheck={false} /></Field>{renderSecret("math.ocrUsername", "OCR 用户名")}{renderSecret("math.ocrPassword", "OCR 密码")}</div></details>
+          <div className="integration-card-heading"><span className="integration-platform-icon math"><Sigma size={24} /></span><div><h2 id="integration-math-title">考研数学</h2></div><label className="integration-toggle"><input type="checkbox" aria-label="启用考研数学" checked={draft.math.enabled} disabled={busy || environmentControlled("math.enabled")} onChange={event => setField("math", "enabled", event.target.checked)} /><span aria-hidden="true" /><strong>{draft.math.enabled ? "已启用" : "已停用"}</strong>{environmentControlled("math.enabled") && <small>.env 控制</small>}</label></div>
+          <fieldset disabled={busy}><div className="integration-fields"><Field environmentControlled={environmentControlled("math.baseUrl")} label="平台地址" wide><input className="input" type="url" required disabled={environmentControlled("math.baseUrl")} value={draft.math.baseUrl} onChange={event => setField("math", "baseUrl", event.target.value)} spellCheck={false} /></Field><Field environmentControlled={environmentControlled("math.appId")} label="微信 App ID" help="数学小程序在微信开放平台的 App ID。" wide><input className="input" disabled={environmentControlled("math.appId")} value={draft.math.appId} onChange={event => setField("math", "appId", event.target.value)} required pattern="wx[0-9a-fA-F]{16}" maxLength={18} spellCheck={false} /></Field><Field environmentControlled={environmentControlled("math.stationId")} label="站点 ID"><input className="input" type="number" min={1} step={1} required disabled={environmentControlled("math.stationId")} value={draft.math.stationId} onChange={event => setField("math", "stationId", Number(event.target.value))} /></Field><Field environmentControlled={environmentControlled("math.loginId")} label="登录 ID"><input className="input" type="number" min={1} step={1} required disabled={environmentControlled("math.loginId")} value={draft.math.loginId} onChange={event => setField("math", "loginId", Number(event.target.value))} /></Field></div>
+            <details className="integration-subsection" open><summary>图片识别服务 <span>OCR</span></summary><div className="integration-fields"><Field environmentControlled={environmentControlled("math.ocrUrl")} label="OCR 接口地址" help="用于数学拍照搜题，填写完整识别接口地址。" wide><input className="input" type="url" disabled={environmentControlled("math.ocrUrl")} value={draft.math.ocrUrl} onChange={event => setField("math", "ocrUrl", event.target.value)} spellCheck={false} /></Field>{renderSecret("math.ocrUsername", "OCR 用户名")}{renderSecret("math.ocrPassword", "OCR 密码")}</div></details>
           </fieldset>
           <div className="integration-card-footer"><p>{draft.math.enabled ? "修改认证配置后，后续请求自动取得相应令牌。" : "已暂停数学来源请求，PostgreSQL 中已有资源仍可使用。"}</p>{probeButton("math")}</div>
         </section>
 
         <section className={`panel integration-card ${!draft.computer.enabled ? "platform-disabled" : ""}`} aria-labelledby="integration-computer-title">
-          <div className="integration-card-heading"><span className="integration-platform-icon computer"><Code2 size={23} /></span><div><h2 id="integration-computer-title">计算机 408</h2></div><label className="integration-toggle"><input type="checkbox" aria-label="启用计算机 408" checked={draft.computer.enabled} disabled={busy} onChange={event => setField("computer", "enabled", event.target.checked)} /><span aria-hidden="true" /><strong>{draft.computer.enabled ? "已启用" : "已停用"}</strong></label></div>
-          <fieldset disabled={busy}><div className="integration-fields"><Field label="平台地址" wide><input className="input" type="url" required value={draft.computer.baseUrl} onChange={event => setField("computer", "baseUrl", event.target.value)} spellCheck={false} /></Field><Field label="微信 App ID" wide><input className="input" value={draft.computer.appId} onChange={event => setField("computer", "appId", event.target.value)} required pattern="wx[0-9a-fA-F]{16}" maxLength={18} spellCheck={false} /></Field><Field label="租户代码"><input className="input" required value={draft.computer.tenantCode} onChange={event => setField("computer", "tenantCode", event.target.value)} maxLength={100} spellCheck={false} /></Field><Field label="OAuth 客户端 ID"><input className="input" required value={draft.computer.oauthClientId} onChange={event => setField("computer", "oauthClientId", event.target.value)} maxLength={160} spellCheck={false} /></Field>{renderSecret("computer.oauthClientSecret", "OAuth 客户端密钥")}</div>
+          <div className="integration-card-heading"><span className="integration-platform-icon computer"><Code2 size={23} /></span><div><h2 id="integration-computer-title">计算机 408</h2></div><label className="integration-toggle"><input type="checkbox" aria-label="启用计算机 408" checked={draft.computer.enabled} disabled={busy || environmentControlled("computer.enabled")} onChange={event => setField("computer", "enabled", event.target.checked)} /><span aria-hidden="true" /><strong>{draft.computer.enabled ? "已启用" : "已停用"}</strong>{environmentControlled("computer.enabled") && <small>.env 控制</small>}</label></div>
+          <fieldset disabled={busy}><div className="integration-fields"><Field environmentControlled={environmentControlled("computer.baseUrl")} label="平台地址" wide><input className="input" type="url" required disabled={environmentControlled("computer.baseUrl")} value={draft.computer.baseUrl} onChange={event => setField("computer", "baseUrl", event.target.value)} spellCheck={false} /></Field><Field environmentControlled={environmentControlled("computer.appId")} label="微信 App ID" wide><input className="input" disabled={environmentControlled("computer.appId")} value={draft.computer.appId} onChange={event => setField("computer", "appId", event.target.value)} required pattern="wx[0-9a-fA-F]{16}" maxLength={18} spellCheck={false} /></Field><Field environmentControlled={environmentControlled("computer.tenantCode")} label="租户代码"><input className="input" required disabled={environmentControlled("computer.tenantCode")} value={draft.computer.tenantCode} onChange={event => setField("computer", "tenantCode", event.target.value)} maxLength={100} spellCheck={false} /></Field><Field environmentControlled={environmentControlled("computer.oauthClientId")} label="OAuth 客户端 ID"><input className="input" required disabled={environmentControlled("computer.oauthClientId")} value={draft.computer.oauthClientId} onChange={event => setField("computer", "oauthClientId", event.target.value)} maxLength={160} spellCheck={false} /></Field>{renderSecret("computer.oauthClientSecret", "OAuth 客户端密钥")}</div>
             <details className="integration-subsection" open><summary>录播配置 <span>VIDEO</span></summary><p>用于解密学习平台返回的播放地址。</p><div className="integration-fields">{renderSecret("computer.videoKey", "录播 AES Key", "需要 16 字节 UTF-8 值。")}{renderSecret("computer.videoIv", "录播 AES IV", "需要 16 字节 UTF-8 值。")}</div></details>
           </fieldset>
           <div className="integration-card-footer"><p>{draft.computer.enabled ? "修改认证配置后，后续请求自动取得相应令牌。" : "已暂停计算机来源请求，PostgreSQL 中已有资源仍可使用。"}</p>{probeButton("computer")}</div>
         </section>
 
-        <div className="integration-save-bar"><div><span className={`integration-dirty-dot ${dirty ? "is-dirty" : ""}`} /><div><strong>{saving ? "正在保存配置…" : dirty ? "有未保存的更改" : "已与服务器配置一致"}</strong><p>{clearSecrets.length ? `${clearSecrets.length} 项秘密将在保存时清空。` : "保存后立即应用到后续学习请求。"}</p></div></div><div className="integration-save-actions"><button className="btn btn-secondary" type="button" disabled={busy || !dirty} onClick={() => { if (conflict) void load(); else { accept(saved); setError(""); setNotice(""); } }}><RotateCcw size={15} />放弃编辑</button><button className="btn btn-primary" type="submit" disabled={busy || !dirty || conflict}>{saving ? <LoaderCircle size={16} className="spin" /> : <Save size={16} />}保存配置</button></div></div>
+        <div className="integration-save-bar"><div><span className={`integration-dirty-dot ${dirty ? "is-dirty" : ""}`} /><div><strong>{saving ? "正在保存配置…" : dirty ? "有未保存的更改" : "已与服务器配置一致"}</strong><p>{clearSecrets.length ? `${clearSecrets.length} 项秘密将在保存时清空。` : "可编辑字段保存后应用到后续学习请求。"}</p></div></div><div className="integration-save-actions"><button className="btn btn-secondary" type="button" disabled={busy || !dirty} onClick={() => { if (conflict) void load(); else { accept(saved); setError(""); setNotice(""); } }}><RotateCcw size={15} />放弃编辑</button><button className="btn btn-primary" type="submit" disabled={busy || !dirty || conflict}>{saving ? <LoaderCircle size={16} className="spin" /> : <Save size={16} />}保存配置</button></div></div>
       </form>
 
       <aside className="integration-inspector">
@@ -170,7 +175,7 @@ export default function IntegrationSettings() {
           {probeError && <div className="integration-probe-error" role="alert"><CircleAlert size={17} /><p>{probeError}</p></div>}
           {probe && <div className="integration-probe-result" aria-live="polite"><div className={`integration-probe-summary ${probe.ok ? "is-success" : "is-failure"}`}><span>{probe.ok ? <Check size={17} /> : <CircleAlert size={17} />}{probe.ok ? "检查通过" : "检查发现问题"}</span><small>{labels[probe.target]}</small></div><p className="integration-probe-time"><Clock3 size={12} /><time dateTime={probe.checkedAt}>{dateTime(probe.checkedAt)}</time></p><ol className="integration-check-list">{probe.checks.map((item, index) => <li key={`${item.name}-${index}`} className={item.ok ? "is-success" : "is-failure"}>{item.ok ? <Check size={15} /> : <X size={15} />}<div><strong>{item.name}</strong><p>{item.message}</p>{item.durationMs !== undefined && <small>{Math.round(item.durationMs)} ms</small>}</div></li>)}</ol></div>}
         </section>
-        <section className="integration-configuration-note"><KeyRound size={17} /><div><h3>秘密仅保存在服务器</h3><p>密钥和密码只显示是否已配置。输入新值会替换原值，留空则保留；勾选“清空此项”并保存才会移除。</p></div></section>
+        <section className="integration-configuration-note"><KeyRound size={17} /><div><h3>秘密仅保存在服务器</h3><p>密钥和密码只显示是否已配置。{secretPaths.some(environmentControlled) ? ".env 控制的项目请在服务器修改并重启；其他项目可在此输入新值替换，留空保留，勾选清空并保存后移除。" : "输入新值会替换原值，留空则保留；勾选“清空此项”并保存才会移除。"}</p></div></section>
       </aside>
     </div>
   </div>;
