@@ -59,3 +59,76 @@ test('resource management queries, CAS editing, invalidation and deletion operat
     assert.equal((await store.status()).resources.total,0);
   }finally{await database.close();}
 });
+
+test('resource catalog filters and sorts the complete selection with global facets and derived detail indexes',async()=>{
+  const database=await createTestDatabase();
+  try{
+    const store=await createResourceStore(database),math={id:'math-source',platform:'math',accountRef:'',scope:'public'},computer={id:'computer-source',platform:'computer',accountRef:'account-c'};
+    const save=(source,id,title,kind,expiresAt)=>store.save(source,{kind,scope:source.scope||'account',request:{path:'/api/question_list/GetQuestionByQuestionNew',method:'GET',query:{ID:id},data:{}},context:{BookID:42,CatalogID:7}},{data:[{QuestionID:id,QuestionTitle:title,Image:`https://media.example/${id}.png`}]},{expiresAt});
+    const alpha=await save(math,1,'Alpha','math.question','2100-01-01T00:00:00Z');
+    const beta=await save(math,2,'Beta','math.catalog','2000-01-01T00:00:00Z');
+    const gamma=await save(computer,3,'Gamma','computer.question',null);
+    const selector=resource=>({platform:resource.platform,sourceId:resource.sourceId,key:resource.key});
+    await database.query(`UPDATE ${database.upstream('resources')} SET synced_at=CASE title WHEN 'Alpha' THEN '2025-01-01'::timestamptz WHEN 'Beta' THEN '2025-02-01'::timestamptz ELSE '2025-03-01'::timestamptz END,changed_at=CASE title WHEN 'Alpha' THEN '2025-03-01'::timestamptz WHEN 'Beta' THEN '2025-02-01'::timestamptz ELSE '2025-01-01'::timestamptz END`);
+    const all=await store.list({pageSize:1});
+    assert.deepEqual(all.summary,{total:3,fresh:1,expired:2,mediaReferences:3});
+    assert.equal(all.pagination.total,3);assert.equal(all.resources.length,1);
+    assert.equal(all.resources[0].mediaCount,1);assert.equal(all.resources[0].entityCount,1);
+    assert.deepEqual(all.facets.kinds,[{value:'computer.question',count:1},{value:'math.catalog',count:1},{value:'math.question',count:1}]);
+    assert.deepEqual(all.facets.sources,[{id:'computer-source',platform:'computer',accountRef:'account-c',count:1},{id:'math-source',platform:'math',accountRef:'',count:2}]);
+    const fresh=await store.list({validity:'fresh'});
+    assert.deepEqual(fresh.resources.map(row=>row.title),['Alpha']);
+    assert.deepEqual(fresh.summary,{total:1,fresh:1,expired:0,mediaReferences:1});
+    assert.equal(fresh.facets.sources.length,2,'filter options remain available outside the current selection');
+    const filtered=await store.list({platform:'math',sourceId:math.id,scope:'public',validity:'expired',kind:'math.catalog',q:'Beta'});
+    assert.deepEqual(filtered.resources.map(row=>row.title),['Beta']);
+    assert.deepEqual(filtered.summary,{total:1,fresh:0,expired:1,mediaReferences:1});
+    assert.deepEqual((await store.list({q:'missing'})).summary,{total:0,fresh:0,expired:0,mediaReferences:0});
+    for(const [sort,expected] of [['synced-desc',['Gamma','Beta','Alpha']],['synced-asc',['Alpha','Beta','Gamma']],['changed-desc',['Alpha','Beta','Gamma']],['title-asc',['Alpha','Beta','Gamma']],['expires-asc',['Gamma','Beta','Alpha']]])assert.deepEqual((await store.list({sort})).resources.map(row=>row.title),expected,sort);
+    assert.equal((await store.list({q:alpha.key})).resources[0].key,alpha.key);
+    const detail=await store.detail(selector(alpha));
+    assert.deepEqual(detail.context,{BookID:42,CatalogID:7});
+    assert.equal(detail.source.id,math.id);assert.equal(detail.source.accountRef,'');
+    assert.deepEqual(detail.entities,[{kind:'question',count:1}]);
+    assert.equal(detail.media[0].url,'https://media.example/1.png');assert.ok(detail.media[0].observedAt);
+    assert.equal(detail.entityCount,1);assert.equal(detail.mediaCount,1);
+    for(const query of [{validity:'unknown'},{sort:'title; DELETE'},{sourceId:['math-source']},{sourceId:'s'.repeat(161)},{kind:['math.question']},{platform:['math']},{scope:['public']},{q:1},{page:0},{pageSize:101}])await assert.rejects(()=>store.list(query),{status:400});
+    assert.equal(beta.platform,'math');assert.equal(gamma.platform,'computer');
+  }finally{await database.close();}
+});
+
+test('resource batch operations apply every selected revision together and roll back on conflicts or missing resources',async()=>{
+  const database=await createTestDatabase();
+  try{
+    const store=await createResourceStore(database),source={id:'batch-source',platform:'math',accountRef:'',scope:'public'};
+    const save=id=>store.save(source,{kind:'math.question',scope:'public',request:{path:'/api/question_list/GetQuestionByQuestionNew',query:{ID:id},data:{}},context:{}},{data:[{QuestionID:id,QuestionTitle:`题目${id}`,Image:`https://media.example/${id}.png`}]});
+    const one=await save(1),two=await save(2),selected=[one,two].map(({sourceId,platform,key,revision})=>({sourceId,platform,key,revision}));
+    await assert.rejects(()=>store.batch({action:'invalidate',resources:[selected[0],{...selected[1],revision:2}]}),{status:409});
+    assert.equal((await store.detail(selected[0])).revision,1);assert.equal((await store.detail(selected[0])).expired,false);
+    await assert.rejects(()=>store.batch({action:'delete',resources:[selected[0],{...selected[1],key:'0'.repeat(64)}]}),{status:404});
+    assert.equal((await store.list()).pagination.total,2,'first deletion is rolled back when a later resource is missing');
+    assert.deepEqual(await store.batch({action:'invalidate',resources:selected}),{ok:true,count:2,action:'invalidate'});
+    const expired=await store.list({validity:'expired'});assert.equal(expired.pagination.total,2);assert.ok(expired.resources.every(row=>row.revision===2));
+    assert.deepEqual(await store.batch({action:'delete',resources:expired.resources.map(({sourceId,platform,key,revision})=>({sourceId,platform,key,revision}))}),{ok:true,count:2,action:'delete'});
+    assert.deepEqual((await store.list()).summary,{total:0,fresh:0,expired:0,mediaReferences:0});
+    assert.equal((await database.query(`SELECT count(*)::integer AS count FROM ${database.upstream('resource_entities')}`)).rows[0].count,0);
+    for(const input of [null,{action:'other',resources:selected},{action:'delete',resources:[]},{action:'delete',resources:[selected[0],selected[0]]},{action:'delete',resources:Array(101).fill(selected[0])},{action:'delete',resources:[{...selected[0],revision:'1'}]},{action:'delete',resources:[{...selected[0],key:'invalid'}]}])await assert.rejects(()=>store.batch(input),{status:400});
+  }finally{await database.close();}
+});
+
+test('account and volatile snapshots remain visit-time updates even with a future expiry',async()=>{
+  const database=await createTestDatabase();
+  try{
+    const store=await createResourceStore(database),source={id:'private-source',platform:'computer',accountRef:'account-private'};
+    const saved=[];
+    for(const scope of ['public','account','volatile'])saved.push(await store.save(source,{kind:`computer.${scope}`,scope,request:{path:'/api/exam/wx/course/courseList',query:{scope},data:{}},context:{}},{data:[{id:scope,Title:scope}]},{expiresAt:'2100-01-01T00:00:00Z'}));
+    assert.deepEqual(saved.map(row=>row.expired),[false,true,true]);
+    assert.deepEqual((await store.list()).summary,{total:3,fresh:1,expired:2,mediaReferences:0});
+    assert.deepEqual((await store.list({validity:'fresh'})).resources.map(row=>row.scope),['public']);
+    assert.deepEqual((await store.list({validity:'expired',sort:'title-asc'})).resources.map(row=>row.scope),['account','volatile']);
+    for(const item of saved){
+      const selected={platform:item.platform,sourceId:item.sourceId,key:item.key};
+      assert.equal((await store.detail(selected)).expired,item.scope!=='public');
+    }
+  }finally{await database.close();}
+});

@@ -3,7 +3,7 @@ import type { FormEvent, ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Activity, ArrowRight, Bell, Check, ChevronRight,
-  CircleAlert, Clock3, KeyRound, Link2, ListChecks,
+  CircleAlert, Clock3, FolderOpen, KeyRound, Link2, ListChecks,
   LoaderCircle, Plus, RefreshCw, Search, ShieldCheck, Trash2, Users, X,
 } from "lucide-react";
 import { api } from "../../shared/api/client";
@@ -14,6 +14,7 @@ import { adminActions } from "../../../shared/admin-actions.mjs";
 import UserLearningProfile from "./users/UserLearningProfile";
 import "./admin.css";
 const OperationsConsole = lazy(() => import("./operations/OperationsConsole"));
+const ResourceCenter = lazy(() => import("./resources/ResourceCenter"));
 const DataManagement = lazy(() => import("./data/DataManagement"));
 const IntegrationSettings = lazy(() => import("./integrations/IntegrationSettings"));
 
@@ -113,7 +114,7 @@ function Overview({ version }: { version: number }) {
     <div className="admin-metrics">{cards.map(({ label, value, icon: Icon, note }) => <section className="panel admin-metric" key={label}><div><span>{label}</span><Icon size={19} /></div><strong>{Number(value || 0).toLocaleString("zh-CN")}</strong><small>{note}</small></section>)}</div>
     <div className="admin-overview-grid">
       <section className="panel"><div className="admin-section-heading"><div><h2>学习平台</h2><p>两科学习优先使用本地资源，缺失时自动补充。</p></div><Link className="text-link" to="/users">管理分配<ArrowRight size={14} /></Link></div><div className="admin-platforms">{platforms.map((platform) => <div className="admin-platform" key={platform.id}><span className={`admin-platform-symbol ${platform.id}`}>{platform.id === "math" ? "∑" : "</>"}</span><div><strong>{platform.label}</strong><small>{platform.resourceCount} 份已保存资源</small></div><span className={`admin-badge ${platform.resourceCount ? "admin-badge-green" : ""}`}>{platform.resourceCount ? "本地可用" : "按需补充"}</span></div>)}</div><div className="admin-note"><ShieldCheck size={17} /><p>学习者只需登录 Web。系统来源或用户自有 YYB 仅用于按需补充资源，个人记录独立保存。</p></div></section>
-      <section className="panel"><div className="admin-section-heading"><div><h2>管理工作</h2><p>为学习者准备好学习空间。</p></div></div><div className="admin-quick-links"><Link to="/users"><span className="admin-quick-icon"><Users size={19} /></span><span><strong>用户与账号</strong><small>创建用户、分配账号、管理权限</small></span><ArrowRight size={17} /></Link><Link to="/announcements"><span className="admin-quick-icon"><Bell size={19} /></span><span><strong>学习公告</strong><small>向所有学习者发布通知</small></span><ArrowRight size={17} /></Link><Link to="/audit"><span className="admin-quick-icon"><Activity size={19} /></span><span><strong>操作审计</strong><small>查看登录与管理操作记录</small></span><ArrowRight size={17} /></Link></div></section>
+      <section className="panel"><div className="admin-section-heading"><div><h2>管理工作</h2><p>为学习者准备好学习空间。</p></div></div><div className="admin-quick-links"><Link to="/users"><span className="admin-quick-icon"><Users size={19} /></span><span><strong>用户与账号</strong><small>创建用户、分配账号、管理权限</small></span><ArrowRight size={17} /></Link><Link to="/resources"><span className="admin-quick-icon"><FolderOpen size={19} /></span><span><strong>资源中心</strong><small>同步设置、资源筛选与批量维护</small></span><ArrowRight size={17} /></Link><Link to="/announcements"><span className="admin-quick-icon"><Bell size={19} /></span><span><strong>学习公告</strong><small>向所有学习者发布通知</small></span><ArrowRight size={17} /></Link><Link to="/audit"><span className="admin-quick-icon"><Activity size={19} /></span><span><strong>操作审计</strong><small>查看登录与管理操作记录</small></span><ArrowRight size={17} /></Link></div></section>
     </div>
     <section className="panel"><div className="admin-section-heading"><div><h2>最近操作</h2><p>管理动作有迹可循。</p></div><Link className="text-link" to="/audit">查看全部<ArrowRight size={14} /></Link></div><AuditList entries={recentAudit || []} compact /></section>
   </>;
@@ -252,14 +253,14 @@ export default function AdminWorkspace() {
   const [version, setVersion] = useState(0);
   const [notice, setNotice] = useState("");
   const section = location.pathname.split("/")[1] || "overview";
-  useEffect(() => { if (!["overview", "users", "configuration", "data", "announcements", "audit", "operations"].includes(section)) navigate("/", { replace: true }); }, [section, navigate]);
+  useEffect(() => { if (!["overview", "users", "configuration", "data", "resources", "announcements", "audit", "operations"].includes(section)) navigate("/", { replace: true }); }, [section, navigate]);
   if (!session.authenticated || user?.role !== "admin") return <section className="panel admin-access-state"><span className="admin-access-icon"><ShieldCheck size={30} /></span><h1>管理工作台</h1><p>{session.authenticated ? "当前账号没有管理权限。请联系系统管理员。" : "请使用管理员账号登录，管理用户与学习空间。"}</p>{session.authenticated ? <a className="btn btn-primary" href="/learn/">返回学习空间<ArrowRight size={15} /></a> : <button className="btn btn-primary" onClick={openLogin}>登录管理账号<ArrowRight size={15} /></button>}</section>;
-  const headings: Record<string, string> = { overview: "管理总览", users: "用户与学习账号", configuration: "平台集成配置", data: "账号池与资源同步", announcements: "学习公告", audit: "操作审计", operations: "运行诊断" };
+  const headings: Record<string, string> = { overview: "管理总览", users: "用户与学习账号", configuration: "平台集成配置", data: "账号与服务", resources: "资源中心", announcements: "学习公告", audit: "操作审计", operations: "运行诊断" };
   const heading = headings[section] || headings.overview;
   return <div className="admin-workspace">
     <h1 className="sr-only">{heading}</h1>
-    {!["configuration", "operations", "data"].includes(section) && <div className="admin-page-tools"><button className="btn btn-secondary" onClick={() => { setVersion((value) => value + 1); setNotice(""); }}><RefreshCw size={15} />刷新数据</button></div>}
+    {!["configuration", "operations", "data", "resources"].includes(section) && <div className="admin-page-tools"><button className="btn btn-secondary" onClick={() => { setVersion((value) => value + 1); setNotice(""); }}><RefreshCw size={15} />刷新数据</button></div>}
     {notice && <div className="admin-feedback" role="status"><Check size={17} /><span>{notice}</span><button className="icon-button" aria-label="关闭操作提示" onClick={() => setNotice("")}><X size={16} /></button></div>}
-    {section === "data" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><DataManagement /></Suspense> : section === "operations" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><OperationsConsole /></Suspense> : section === "configuration" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><IntegrationSettings /></Suspense> : section === "users" ? <UsersPanel version={version} notify={setNotice} /> : section === "announcements" ? <AnnouncementsPanel version={version} notify={setNotice} /> : section === "audit" ? <AuditPanel version={version} /> : <Overview version={version} />}
+    {section === "resources" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><ResourceCenter /></Suspense> : section === "data" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><DataManagement /></Suspense> : section === "operations" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><OperationsConsole /></Suspense> : section === "configuration" ? <Suspense fallback={<section className="panel"><ResourceState loading retry={() => {}} /></section>}><IntegrationSettings /></Suspense> : section === "users" ? <UsersPanel version={version} notify={setNotice} /> : section === "announcements" ? <AnnouncementsPanel version={version} notify={setNotice} /> : section === "audit" ? <AuditPanel version={version} /> : <Overview version={version} />}
   </div>;
 }

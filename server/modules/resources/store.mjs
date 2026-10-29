@@ -9,7 +9,7 @@ import { readRuntimeConfig } from '../../infrastructure/runtime-config.mjs';
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const iso = value => value instanceof Date ? value.toISOString() : value;
 const safeSource = row => ({ id: row.id, platform: row.platform, accountRef: row.account_ref, scope:row.metadata?.scope||'account', createdAt: iso(row.created_at), lastSeenAt: iso(row.last_seen_at) });
-const summary = row => ({sourceId:row.source_id,platform:row.platform,key:row.request_key,scope:row.scope,kind:row.kind,path:row.request?.path||'',command:row.request?.data?.command||'',title:row.title||row.request?.data?.command||row.request?.path||'',revision:row.revision,syncedAt:iso(row.synced_at),changedAt:iso(row.changed_at),expiresAt:iso(row.expires_at)||null,expired:!row.expires_at||new Date(row.expires_at).getTime()<=Date.now()});
+const summary = row => ({sourceId:row.source_id,platform:row.platform,key:row.request_key,scope:row.scope,kind:row.kind,path:row.request?.path||'',command:row.request?.data?.command||'',title:row.title||row.request?.data?.command||row.request?.path||'',revision:row.revision,syncedAt:iso(row.synced_at),changedAt:iso(row.changed_at),expiresAt:iso(row.expires_at)||null,expired:row.scope!=='public'||!row.expires_at||new Date(row.expires_at).getTime()<=Date.now(),mediaCount:Number(row.media_count||0),entityCount:Number(row.entity_count||0)});
 const expires = value => {if(value===null)return null;const date=new Date(value);if(Number.isNaN(date.getTime()))throw new ApiError('资源更新期限格式不正确',400);return date.toISOString();};
 const safeSettings = row => ({ enabled: row.enabled, revision: row.revision, updatedAt: iso(row.updated_at) });
 export async function createResourceStore(database, { publicTtlMs } = readRuntimeConfig().resources) {
@@ -100,7 +100,13 @@ export async function createResourceStore(database, { publicTtlMs } = readRuntim
   };
   const checkRevision=(input,row)=>{if(!Number.isSafeInteger(input.revision)||input.revision<1)throw new ApiError('资源版本格式不正确',400);if(input.revision!==row.revision)throw new ApiError('资源已更新，请重新读取后再操作',409);};
   async function rowFor(input,lock=false){const row=(await database.query(`SELECT * FROM ${resources} WHERE source_id=$1 AND platform=$2 AND request_key=$3${lock?' FOR UPDATE':''}`,identity(input))).rows[0];if(!row)throw new ApiError('未找到资源',404);return row;}
-  async function detail(input){const row=await rowFor(input);return {...summary(row),request:row.request,response:row.response};}
+  async function detail(input){
+    const row=await rowFor(input),selected=identity(input);
+    const source=await database.query(`SELECT * FROM ${sources} WHERE id=$1`,[row.source_id]);
+    const mediaRows=await database.query(`SELECT url,observed_at FROM ${media} WHERE source_id=$1 AND platform=$2 AND request_key=$3 ORDER BY url`,selected);
+    const entityCounts=await database.query(`SELECT kind,count(*)::integer AS count FROM ${entities} WHERE source_id=$1 AND platform=$2 AND request_key=$3 GROUP BY kind ORDER BY kind`,selected);
+    return {...summary(row),request:row.request,response:row.response,context:row.context,source:safeSource(source.rows[0]),media:mediaRows.rows.map(item=>({url:item.url,observedAt:iso(item.observed_at)})),entities:entityCounts.rows,mediaCount:mediaRows.rowCount,entityCount:entityCounts.rows.reduce((total,item)=>total+item.count,0)};
+  }
   async function update(input){
     if(!input?.response||typeof input.response!=='object')throw new ApiError('资源内容需要JSON对象或数组',400);
     return database.transaction(async tx=>{
@@ -113,6 +119,25 @@ export async function createResourceStore(database, { publicTtlMs } = readRuntim
   }
   async function invalidate(input){return database.transaction(async tx=>{const row=await rowFor(input,true);checkRevision(input,row);await tx.query(`UPDATE ${resources} SET expires_at=now()-interval '1 second',revision=revision+1 WHERE source_id=$1 AND platform=$2 AND request_key=$3`,identity(input));return detail(input);});}
   async function remove(input){return database.transaction(async tx=>{const row=await rowFor(input,true);checkRevision(input,row);await tx.query(`DELETE FROM ${resources} WHERE source_id=$1 AND platform=$2 AND request_key=$3`,identity(input));return {ok:true};});}
+  async function batch(input){
+    if(!input||!['invalidate','delete'].includes(input.action)||!Array.isArray(input.resources)||input.resources.length<1||input.resources.length>100)throw new ApiError('批量操作需选择1–100份资源并指定有效操作',400);
+    const seen=new Set();
+    for(const item of input.resources){
+      const selected=identity(item).join(':');
+      if(!Number.isSafeInteger(item.revision)||item.revision<1)throw new ApiError('资源版本格式不正确',400);
+      if(seen.has(selected))throw new ApiError('批量操作不能重复选择同一资源',400);
+      seen.add(selected);
+    }
+    return database.transaction(async tx=>{
+      for(const item of input.resources){
+        const row=await rowFor(item,true);checkRevision(item,row);
+        await tx.query(input.action==='delete'
+          ?`DELETE FROM ${resources} WHERE source_id=$1 AND platform=$2 AND request_key=$3`
+          :`UPDATE ${resources} SET expires_at=now()-interval '1 second',revision=revision+1 WHERE source_id=$1 AND platform=$2 AND request_key=$3`,identity(item));
+      }
+      return {ok:true,count:input.resources.length,action:input.action};
+    });
+  }
   async function findEntities({ sourceId, platform, kind = 'question', id, ids, filters = {}, limit = 100, offset = 0, includeExpired = false } = {}) {
     if (!sourceId || !['math','computer'].includes(platform)) throw new ApiError('资源查询需要明确来源及平台', 400);
     if (!Number.isInteger(offset) || offset < 0) throw new ApiError('资源查询偏移格式不正确', 400);
@@ -138,18 +163,28 @@ export async function createResourceStore(database, { publicTtlMs } = readRuntim
     const timestamps=resourceCounts.rows.map(row=>iso(row.last_synced_at)).filter(Boolean).sort();
     return {settings:state,resources:{total:resourceCounts.rows.reduce((sum,row)=>sum+row.count,0),byPlatform:Object.fromEntries(resourceCounts.rows.map(row=>[row.platform,row.count])),mediaReferences:mediaCount.rows[0].count,lastSyncedAt:timestamps.at(-1)||null},sources:sourceRows.rows.map(safeSource)};
   }
-  async function list({platform,sourceId,scope,kind,q='',page=1,pageSize=20}={}) {
+  async function list({platform,sourceId,scope,kind,q='',validity='',sort='synced-desc',page=1,pageSize=20}={}) {
     if(typeof page==='string'&&/^[1-9]\d*$/.test(page))page=Number(page);
     if(typeof pageSize==='string'&&/^[1-9]\d*$/.test(pageSize))pageSize=Number(pageSize);
     if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(pageSize)||pageSize<1||pageSize>100)throw new ApiError('资源分页格式不正确',400);
-    if(platform&&!['math','computer'].includes(platform)||scope&&!['public','account','volatile'].includes(scope)||typeof q!=='string'||q.length>160||kind&&typeof kind!=='string')throw new ApiError('资源筛选格式不正确',400);
+    if(platform!==undefined&&(typeof platform!=='string'||platform&&!['math','computer'].includes(platform))||scope!==undefined&&(typeof scope!=='string'||scope&&!['public','account','volatile'].includes(scope))||typeof q!=='string'||q.length>160||kind!==undefined&&(typeof kind!=='string'||kind.length>160)||sourceId!==undefined&&(typeof sourceId!=='string'||sourceId.length>160)||!['','fresh','expired'].includes(validity))throw new ApiError('资源筛选格式不正确',400);
+    const orders={'synced-desc':'r.synced_at DESC','synced-asc':'r.synced_at ASC','changed-desc':'r.changed_at DESC','title-asc':'lower(r.title) ASC','expires-asc':'r.expires_at ASC NULLS FIRST'};
+    if(typeof sort!=='string'||!Object.hasOwn(orders,sort))throw new ApiError('资源排序格式不正确',400);
     const args=[],clauses=[];
-    for(const [field,value]of[['platform',platform],['source_id',sourceId],['scope',scope],['kind',kind]])if(value){args.push(String(value));clauses.push(`${field}=$${args.length}`);}
-    if(q.trim()){args.push(q.trim());clauses.push(`strpos(lower(title||' '||kind||' '||(request->>'path')||' '||coalesce(request->'data'->>'command','')),lower($${args.length}))>0`);}
+    for(const [field,value]of[['platform',platform],['source_id',sourceId],['scope',scope],['kind',kind]])if(value){args.push(value);clauses.push(`r.${field}=$${args.length}`);}
+    if(q.trim()){args.push(q.trim());clauses.push(`strpos(lower(r.title||' '||r.kind||' '||coalesce(r.request->>'path','')||' '||coalesce(r.request->'data'->>'command','')||' '||r.source_id||' '||r.request_key),lower($${args.length}))>0`);}
+    if(validity==='fresh')clauses.push("(r.scope='public' AND r.expires_at>now())");
+    if(validity==='expired')clauses.push("(r.scope<>'public' OR r.expires_at IS NULL OR r.expires_at<=now())");
     const where=clauses.length?` WHERE ${clauses.join(' AND ')}`:'';
-    const total=(await database.query(`SELECT count(*)::integer AS total FROM ${resources}${where}`,args)).rows[0].total,totalPages=Math.max(1,Math.ceil(total/pageSize));page=Math.min(page,totalPages);
-    const result=await database.query(`SELECT * FROM ${resources}${where} ORDER BY synced_at DESC,source_id,request_key LIMIT $${args.length+1} OFFSET $${args.length+2}`,[...args,pageSize,(page-1)*pageSize]);
-    return {resources:result.rows.map(summary),pagination:{page,pageSize,total,totalPages}};
+    const [counts,mediaCount,kinds,sourceCounts]=await Promise.all([
+      database.query(`SELECT count(*)::integer AS total,count(*) FILTER(WHERE r.scope='public' AND r.expires_at>now())::integer AS fresh,count(*) FILTER(WHERE r.scope<>'public' OR r.expires_at IS NULL OR r.expires_at<=now())::integer AS expired FROM ${resources} r${where}`,args),
+      database.query(`SELECT count(*)::integer AS count FROM ${media} m JOIN ${resources} r USING(source_id,platform,request_key)${where}`,args),
+      database.query(`SELECT kind AS value,count(*)::integer AS count FROM ${resources} GROUP BY kind ORDER BY kind`),
+      database.query(`SELECT s.id,s.platform,s.account_ref,count(*)::integer AS count FROM ${sources} s JOIN ${resources} r ON r.source_id=s.id GROUP BY s.id ORDER BY s.platform,s.id`),
+    ]);
+    const count=counts.rows[0],total=count.total,totalPages=Math.max(1,Math.ceil(total/pageSize));page=Math.min(page,totalPages);
+    const result=await database.query(`SELECT r.*,(SELECT count(*)::integer FROM ${media} m WHERE m.source_id=r.source_id AND m.platform=r.platform AND m.request_key=r.request_key) AS media_count,(SELECT count(*)::integer FROM ${entities} e WHERE e.source_id=r.source_id AND e.platform=r.platform AND e.request_key=r.request_key) AS entity_count FROM ${resources} r${where} ORDER BY ${orders[sort]},r.platform,r.source_id,r.request_key LIMIT $${args.length+1} OFFSET $${args.length+2}`,[...args,pageSize,(page-1)*pageSize]);
+    return {resources:result.rows.map(summary),pagination:{page,pageSize,total,totalPages},summary:{...count,mediaReferences:mediaCount.rows[0].count},facets:{kinds:kinds.rows,sources:sourceCounts.rows.map(row=>({id:row.id,platform:row.platform,accountRef:row.account_ref,count:row.count}))}};
   }
-  return { getSettings, updateSettings, rememberSource, save, lookup, findEntities, status, list,detail,update,invalidate,remove };
+  return { getSettings, updateSettings, rememberSource, save, lookup, findEntities, status, list,detail,update,invalidate,remove,batch };
 }

@@ -1,115 +1,117 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, CircleAlert, Database, Edit3, FileJson, LoaderCircle, RefreshCw, Search, Trash2, X } from "lucide-react";
+import { Check, CircleAlert, Clock3, Database, Download, FileJson, Layers3, Link2, LoaderCircle, RefreshCw, Search, SlidersHorizontal, Trash2, X } from "lucide-react";
 import { api, ApiError } from "../../../shared/api/client";
 import { useDialogFocus } from "../../../shared/lib/focus";
 import Pagination from "../../../shared/ui/pagination/Pagination";
+import ResourceDialog from "./ResourceDialog";
+import { dateTime, displayName, downloadResources, expired, message, platformName, resourceId, resourcePath, resourceSelector, scopeNames, sourceName, validityName } from "./resource-data";
+import type { ResourceDetail, ResourceItem, ResourcePage } from "./resource-data";
 import "./resource-manager.css";
 
-type ResourceScope = "public" | "account" | "volatile";
-interface ResourceItem {
-  sourceId: string; platform: "math" | "computer"; key: string; scope: ResourceScope; kind: string;
-  path: string; command?: string; title?: string; revision: number; syncedAt: string; changedAt?: string;
-  expiresAt?: string | null; expired?: boolean;
-}
-interface ResourceDetail extends ResourceItem { request: unknown; response: unknown }
-interface PageInfo { page: number; pageSize: number; total: number; totalPages: number }
-interface ResourcePage { resources: ResourceItem[]; pagination: PageInfo }
-const emptyPage: PageInfo = { page: 1, pageSize: 20, total: 0, totalPages: 1 };
-const scopeNames: Record<ResourceScope, string> = { public: "公共资源", account: "账号资源", volatile: "短效资源" };
-const platformName = (value: string) => value === "math" ? "考研数学" : "计算机 408";
-const message = (error: unknown) => error instanceof Error ? error.message : "操作失败，请重试";
-const displayName = (resource: ResourceItem) => resource.title || resource.command || resource.path?.split("/").filter(Boolean).at(-1) || resource.kind || "资源";
-const resourcePath = (resource: ResourceItem) => `/api/admin/resources/${encodeURIComponent(resource.platform)}/${encodeURIComponent(resource.sourceId)}/${encodeURIComponent(resource.key)}`;
-const dateTime = (value?: string | null) => {
-  if (!value) return "—";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false });
-};
-const expired = (resource: ResourceItem) => resource.expired === true || !resource.expiresAt || Date.parse(resource.expiresAt) <= Date.now();
-const pretty = (value: unknown) => JSON.stringify(value, null, 2) ?? "null";
+type BatchAction = "invalidate" | "delete";
+const emptyPage = { page: 1, pageSize: 20, total: 0, totalPages: 1 };
+const initialFilters = { platform: "", scope: "", sourceId: "", kind: "", validity: "", sort: "synced-desc", q: "" };
 
 export default function ResourceManager({ onChanged }: { onChanged?: () => void }) {
   const contentRef = useRef<HTMLElement>(null);
   const [page, setPage] = useState(1), [pageSize, setPageSize] = useState(20);
-  const [search, setSearch] = useState(""), [q, setQ] = useState("");
-  const [platform, setPlatform] = useState(""), [scope, setScope] = useState(""), [kind, setKind] = useState("");
-  const [kindInput, setKindInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState(initialFilters);
   const [version, setVersion] = useState(0), [data, setData] = useState<ResourcePage>();
-  const [loading, setLoading] = useState(true), [error, setError] = useState("");
-  const [selected, setSelected] = useState<ResourceItem>();
-  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize), ...(q ? { q } : {}), ...(platform ? { platform } : {}), ...(scope ? { scope } : {}), ...(kind ? { kind } : {}) }).toString();
+  const [loading, setLoading] = useState(true), [error, setError] = useState(""), [notice, setNotice] = useState("");
+  const [detail, setDetail] = useState<ResourceItem>();
+  const [selection, setSelection] = useState<string[]>([]), [batch, setBatch] = useState<BatchAction>();
+  const [exporting, setExporting] = useState(false);
+  const params = new URLSearchParams({ ...filters, page: String(page), pageSize: String(pageSize) }).toString();
   useEffect(() => {
     let active = true;
-    setLoading(true); setError("");
+    setLoading(true); setError(""); setSelection([]);
     api<ResourcePage>(`/api/admin/resources?${params}`).then(value => { if (active) setData(value); })
       .catch(cause => { if (active) setError(message(cause)); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [params, version]);
   const pagination = data?.pagination || { ...emptyPage, pageSize };
-  const reload = () => setVersion(value => value + 1);
+  const selected = data?.resources.filter(resource => selection.includes(resourceId(resource))) || [];
+  const allSelected = !!data?.resources.length && selected.length === data.resources.length;
+  const activeFilters = Object.entries(filters).filter(([key, value]) => value && (key !== "sort" || value !== "synced-desc")).length;
+  const sources = data?.facets?.sources.filter(source => !filters.platform || source.platform === filters.platform) || [];
+  function updateFilters(value: Partial<typeof filters>) { setFilters(previous => ({ ...previous, ...value })); setPage(1); setSelection([]); }
+  function reload() { setSelection([]); setVersion(value => value + 1); }
+  function changed(text: string) { setNotice(text); reload(); onChanged?.(); }
+  async function exportSelection() {
+    if (!selected.length || exporting) return;
+    setExporting(true); setError(""); setNotice("");
+    try {
+      const resources = await Promise.all(selected.map(resource => api<ResourceDetail>(resourcePath(resource))));
+      downloadResources(resources); setNotice(`已导出所选 ${resources.length} 份资源的已保存内容。`);
+    } catch (cause) { setError(`导出未完成：${message(cause)}。请刷新目录后重试。`); }
+    finally { setExporting(false); }
+  }
   return <section className="panel data-card resource-manager pagination-content" ref={contentRef} aria-labelledby="resource-manager-title">
-    <div className="resource-manager-heading"><div className="data-heading"><Database size={22} /><div><h2 id="resource-manager-title">资源管理 <span className="resource-total">{pagination.total}</span></h2><p>查看和维护已同步的小程序资源。公共内容由多个用户复用，个人学习记录独立保存。</p></div></div><button type="button" className="btn btn-secondary" disabled={loading} onClick={reload}><RefreshCw size={15} />刷新资源</button></div>
-    <form className="resource-filters" onSubmit={event => { event.preventDefault(); setQ(search.trim()); setKind(kindInput.trim()); setPage(1); }}>
-      <label className="resource-search"><Search size={16} /><input className="input" aria-label="搜索资源" placeholder="搜索资源名称、接口或命令" value={search} onChange={event => setSearch(event.target.value)} maxLength={160} /></label>
-      <select className="input" aria-label="按学科筛选资源" value={platform} onChange={event => { setPlatform(event.target.value); setPage(1); }}><option value="">全部学科</option><option value="math">考研数学</option><option value="computer">计算机 408</option></select>
-      <select className="input" aria-label="按共享范围筛选资源" value={scope} onChange={event => { setScope(event.target.value); setPage(1); }}><option value="">全部共享范围</option><option value="public">公共资源</option><option value="account">账号资源</option><option value="volatile">短效资源</option></select>
-      <input className="input resource-kind-filter" aria-label="资源类型" placeholder="资源类型，例如 math.books" value={kindInput} onChange={event => setKindInput(event.target.value)} maxLength={100} />
-      <button className="btn btn-secondary" type="submit">查询</button>
+    <div className="resource-manager-heading"><div className="data-heading"><Database size={22} /><div><h2 id="resource-manager-title">资源管理 <span className="resource-total">{pagination.total.toLocaleString("zh-CN")}</span></h2><p>检索同步内容、检查来源与索引，按需维护资源缓存。</p></div></div><button type="button" className="btn btn-secondary" disabled={loading || exporting} onClick={reload}><RefreshCw size={15} />刷新目录</button></div>
+    <div className="resource-statistics" aria-label="当前筛选资源统计" aria-busy={loading}>
+      {[
+        { label: "匹配资源", value: data?.summary?.total ?? 0, icon: Layers3 },
+        { label: "有效缓存", value: data?.summary?.fresh ?? 0, icon: Check },
+        { label: "访问时更新", value: data?.summary?.expired ?? 0, icon: Clock3 },
+        { label: "媒体 / 链接引用", value: data?.summary?.mediaReferences ?? 0, icon: Link2 },
+      ].map(({ label, value, icon: Icon }) => <div key={label}><span><Icon size={15} />{label}</span><strong>{loading ? "—" : value.toLocaleString("zh-CN")}</strong></div>)}
+    </div>
+    <form className="resource-filter-form" onSubmit={event => { event.preventDefault(); updateFilters({ q: search.trim() }); }}>
+      <fieldset className="resource-filters" disabled={exporting}>
+        <legend className="sr-only">筛选资源目录</legend>
+        <div className="resource-search-row"><label className="resource-search"><Search size={17} /><input className="input" aria-label="搜索资源" placeholder="搜索资源名称、接口、命令或来源" value={search} onChange={event => setSearch(event.target.value)} maxLength={160} /></label><button className="btn btn-primary" type="submit">搜索</button></div>
+        <label>学科<select className="input" aria-label="按学科筛选资源" value={filters.platform} onChange={event => updateFilters({ platform: event.target.value, sourceId: "" })}><option value="">全部学科</option><option value="math">考研数学</option><option value="computer">计算机 408</option></select></label>
+        <label>共享范围<select className="input" aria-label="按共享范围筛选资源" value={filters.scope} onChange={event => updateFilters({ scope: event.target.value })}><option value="">全部共享范围</option>{Object.entries(scopeNames).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <label>资源来源<select className="input" aria-label="按来源筛选资源" value={filters.sourceId} onChange={event => updateFilters({ sourceId: event.target.value })}><option value="">全部来源</option>{sources.map(source => <option key={`${source.platform}/${source.id}`} value={source.id}>{platformName(source.platform)} · {sourceName(source)} ({source.count || 0})</option>)}</select></label>
+        <label>资源类型<select className="input" aria-label="按类型筛选资源" value={filters.kind} onChange={event => updateFilters({ kind: event.target.value })}><option value="">全部类型</option>{data?.facets?.kinds.map(kind => <option key={kind.value} value={kind.value}>{kind.value} ({kind.count})</option>)}</select></label>
+        <label>有效状态<select className="input" aria-label="按有效状态筛选资源" value={filters.validity} onChange={event => updateFilters({ validity: event.target.value })}><option value="">全部状态</option><option value="fresh">有效缓存</option><option value="expired">访问时更新</option></select></label>
+        <label>目录排序<select className="input" aria-label="资源排序" value={filters.sort} onChange={event => updateFilters({ sort: event.target.value })}><option value="synced-desc">最近同步优先</option><option value="synced-asc">最早同步优先</option><option value="changed-desc">最近内容变更</option><option value="title-asc">资源名称 A–Z</option><option value="expires-asc">待更新 / 到期优先</option></select></label>
+      </fieldset>
+      <div className="resource-filter-footer"><span><SlidersHorizontal size={14} />{activeFilters ? `已应用 ${activeFilters} 项条件` : "统计范围：全部资源"}</span><button type="button" className="text-link" disabled={!activeFilters || exporting} onClick={() => { setFilters(initialFilters); setSearch(""); setPage(1); setSelection([]); }}>重置条件</button></div>
     </form>
-    {error ? <div className="resource-state" role="alert"><CircleAlert size={24} /><p>{error}</p><button className="btn btn-secondary" onClick={reload}>重新读取</button></div> : loading ? <div className="resource-state" role="status"><LoaderCircle size={23} className="spin" /><p>正在读取资源目录…</p></div> : !data?.resources.length ? <div className="resource-state"><FileJson size={27} /><p>{q || platform || scope || kind ? "没有符合条件的资源。" : "暂无已同步资源，用户访问学习内容后将在这里积累。"}</p></div> : <div className="resource-table-scroll"><table className="resource-table"><caption className="sr-only">已同步资源目录</caption><thead><tr><th>资源</th><th>学科与共享范围</th><th>最近同步</th><th>有效状态</th><th>版本</th><th><span className="sr-only">管理操作</span></th></tr></thead><tbody>{data.resources.map(resource => <tr key={`${resource.platform}-${resource.sourceId}-${resource.key}`}><td><button type="button" className="resource-name" onClick={() => setSelected(resource)}>{displayName(resource)}</button><small className="resource-path" title={resource.path}>{resource.path}</small><small className="resource-kind">{resource.kind}</small></td><td><span>{platformName(resource.platform)}</span><span className={`resource-scope scope-${resource.scope}`}>{scopeNames[resource.scope] || resource.scope}</span></td><td className="resource-date">{dateTime(resource.syncedAt)}</td><td><span className={`resource-validity ${expired(resource) ? "needs-update" : ""}`}>{expired(resource) ? "访问时更新" : "可直接读取"}</span><small className="resource-date">{resource.expiresAt ? dateTime(resource.expiresAt) : "下次访问时检查"}</small></td><td>{resource.revision}</td><td><button type="button" className="text-link" onClick={() => setSelected(resource)} aria-label={`管理资源 ${displayName(resource)}`}>管理</button></td></tr>)}</tbody></table></div>}
-    <Pagination contentRef={contentRef} page={pagination.page} pageSize={pagination.pageSize} total={pagination.total} onPageChange={setPage} onPageSizeChange={size => { setPageSize(size); setPage(1); }} label="资源目录" disabled={loading || !!error} />
-    {selected && <ResourceDialog item={selected} onClose={() => setSelected(undefined)} onChanged={() => { reload(); onChanged?.(); }} />}
+    {notice && <p className="resource-notice" role="status"><Check size={16} />{notice}</p>}
+    {error && <div className="resource-error" role="alert"><p>{notice ? `操作结果已保留，目录未能刷新：${error}` : error}</p><button type="button" className="text-link" onClick={reload} disabled={loading || exporting}>重新读取目录</button></div>}
+    <div className={`resource-selection-bar ${selected.length ? "has-selection" : ""}`}>
+      <span>{selected.length ? <>当前页已选 <strong>{selected.length}</strong> 份资源<button type="button" className="text-link" disabled={exporting} onClick={() => setSelection([])}>清除选择</button></> : "选择当前页资源可批量维护或导出"}</span>
+      <div><button type="button" className="btn btn-secondary" disabled={!selected.length || loading || exporting || !!error} onClick={() => void exportSelection()}>{exporting ? <LoaderCircle className="spin" size={14} /> : <Download size={14} />}导出所选</button><button type="button" className="btn btn-secondary" disabled={!selected.length || loading || exporting || !!error} onClick={() => setBatch("invalidate")}><RefreshCw size={14} />标记需更新</button><button type="button" className="btn resource-danger" disabled={!selected.length || loading || exporting || !!error} onClick={() => setBatch("delete")}><Trash2 size={14} />删除所选</button></div>
+    </div>
+    {loading ? <div className="resource-state" role="status"><LoaderCircle size={23} className="spin" /><p>正在读取资源目录…</p></div> : error ? null : !data?.resources.length ? <div className="resource-state"><FileJson size={29} /><h3>{activeFilters ? "没有符合条件的资源" : "目录等待积累"}</h3><p>{activeFilters ? "尝试减少筛选条件，或搜索其他名称。" : "启用渐进同步后，用户访问的学习内容会在这里积累。"}</p></div> : <div className="resource-table-scroll"><table className="resource-table"><caption className="sr-only">已同步资源目录</caption><thead><tr><th className="resource-checkbox"><input type="checkbox" aria-label="选择当前页全部资源" checked={allSelected} ref={node => { if (node) node.indeterminate = selected.length > 0 && !allSelected; }} disabled={exporting} onChange={event => setSelection(event.target.checked ? data.resources.map(resourceId) : [])} /></th><th>资源与来源</th><th>学科 / 范围</th><th>同步与有效期</th><th>索引</th><th>操作</th></tr></thead><tbody>{data.resources.map(resource => {
+      const id = resourceId(resource), source = data.facets?.sources.find(value => value.id === resource.sourceId && value.platform === resource.platform);
+      return <tr className={selection.includes(id) ? "is-selected" : ""} key={id}><td className="resource-checkbox"><input type="checkbox" aria-label={`选择资源 ${displayName(resource)}`} checked={selection.includes(id)} disabled={exporting} onChange={event => setSelection(value => event.target.checked ? [...value, id] : value.filter(key => key !== id))} /></td><td><button type="button" className="resource-name" disabled={exporting} onClick={() => setDetail(resource)}>{displayName(resource)}</button><small className="resource-path" title={resource.path}>{resource.path}{resource.command ? ` · ${resource.command}` : ""}</small><small className="resource-kind">{resource.kind}</small><small className="resource-source" title={resource.sourceId}>{sourceName(source)}</small></td><td><span>{platformName(resource.platform)}</span><span className={`resource-scope scope-${resource.scope}`}>{scopeNames[resource.scope]}</span></td><td><span className={`resource-validity ${expired(resource) ? "needs-update" : ""}`}>{validityName(resource)}</span><small className="resource-date">同步 {dateTime(resource.syncedAt)}</small><small className="resource-date">{resource.expiresAt ? `到期 ${dateTime(resource.expiresAt)}` : "按访问实时读取"}</small></td><td><span className="resource-index-count">{resource.entityCount || 0} 条内容</span><small className="resource-date">{resource.mediaCount || 0} 个引用 · v{resource.revision}</small></td><td><button type="button" className="text-link" disabled={exporting} onClick={() => setDetail(resource)} aria-label={`管理资源 ${displayName(resource)}`}>详情</button></td></tr>;
+    })}</tbody></table></div>}
+    <Pagination contentRef={contentRef} page={pagination.page} pageSize={pagination.pageSize} total={pagination.total} onPageChange={setPage} onPageSizeChange={size => { setPageSize(size); setPage(1); }} label="资源目录" disabled={loading || exporting || !!error} />
+    <p className="resource-table-help">公共资源优先读取有效缓存；账号与短效资源按访问实时读取。引用仅为链接索引，不代表媒体已下载。</p>
+    {detail && <ResourceDialog item={detail} onClose={() => setDetail(undefined)} onChanged={changed} />}
+    {batch && <BatchDialog action={batch} resources={selected} onClose={() => setBatch(undefined)} onReload={() => { setBatch(undefined); reload(); }} onChanged={text => { setBatch(undefined); changed(text); }} />}
   </section>;
 }
 
-function ResourceDialog({ item, onClose, onChanged }: { item: ResourceItem; onClose: () => void; onChanged: () => void }) {
-  const ref = useRef<HTMLElement>(null);
+function BatchDialog({ action, resources, onClose, onReload, onChanged }: { action: BatchAction; resources: ResourceItem[]; onClose: () => void; onReload: () => void; onChanged: (message: string) => void }) {
+  const ref = useRef<HTMLElement>(null), pendingRef = useRef(false);
   useDialogFocus(ref);
-  const path = resourcePath(item);
-  const [resource, setResource] = useState<ResourceDetail>();
-  const [loading, setLoading] = useState(true), [busy, setBusy] = useState("");
-  const [error, setError] = useState(""), [notice, setNotice] = useState("");
-  const [editing, setEditing] = useState(false), [draft, setDraft] = useState("");
-  const [deleting, setDeleting] = useState(false), [conflict, setConflict] = useState(false);
-  function accept(value: ResourceDetail) { setResource(value); setDraft(pretty(value.response)); setEditing(false); setConflict(false); }
-  async function load() {
-    setLoading(true); setError(""); setNotice("");
-    try { accept(await api<ResourceDetail>(path)); } catch (cause) { setError(message(cause)); } finally { setLoading(false); }
-  }
-  useEffect(() => { let active = true; api<ResourceDetail>(path).then(value => { if (active) accept(value); }).catch(cause => { if (active) setError(message(cause)); }).finally(() => { if (active) setLoading(false); }); return () => { active = false; }; }, [path]);
-  async function change(action: "save" | "invalidate" | "delete") {
-    if (!resource) return;
-    setError(""); setNotice(""); setBusy(action);
+  const [pending, setPending] = useState(false), [error, setError] = useState(""), [stale, setStale] = useState(false);
+  const deleting = action === "delete";
+  async function submit() {
+    if (pendingRef.current || stale) return;
+    pendingRef.current = true; setPending(true); setError("");
     try {
-      let response: unknown;
-      if (action === "save") {
-        try { response = JSON.parse(draft); } catch { throw new Error("资源内容不是有效的 JSON，请修正后保存。"); }
-        if (!response || typeof response !== "object") throw new Error("资源内容需要为 JSON 对象或数组。");
-      }
-      if (action === "delete") {
-        await api(path, { method: "DELETE", body: JSON.stringify({ revision: resource.revision }) });
-        onChanged(); onClose(); return;
-      }
-      const updated = await api<ResourceDetail>(action === "invalidate" ? `${path}/invalidate` : path, { method: action === "invalidate" ? "POST" : "PATCH", body: JSON.stringify({ revision: resource.revision, ...(action === "save" ? { response } : {}) }) });
-      accept(updated); onChanged();
-      setNotice(action === "save" ? "资源内容已保存，后续学习将优先读取此版本。" : "已标记需更新，下次访问该资源时将向小程序请求并保存。");
-    } catch (cause) { setConflict(cause instanceof ApiError && cause.status === 409); setError(message(cause)); }
-    finally { setBusy(""); }
+      const result = await api<{ count: number }>("/api/admin/resources/batch", { method: "POST", body: JSON.stringify({ action, resources: resources.map(resourceSelector) }) });
+      onChanged(deleting ? `已删除 ${result.count} 份资源缓存及其索引，个人学习记录保留。` : `已将 ${result.count} 份资源标记为需更新，公共缓存将在下次访问时重新读取。`);
+    } catch (cause) {
+      const rejected = cause instanceof ApiError && [400, 404, 409].includes(cause.status);
+      setStale(true);
+      setError(rejected ? `本次操作未执行，所选资源均未更改。${message(cause)}` : `未能确认操作结果。${message(cause)}。请重新读取目录核实后再操作。`);
+    }
+    finally { pendingRef.current = false; setPending(false); }
   }
-  const current = resource || item;
-  return <div className="modal-backdrop resource-modal-backdrop" onClick={() => !busy && onClose()}><section ref={ref} className="modal resource-dialog" role="dialog" aria-modal="true" aria-labelledby="resource-dialog-title" onClick={event => event.stopPropagation()} onKeyDown={event => { if (event.key === "Escape" && !busy) onClose(); }}>
-    <button type="button" className="icon-button modal-close" aria-label="关闭资源详情" onClick={onClose} disabled={!!busy}><X size={20} /></button>
-    <h2 id="resource-dialog-title">{deleting ? "删除这份资源？" : displayName(current)}</h2>
-    {deleting ? <><p className="resource-delete-description">将删除本系统保存的这份资源及其内容索引，下次访问时可重新从小程序读取。用户的答案、笔记、收藏和其他个人学习记录会保留。</p>{error && <div className="resource-error" role="alert"><p>{error}</p>{conflict && <button type="button" className="text-link" disabled={!!busy} onClick={() => { setDeleting(false); void load(); }}>重新读取最新资源</button>}</div>}<div className="resource-dialog-actions"><button type="button" className="btn btn-secondary" disabled={!!busy} onClick={() => { setDeleting(false); setError(""); }}>保留资源</button><button type="button" className="btn resource-danger" disabled={!!busy} onClick={() => void change("delete")}>{busy === "delete" && <LoaderCircle size={15} className="spin" />}删除资源</button></div></> : <>
-      <p className="resource-dialog-description">{platformName(current.platform)} · {scopeNames[current.scope] || current.scope} · 版本 {current.revision}</p>
-      {loading ? <div className="resource-state" role="status"><LoaderCircle size={22} className="spin" /><p>正在读取资源内容…</p></div> : resource && <>
-        <dl className="resource-metadata"><div><dt>资源类型</dt><dd>{resource.kind}</dd></div><div><dt>最近同步</dt><dd>{dateTime(resource.syncedAt)}</dd></div><div><dt>有效期</dt><dd>{expired(resource) ? "访问时更新" : dateTime(resource.expiresAt)}</dd></div><div><dt>最近内容变更</dt><dd>{dateTime(resource.changedAt)}</dd></div><div className="resource-metadata-wide"><dt>接口</dt><dd>{resource.path}{resource.command ? ` · ${resource.command}` : ""}</dd></div></dl>
-        <details className="resource-json"><summary>请求参数</summary><pre>{pretty(resource.request)}</pre></details>
-        {editing ? <label className="resource-editor">资源内容（JSON）<textarea className="input" spellCheck={false} rows={20} value={draft} onChange={event => setDraft(event.target.value)} disabled={!!busy} /><small>保存会更新资源版本，并重新生成内容索引。请保持原接口响应结构。</small></label> : <details className="resource-json" open><summary>资源内容</summary><pre>{pretty(resource.response)}</pre></details>}
-      </>}
-      {notice && <p className="resource-notice" role="status"><Check size={16} />{notice}</p>}
-      {error && <div className="resource-error" role="alert"><p>{error}</p>{(conflict || !resource) && <button type="button" className="text-link" onClick={() => void load()} disabled={!!busy}>重新读取最新资源</button>}</div>}
-      {resource && !loading && <div className="resource-dialog-actions">{editing ? <><button type="button" className="btn btn-secondary" disabled={!!busy} onClick={() => { setDraft(pretty(resource.response)); setEditing(false); setError(""); }}>放弃编辑</button><button type="button" className="btn btn-primary" disabled={!!busy || draft === pretty(resource.response) || conflict} onClick={() => void change("save")}>{busy === "save" ? <LoaderCircle size={15} className="spin" /> : <Check size={15} />}保存资源内容</button></> : <><button type="button" className="btn btn-secondary" disabled={!!busy} onClick={() => { setEditing(true); setNotice(""); }}><Edit3 size={15} />编辑资源内容</button><button type="button" className="btn btn-secondary" disabled={!!busy || conflict} onClick={() => void change("invalidate")}>{busy === "invalidate" ? <LoaderCircle size={15} className="spin" /> : <RefreshCw size={15} />}标记需更新</button><button type="button" className="btn resource-danger" disabled={!!busy || conflict} onClick={() => { setDeleting(true); setError(""); setNotice(""); }}><Trash2 size={15} />删除资源</button></>}</div>}
-    </>}
+  return <div className="modal-backdrop resource-modal-backdrop" onClick={() => !pending && onClose()}><section className="modal resource-batch-dialog" ref={ref} role="dialog" aria-modal="true" aria-labelledby="resource-batch-title" onClick={event => event.stopPropagation()} onKeyDown={event => { if (event.key === "Escape" && !pending) onClose(); }}>
+    <button type="button" className="icon-button modal-close" aria-label="关闭批量操作确认" disabled={pending} onClick={onClose}><X size={20} /></button>
+    <span className={`resource-confirm-icon ${deleting ? "danger" : ""}`}>{deleting ? <Trash2 size={23} /> : <RefreshCw size={23} />}</span><h2 id="resource-batch-title">{deleting ? "删除" : "标记更新"}所选 {resources.length} 份资源？</h2>
+    <p className="resource-delete-description">{deleting ? "将移除这些资源的本地内容与索引。后续访问可重新读取，用户的答案、笔记、收藏和个人学习记录会保留。" : "公共缓存将在下次学习访问时向小程序重新请求。账号与短效资源始终按访问实时读取。"}</p>
+    <ul className="resource-confirm-list">{resources.slice(0, 5).map(resource => <li key={resourceId(resource)}><span>{displayName(resource)}</span><small>{platformName(resource.platform)} · v{resource.revision}</small></li>)}{resources.length > 5 && <li className="resource-confirm-more">另有 {resources.length - 5} 份资源</li>}</ul>
+    <p className="resource-dialog-description">本次操作仅针对当前页所选资源。</p>
+    {error && <div className="resource-error" role="alert"><p>{error}</p>{stale && <button type="button" className="text-link" onClick={onReload}>重新读取目录并选择</button>}</div>}
+    <div className="resource-dialog-actions"><button type="button" className="btn btn-secondary" disabled={pending} onClick={onClose}>取消操作</button><button type="button" className={`btn ${deleting ? "resource-danger" : "btn-primary"}`} disabled={pending || stale} onClick={() => void submit()}>{pending && <LoaderCircle size={15} className="spin" />}{pending ? "正在处理…" : deleting ? "确认删除资源" : "确认标记需更新"}</button></div>
   </section></div>;
 }

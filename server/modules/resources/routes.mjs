@@ -10,6 +10,11 @@ export function createResourceRouter({resourceStore,resourceSync,identities,auth
     res.json(state);
   });
   router.get('/resources',auth.require,async(req,res)=>res.json(await resourceStore.list(req.query)));
+  router.post('/resources/batch',auth.require,async(req,res)=>{
+    const result=await resourceStore.batch(req.body);
+    await identities.audit(req.studySession.user,result.action==='delete'?'resource.deleted':'resource.invalidated',`${result.count} 份资源`,result.action==='delete'?'批量删除资源缓存，保留个人学习记录':'批量标记需更新，下次学习访问时重新读取小程序');
+    res.json(result);
+  });
   router.get('/resources/:platform/:sourceId/:key',auth.require,async(req,res)=>res.json(await resourceStore.detail(selector(req))));
   router.patch('/resources/:platform/:sourceId/:key',auth.require,async(req,res)=>{
     const resource=await resourceStore.update({...selector(req),revision:req.body?.revision,response:req.body?.response});

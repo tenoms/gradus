@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect, useState } from "react";
 import { Link, NavLink, Route, Routes, useLocation } from "react-router-dom";
-import { Activity, ArrowUpRight, Bell, CircleAlert, Database, LayoutDashboard, Layers3, LoaderCircle, LogOut, Menu, Settings2, ShieldCheck, Users, X } from "lucide-react";
+import { Activity, ArrowUpRight, Bell, CircleAlert, Database, FolderOpen, LayoutDashboard, Layers3, LoaderCircle, LogOut, Menu, Settings2, ShieldCheck, Users, X } from "lucide-react";
 import { api, emptySession, getSession, setApiIdentity } from "../../shared/api/client";
 import type { Session } from "../../shared/api/client";
 import { SessionContext } from "../../shared/auth/session";
@@ -12,7 +12,8 @@ const AdminWorkspace = lazy(() => import("../../features/admin/AdminWorkspace"))
 const navigation = [
   { to: "/", label: "管理总览", icon: LayoutDashboard, end: true },
   { to: "/users", label: "用户与账号", icon: Users },
-  { to: "/data", label: "账号池与资源同步", icon: Database },
+  { to: "/data", label: "账号与服务", icon: Database },
+  { to: "/resources", label: "资源中心", icon: FolderOpen },
   { to: "/configuration", label: "平台集成配置", icon: Settings2 },
   { to: "/announcements", label: "学习公告", icon: Bell },
   { to: "/audit", label: "操作审计", icon: Activity },
