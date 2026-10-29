@@ -35,7 +35,10 @@
   color: var(--muted);
   font-size: 11px;
   cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 6px;
 }
+.ccd-toggle[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); }
 .ccd-form {
   display: flex;
   align-items: center;
@@ -114,6 +117,7 @@
   color: var(--muted);
   white-space: nowrap;
 }
+.ccd-list li.active time { color: inherit; }
 .ccd-list button > span {
   overflow-wrap: anywhere;
 }
@@ -125,7 +129,7 @@
 }
 .ccd-notice {
   font-size: 11px;
-  color: var(--text-secondary);
+  color: var(--success);
   line-height: 1.8;
 }
 .ccd-error {

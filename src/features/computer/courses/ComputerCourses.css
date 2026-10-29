@@ -22,7 +22,7 @@
   line-height: 1.9;
 }
 .cc-details-tabs {
-  border-top: 1px solid var(--accent-border);
+  border-top: 1px solid var(--border);
   margin-top: 27px;
   padding-top: 23px;
   margin-bottom: 20px;
@@ -34,6 +34,7 @@
 }
 .cc-introduction .rich-content {
   font-size: 13px;
+  color: var(--ink);
 }
 .cc-files {
   display: flex;
@@ -54,7 +55,7 @@
 }
 .cc-review {
   padding: 20px 0;
-  border-bottom: 1px solid var(--accent-border);
+  border-bottom: 1px solid var(--border);
 }
 .cc-review-head {
   display: flex;
@@ -92,7 +93,7 @@
 }
 .cc-review .rich-content {
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--ink);
 }
 .cc-review-images {
   display: flex;
@@ -144,7 +145,7 @@
   color: var(--accent);
 }
 .cc-lesson-row {
-  border-bottom: 1px solid var(--accent-border);
+  border-bottom: 1px solid var(--border);
 }
 .cc-courses .computer-lesson-list .computer-lesson {
   border: 0;

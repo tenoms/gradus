@@ -13,14 +13,6 @@ import { mathFreshCommand as mathCommand, mathRows } from "../api/math";
 import type { MathRow } from "../api/math";
 import "./math-qa-report.css";
 import { qaReportDetailParams } from "./math-qa";
-const palette = [
-  "#8c74c9",
-  "#699e92",
-  "#d4a36c",
-  "#7799c9",
-  "#c888a0",
-  "#8caa73",
-];
 type Detail = {
   type: "book" | "month" | "chapter";
   id?: number | string;
@@ -198,7 +190,6 @@ export default function MathQAReport({
                       <span
                         style={{
                           width: `${bookTotal ? (Number(r.BCounts || 0) / bookTotal) * 100 : 0}%`,
-                          background: palette[i % palette.length],
                         }}
                       />
                     </div>
@@ -244,7 +235,6 @@ export default function MathQAReport({
                       <div
                         style={{
                           height: `${Math.max(3, (Number(r.Counts || 0) / max) * 150)}px`,
-                          background: palette[i % palette.length],
                         }}
                       />
                       <small>{String(r.Months || "").slice(2)}</small>

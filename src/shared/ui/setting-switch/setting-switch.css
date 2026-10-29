@@ -7,9 +7,9 @@
 .setting-switch-status.is-on { color: var(--accent); }
 .setting-switch-button { display: inline-flex; align-items: center; justify-content: center; width: 48px; min-width: 48px; min-height: 44px; padding: 0; border: 0; border-radius: 9px; background: transparent; cursor: pointer; }
 .setting-switch-track { position: relative; display: block; width: 46px; height: 26px; border-radius: 15px; background: var(--border-strong); transition: background .15s ease; }
-.setting-switch-thumb { position: absolute; top: 3px; left: 3px; display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--on-accent); color: var(--accent); box-shadow: var(--shadow); transition: transform .15s ease; }
+.setting-switch-thumb { position: absolute; top: 3px; left: 3px; display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--text-secondary); color: var(--surface); box-shadow: var(--shadow); transition: transform .15s ease; }
 .setting-switch-button[aria-checked="true"] .setting-switch-track { background: var(--accent); }
-.setting-switch-button[aria-checked="true"] .setting-switch-thumb { transform: translateX(20px); }
+.setting-switch-button[aria-checked="true"] .setting-switch-thumb { transform: translateX(20px); background: var(--on-accent); color: var(--accent); }
 .setting-switch-button:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
 .setting-switch-button:disabled { opacity: .5; cursor: not-allowed; }
 .setting-switch-button.is-pending:disabled { opacity: 1; cursor: wait; }

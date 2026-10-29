@@ -28,11 +28,18 @@ const surfaces = {
   },
 };
 
+const blend = (base, tint, weight) => `#${[1, 3, 5].map(index => Math.round(parseInt(base.slice(index, index + 2), 16) * (1 - weight) + parseInt(tint.slice(index, index + 2), 16) * weight).toString(16).padStart(2, '0')).join('')}`;
+const neutral = color => {
+  const gray = Math.round([.2126, .7152, .0722].reduce((sum, weight, index) => sum + parseInt(color.slice(1 + index * 2, 3 + index * 2), 16) * weight, 0)).toString(16).padStart(2, '0');
+  return `#${gray.repeat(3)}`;
+};
+
 export function themeVariables(palette = 'violet', scheme = 'light') {
   const mode = scheme === 'dark' ? 'dark' : 'light';
   const [accent, hover, soft, border] = (palettes[palette] || palettes.violet)[mode];
   return {
     ...surfaces[mode], '--accent': accent, '--accent-hover': hover, '--accent-soft': soft, '--accent-border': border,
+    '--nav-foreground': blend(neutral(surfaces[mode]['--text-secondary']), accent, .25),
     '--success-solid': surfaces[mode]['--success'], '--danger-solid': surfaces[mode]['--danger'],
     '--warning-solid': surfaces[mode]['--warning'], '--info-solid': surfaces[mode]['--info'],
     '--focus-ring': accent, '--media-bg': '#10151f', '--on-media': '#ffffff', '--mint': surfaces[mode]['--success'],

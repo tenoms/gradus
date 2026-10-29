@@ -30,8 +30,8 @@
 }
 .math-crop-selection {
   position: absolute;
-  border: 2px solid var(--accent-border);
-  box-shadow: 0 0 0 9999px var(--media-bg);
+  border: 2px solid var(--on-media);
+  box-shadow: 0 0 0 9999px color-mix(in srgb, var(--media-bg) 60%, transparent);
   pointer-events: none;
 }
 .math-crop-selection:after {

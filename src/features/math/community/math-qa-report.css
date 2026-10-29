@@ -71,6 +71,7 @@
   display: block;
   height: 100%;
   border-radius: 5px;
+  background: var(--accent);
 }
 .mqr-year {
   width: auto !important;
@@ -100,6 +101,7 @@
 .mqr-month-chart button > div {
   width: min(36px, 100%);
   border-radius: 5px 5px 0 0;
+  background: var(--accent);
   transition: opacity 0.2s;
 }
 .mqr-month-chart button:hover > div {

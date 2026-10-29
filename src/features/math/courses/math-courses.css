@@ -61,8 +61,17 @@
   border: 1px solid var(--border);
   background: var(--surface);
 }
-.mc-card > div:not(.mc-card-art) {
+.mc-card-body {
   padding: 20px;
+}
+.mc-card-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 11px;
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 .mc-card > img {
   width: 100%;
@@ -73,37 +82,34 @@
   font-size: 17px;
   line-height: 1.5;
   margin: 12px 0;
+  color: var(--ink);
 }
 .mc-card p {
   font-size: 13px;
-  color: var(--muted);
+  color: var(--text-secondary);
   line-height: 1.65;
   max-height: 64px;
   overflow: hidden;
 }
 .mc-card-art {
   height: 145px;
-  background: linear-gradient(120deg, var(--accent-soft), var(--accent-soft));
+  background: var(--accent-soft);
   display: grid;
   place-items: center;
   color: var(--accent);
-}
-.mc-card:nth-child(3n + 2) .mc-card-art {
-  background: linear-gradient(120deg, var(--surface-soft), var(--surface-soft));
-  color: var(--text-secondary);
 }
 .mc-badge {
   display: inline-flex;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.5px;
-  color: var(--text-secondary);
+  color: var(--accent);
   background: var(--accent-soft);
   border-radius: 5px;
   padding: 5px 8px;
 }
 .mc-link {
-  color: var(--text-secondary);
+  color: var(--accent);
   display: flex;
   gap: 5px;
   align-items: center;
@@ -226,7 +232,7 @@
 }
 .mc-task-icon {
   background: var(--accent-soft);
-  color: var(--text-secondary);
+  color: var(--accent);
   padding: 10px;
   border-radius: 8px;
 }

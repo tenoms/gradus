@@ -7,7 +7,7 @@
 .pagination button:hover:not(:disabled) { background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent); }
 .pagination button:disabled { cursor: default; opacity: .4; }
 .pagination .is-current { color: var(--accent); border-color: var(--accent-border); background: var(--accent-soft); font-weight: 600; }
-.pagination select, .pagination input { border: 1px solid var(--border); border-radius: 6px; background: var(--surface); padding: 6px 8px; min-height: 32px; color: var(--text-secondary); font-size: 12px; }
+.pagination select, .pagination input { border: 1px solid var(--border); border-radius: 6px; background: var(--surface); padding: 6px 8px; min-height: 32px; color: var(--ink); font-size: 12px; }
 .pagination-jump input { width: 52px; text-align: center; padding-inline: 4px; }
 .pagination-ellipsis { padding: 0 4px; }
 .pagination .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }

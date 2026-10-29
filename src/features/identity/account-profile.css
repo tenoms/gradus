@@ -10,6 +10,6 @@
 .account-profile-field { display: grid; gap: 8px; font-size: 13px; }
 .account-profile-field .input { width: 100%; }
 .account-profile-state { display: grid; justify-items: center; gap: 10px; padding: 28px 0; font-size: 13px; color: var(--muted); }
-.account-profile-notice { margin: 0; padding: 14px 16px; border-radius: 8px; color: var(--accent); background: var(--accent-soft); font-size: 12px; line-height: 1.8; }
+.account-profile-notice { margin: 0; padding: 14px 16px; border-radius: 8px; color: var(--success); background: var(--success-soft); font-size: 12px; line-height: 1.8; }
 .account-profile-error { color: var(--danger); font-size: 13px; }
 @media (max-width: 650px) { .account-profile-grid { grid-template-columns: 1fr; } }

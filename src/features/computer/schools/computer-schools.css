@@ -89,14 +89,14 @@
   padding: 7px 13px;
   border-radius: 6px;
   border: 1px solid transparent;
-  background: var(--accent-soft);
+  background: var(--surface-soft);
   font-size: 12px;
-  color: var(--muted);
+  color: var(--text-secondary);
   cursor: pointer;
 }
 .cs-chips button.active {
-  color: var(--text-secondary);
-  border-color: var(--accent-border);
+  color: var(--accent);
+  border-color: var(--accent);
   background: var(--accent-soft);
 }
 .cs-filter-actions {
@@ -142,7 +142,8 @@
   cursor: pointer;
 }
 .cs-major-options > button.active {
-  border-color: var(--accent-border);
+  color: var(--accent);
+  border-color: var(--accent);
   background: var(--accent-soft);
 }
 .cs-major-options strong {
@@ -213,7 +214,7 @@
   display: grid;
   place-items: center;
   background: var(--accent-soft);
-  color: var(--muted);
+  color: var(--accent);
 }
 .cs-school-heading h3 {
   font-size: 17px;
@@ -238,7 +239,7 @@
 .cs-tags span {
   font-size: 11px;
   color: var(--muted);
-  background: var(--accent-soft);
+  background: var(--surface-soft);
   padding: 3px 7px;
   border-radius: 4px;
 }
@@ -344,7 +345,7 @@
 }
 .cs-selected button {
   border: 1px solid var(--accent-border);
-  color: var(--muted);
+  color: var(--accent);
   border-radius: 6px;
   background: var(--accent-soft);
   padding: 7px 10px;

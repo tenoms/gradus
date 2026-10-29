@@ -164,7 +164,7 @@ svg {
   align-items: center;
   gap: 13px;
   padding: 12px 16px;
-  color: var(--accent);
+  color: var(--nav-foreground);
   border-radius: 8px;
   font-size: 12px;
   letter-spacing: 0.1px;
@@ -173,7 +173,7 @@ svg {
     color 0.18s;
 }
 .nav-item svg {
-  color: var(--text-secondary);
+  color: inherit;
 }
 .nav-item:hover {
   background: var(--surface-soft);
@@ -439,7 +439,7 @@ svg {
 .hero-card {
   border-radius: 12px;
   min-height: 265px;
-  background: linear-gradient(110deg, var(--accent-soft) 0%, var(--accent-soft) 58%, var(--accent-soft) 100%);
+  background: linear-gradient(120deg, var(--accent), var(--accent-hover));
   position: relative;
   overflow: hidden;
   padding: 28px 30px;
@@ -463,7 +463,7 @@ svg {
 .hero-kicker {
   font-size: 11px;
   letter-spacing: 2px;
-  color: var(--accent);
+  color: var(--on-accent);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -486,7 +486,7 @@ svg {
 .hero-card p {
   font-size: 11px;
   line-height: 1.9;
-  color: var(--accent);
+  color: var(--on-accent);
   letter-spacing: 0.3px;
 }
 .btn {
@@ -512,7 +512,7 @@ svg {
   box-shadow: 0 3px 8px color-mix(in srgb, var(--accent) 9%, transparent);
 }
 .btn-primary:hover {
-  background: var(--accent);
+  background: var(--accent-hover);
 }
 .btn-secondary {
   background: var(--surface);
@@ -1367,12 +1367,12 @@ svg {
   display: flex;
   align-items: center;
   gap: 9px;
-  background: var(--surface-soft);
-  border: 1px solid var(--warning-border);
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-border);
   border-radius: 7px;
   padding: 12px 15px;
   margin: 0 0 20px;
-  color: var(--warning);
+  color: var(--danger);
   font-size: 11px;
   text-align: left;
   overflow-wrap: anywhere;
@@ -1382,11 +1382,11 @@ svg {
   min-width: 0;
 }
 .error-banner .text-link {
-  color: var(--warning);
+  color: inherit;
 }
 .notice {
-  background: var(--surface-soft);
-  border-color: var(--border);
+  background: var(--success-soft);
+  border-color: var(--success-border);
   color: var(--success);
   margin-top: 20px;
 }
@@ -1658,7 +1658,17 @@ svg {
   color: var(--ink);
   font-size: 14px;
 }
-.rich-content a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+/* Upstream editor colors must not force light paper into dark reading surfaces.
+   KaTeX keeps authored formula colors and all of its layout styles. */
+.rich-content :where([color], [style*="color" i]):where(:not(.katex):not(.katex *)) { color: inherit !important; }
+.rich-content :where([bgcolor], [style*="background" i]):where(:not(.katex):not(.katex *)) { background-color: transparent !important; }
+.rich-content a { color: var(--accent) !important; text-decoration: underline; text-underline-offset: 3px; }
+.rich-content a:hover { color: var(--accent-hover) !important; }
+.rich-content mark { color: var(--warning) !important; background: var(--warning-soft) !important; padding: .05em .2em; border-radius: 3px; }
+.rich-content blockquote { margin: 16px 0; padding: 12px 16px; border-inline-start: 3px solid var(--accent-border); background: var(--surface-soft) !important; color: var(--text-secondary) !important; }
+.rich-content :not(pre) > code { color: var(--ink) !important; background: var(--surface-soft) !important; border: 1px solid var(--border); border-radius: 4px; padding: .08em .3em; }
+.rich-content pre code { color: inherit !important; background: transparent !important; }
+.rich-content hr { border: 0; border-top: 1px solid var(--border); margin-block: 20px; }
 .rich-content img {
   max-width: 100%;
   height: auto;
@@ -1678,11 +1688,12 @@ svg {
   border: 1px solid var(--accent-border);
   padding: 7px;
 }
+.rich-content th { color: var(--ink) !important; background: var(--surface-soft) !important; }
 .rich-content pre {
   max-width: 100%;
   overflow: auto;
   padding: 15px;
-  background: var(--surface-soft);
+  background: var(--surface-soft) !important;
   border-radius: 7px;
 }
 .rich-content .katex-display {
@@ -2406,14 +2417,6 @@ svg {
     transition: none !important;
     animation-duration: 0.01ms !important;
   }
-}
-
-.hero-card p,
-.hero-kicker {
-  color: var(--on-accent);
-}
-.hero-card {
-  background: linear-gradient(110deg, var(--accent) 0%, var(--accent-soft) 58%, var(--accent-soft) 100%);
 }
 
 .skip-link {

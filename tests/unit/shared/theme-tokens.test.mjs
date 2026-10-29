@@ -12,7 +12,7 @@ const contrast = (a, b) => { const values = [luminance(a), luminance(b)].sort((a
 test('every subject palette keeps text, controls and status feedback readable in both schemes', () => {
   for (const { value } of appearancePalettes) for (const scheme of ['light', 'dark']) {
     const tokens = themeVariables(value, scheme);
-    for (const color of ['--ink', '--text-secondary', '--muted', '--accent', '--success', '--warning', '--danger', '--info']) {
+    for (const color of ['--ink', '--text-secondary', '--muted', '--nav-foreground', '--accent', '--success', '--warning', '--danger', '--info']) {
       for (const background of ['--surface', '--surface-soft', '--surface-raised']) assert.ok(contrast(tokens[color], tokens[background]) >= 4.5, `${value} ${scheme} ${color} on ${background} must meet normal-text contrast`);
     }
     assert.ok(contrast(tokens['--on-accent'], tokens['--accent']) >= 4.5, `${value} ${scheme} primary action contrast`);
@@ -30,4 +30,19 @@ test('the global scheme resolves immediately while subject palettes remain indep
   assert.equal(resolvedScheme('light', true), 'light');
   assert.equal(resolvedScheme('dark', false), 'dark');
   assert.notEqual(themeVariables(config.math.palette)['--accent'], themeVariables(config.computer.palette)['--accent']);
+});
+
+test('resting navigation follows each palette softly and keeps its own hierarchy below active links', () => {
+  for (const scheme of ['light', 'dark']) {
+    const colors = appearancePalettes.map(({ value }) => {
+      const tokens = themeVariables(value, scheme);
+      assert.notEqual(tokens['--nav-foreground'], tokens['--accent']);
+      assert.notEqual(tokens['--nav-foreground'], tokens['--text-secondary']);
+      const channels = key => [1, 3, 5].map(index => parseInt(tokens[key].slice(index, index + 2), 16));
+      const resting = channels('--nav-foreground'), active = channels('--accent');
+      for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) assert.equal(Math.sign(resting[i] - resting[j]), Math.sign(active[i] - active[j]), 'resting navigation must retain its palette hue rather than inherit a fixed blue cast');
+      return tokens['--nav-foreground'];
+    });
+    assert.equal(new Set(colors).size, appearancePalettes.length);
+  }
 });

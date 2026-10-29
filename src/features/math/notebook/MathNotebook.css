@@ -171,7 +171,7 @@
 }
 .mn-entry-content .rich-content {
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--ink);
 }
 .mn-entry-content > small {
   font-size: 11px;

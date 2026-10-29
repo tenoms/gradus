@@ -28,6 +28,7 @@
   --accent-hover: #5940b5;
   --accent-soft: #f0ecfb;
   --accent-border: #d6ccf2;
+  --nav-foreground: #615b79;
   --success-solid: #18724c;
   --danger-solid: #b53646;
   --warning-solid: #8a5a12;
@@ -114,6 +115,6 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
 @media print {
-  :root { color-scheme: light; --page-bg: #fff !important; --surface: #fff !important; --surface-soft: #f5f5f5 !important; --surface-raised: #fff !important; --ink: #111 !important; --text-secondary: #333 !important; --muted: #555 !important; --border: #ddd !important; --border-strong: #aaa !important; --accent: #333 !important; --accent-hover: #111 !important; --accent-soft: #f0f0f0 !important; --accent-border: #bbb !important; --on-accent: #fff !important; --shadow: none !important; }
+  :root { color-scheme: light; --page-bg: #fff !important; --surface: #fff !important; --surface-soft: #f5f5f5 !important; --surface-raised: #fff !important; --ink: #111 !important; --text-secondary: #333 !important; --nav-foreground: #333 !important; --muted: #555 !important; --border: #ddd !important; --border-strong: #aaa !important; --accent: #333 !important; --accent-hover: #111 !important; --accent-soft: #f0f0f0 !important; --accent-border: #bbb !important; --on-accent: #fff !important; --shadow: none !important; }
   body { color: #111; background: #fff; }
 }

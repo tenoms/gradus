@@ -365,14 +365,15 @@
   resize: vertical;
 }
 .computer-feedback {
-  background: var(--accent-soft);
+  color: var(--ink);
+  background: var(--surface-soft);
   border-radius: 12px;
   padding: 18px;
   width: 100%;
   font-size: 14px;
 }
 .computer-feedback strong {
-  color: var(--accent);
+  color: var(--ink);
 }
 .computer-analysis {
   background: var(--surface-soft);
@@ -437,9 +438,10 @@
   font-size: 13px;
 }
 .computer-note-preview {
-  background: var(--accent-soft);
+  color: var(--ink);
+  background: var(--surface-soft);
   padding: 12px;
-  border-left: 3px solid var(--accent-border);
+  border-left: 3px solid var(--accent);
   margin: 14px 0;
   font-size: 13px;
 }
@@ -697,6 +699,9 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+.computer-session .computer-sheet-sidebar button:disabled {
+  opacity: 0.75;
+}
 .computer-workspace .input,
 .computer-session .input {
   max-width: 100%;
@@ -854,8 +859,8 @@
   min-width: 38px;
   border: 1px solid var(--border);
   border-radius: 9px;
-  background: var(--accent-soft);
-  color: var(--muted);
+  background: var(--surface);
+  color: var(--text-secondary);
 }
 .computer-report-sheet .correct {
   background: var(--success-soft);

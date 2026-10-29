@@ -1786,13 +1786,15 @@ function Product({
             key={p.ID || i}
             onClick={() => setPacket(p)}
           >
-            <BookOpen size={25} />
-            <h3>{courseLabel(p)}</h3>
-            <p>课程包 · 日历任务 · 作业测评</p>
-            <span className="mc-link">
-              打开课程包
-              <ChevronRight size={16} />
-            </span>
+            <div className="mc-card-body">
+              <span className="mc-card-icon"><BookOpen size={25} /></span>
+              <h3>{courseLabel(p)}</h3>
+              <p>课程包 · 日历任务 · 作业测评</p>
+              <span className="mc-link">
+                打开课程包
+                <ChevronRight size={16} />
+              </span>
+            </div>
           </button>
         ))}
         {courses.map((c, i) => (
@@ -1801,13 +1803,15 @@ function Product({
             key={c.ID || i}
             onClick={() => setCourse(c)}
           >
-            <BookOpen size={25} />
-            <h3>{courseLabel(c)}</h3>
-            <p>章节与学习日程</p>
-            <span className="mc-link">
-              进入课程
-              <ChevronRight size={16} />
-            </span>
+            <div className="mc-card-body">
+              <span className="mc-card-icon"><BookOpen size={25} /></span>
+              <h3>{courseLabel(c)}</h3>
+              <p>章节与学习日程</p>
+              <span className="mc-link">
+                进入课程
+                <ChevronRight size={16} />
+              </span>
+            </div>
           </button>
         ))}
       </div>
@@ -1988,7 +1992,7 @@ export default function MathCourses({ stuid }: { stuid: string }) {
                 )}
               </div>
             )}
-            <div>
+            <div className="mc-card-body">
               <span className="mc-badge">
                 {tab === "ability"
                   ? "能力测评"
