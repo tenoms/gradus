@@ -462,6 +462,7 @@ function BookWorkspace({
         catalogPagination.setPage(Math.floor(visibleIndex / catalogPagination.pageSize) + 1);
     }
   };
+  const currentQuestionId = current ? mathQuestionId(current) : undefined;
   useEffect(() => {
     if (!current) return;
     const currentIndex = shown.findIndex(
@@ -469,7 +470,7 @@ function BookWorkspace({
     );
     if (currentIndex >= 0)
       catalogPagination.setPage(Math.floor(currentIndex / catalogPagination.pageSize) + 1);
-  }, [catalog.data, catalogPagination.pageSize]);
+  }, [catalog.data, catalogPagination.pageSize, currentQuestionId]);
   const index = current
     ? rows.findIndex((r) => mathQuestionId(r) === mathQuestionId(current))
     : -1;
