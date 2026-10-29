@@ -837,43 +837,6 @@
   padding-top: 18px;
   margin-top: 22px;
 }
-.computer-tool-form {
-  display: grid;
-  gap: 16px;
-  padding: 20px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  margin-top: 14px;
-  background: #faf9fe;
-}
-.computer-tool-form h3 {
-  margin: 0;
-}
-.computer-tool-form .selected {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: #f0ecff;
-}
-.computer-tool-images {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.computer-tool-images > div {
-  position: relative;
-}
-.computer-tool-images img {
-  height: 100px;
-  width: 110px;
-  object-fit: cover;
-  border-radius: 10px;
-}
-.computer-tool-images button {
-  position: absolute;
-  right: 0;
-  top: 0;
-  background: #fff;
-}
 .computer-subject-grid {
   display: flex;
   gap: 10px;
@@ -969,9 +932,6 @@
   }
   .computer-report-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .computer-tool-form {
-    padding: 14px;
   }
   .computer-subject-grid > .btn {
     flex: 1 1 130px;

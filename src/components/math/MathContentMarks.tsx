@@ -4,17 +4,14 @@ import { useSession } from "../../lib/session";
 import { mathCommand, mathGet, mathPost, mathRows } from "../../platforms/math";
 import type { MathRow } from "../../platforms/math";
 import { mathContentLikeDelete, mathContentMarkType } from "../../platforms/math-content-marks";
-import { MathFeedbackButton } from "./MathQuestionTools";
 export default function MathContentMarks({
   fileId,
   questionId,
   baseType,
-  bookId = 0,
 }: {
   fileId: string | number;
   questionId: string | number;
   baseType: string;
-  bookId?: number;
 }) {
   const { session } = useSession();
   const stuid = session.platforms.math?.user?.StuID || "";
@@ -123,12 +120,6 @@ export default function MathContentMarks({
         <Flag size={15} fill={marked ? "currentColor" : "none"} />
         {marked ? "已标记重点" : "标记重点"}
       </button>
-      <MathFeedbackButton
-        stuid={stuid}
-        qid={questionId}
-        bookId={bookId}
-        baseType={markType}
-      />
       {error && (
         <p className="math-error-text" role="alert">
           {error}

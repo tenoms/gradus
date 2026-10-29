@@ -111,7 +111,6 @@ function MathPolyvQuestionVideo({ row }: { row: MathRow }) {
         videoId={row.VideoID || row.videoID || 0}
         questionId={row.QuestionID}
         fileId={row.ID}
-        bookId={Number(row.BookID || 0)}
       />
     </div>
   );

@@ -46,28 +46,3 @@ export function discussionGivePayload(row, liked) {
     ? { ID: row.ID, Give: -1 }
     : { ID: row.ID, Give: 1, StuID: row.StuID };
 }
-export function feedbackPayload({
-  qid,
-  stuid,
-  bookId = 0,
-  types,
-  content,
-  images,
-  answerImages = [],
-  baseType = "题目",
-}) {
-  return {
-    BusType: 1,
-    Type: 3,
-    StuID: stuid,
-    BusID: qid,
-    BusValue: types.join(","),
-    Content: content,
-    System_Station_ID: 1,
-    BusNumber: 0,
-    Notes: images.join(","),
-    AnswerImg: answerImages.join(","),
-    BookID: bookId,
-    BaseType: baseType,
-  };
-}

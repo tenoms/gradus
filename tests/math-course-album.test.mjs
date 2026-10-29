@@ -5,7 +5,6 @@ import {
   courseAlbumWork,
   courseAlbumOperation,
   courseAlbumLog,
-  courseAlbumFeedback,
 } from "../src/components/math/course-album-model.mjs";
 test("album work follows the parent group teacher flag and actual first child paper identity", () => {
   const content = [
@@ -54,40 +53,9 @@ test("album reading logs retain exact course/product scope and update an existin
     },
   );
 });
-test("album feedback uses the original album record type and context rather than a question feedback payload", () => {
-  assert.deepEqual(
-    courseAlbumFeedback(
-      { stuid: "s" },
-      20,
-      21,
-      ["视频出错"],
-      "画面无法正常播放",
-      ["https://example.com/evidence.png"],
-    ),
-    {
-      BusType: 8,
-      Type: 3,
-      StuID: "s",
-      BusID: 21,
-      BusValue: "视频出错",
-      Content: "画面无法正常播放",
-      System_Station_ID: 1,
-      BusNumber: 0,
-      Notes: "https://example.com/evidence.png",
-      BaseType: "专辑反馈",
-      BusParms: "AlbumID=20&CatalogID=21",
-    },
-  );
-  assert.throws(
-    () => courseAlbumFeedback({ stuid: "s" }, 20, 21, [], "说明", []),
-    /错误类型/,
-  );
-});
-
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
 globalThis.__courseAlbumFixture = {
-  courseAlbumFeedback,
   courseAlbumLog,
   courseAlbumOperation,
   courseAlbumWork,
@@ -117,7 +85,7 @@ const source = await readFile(
     })
     .outputText.replace(/import \{[^}]+\} from ['"][^'"]+['"];?/g, "");
 const adapter = await import(
-  `data:text/javascript;base64,${Buffer.from("const {courseAlbumFeedback,courseAlbumLog,courseAlbumOperation,courseAlbumWork,mathData,mathRows,mathApi,mathCommand,mathGet,mathPost}=globalThis.__courseAlbumFixture;" + output).toString("base64")}`
+  `data:text/javascript;base64,${Buffer.from("const {courseAlbumLog,courseAlbumOperation,courseAlbumWork,mathData,mathRows,mathApi,mathCommand,mathGet,mathPost}=globalThis.__courseAlbumFixture;" + output).toString("base64")}`
 );
 test("course album loads catalogue by AlbumID and chapter cache by CatalogID, retaining own course progress queries", async () => {
   const calls = [];

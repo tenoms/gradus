@@ -228,29 +228,6 @@
 .mqt-discussion {
   margin-top: 18px;
 }
-.mqt-error-types {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  border: 1px solid #eee5f5;
-  border-radius: 7px;
-  padding: 15px;
-  margin: 0 0 22px;
-}
-.mqt-error-types legend {
-  font-size: 11px;
-  color: #8b719b;
-}
-.mqt-error-types label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 10px;
-  color: #80638e;
-}
-.mqt-error-types input {
-  accent-color: #9b78be;
-}
 @media (max-width: 560px) {
   .md-heading {
     flex-wrap: wrap;

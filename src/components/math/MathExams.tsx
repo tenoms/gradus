@@ -924,7 +924,6 @@ function PaperRunner({
             bookId={Number(
               question._question_list?.BookID || question.BookID || 0,
             )}
-            question={question._question_list || question}
             source={context.kind === "dry" ? "考试" : "课程"}
             isCourse={false}
           />

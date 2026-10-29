@@ -76,29 +76,3 @@ export function courseAlbumLog(
         CourseID: context.CourseID || 0,
       };
 }
-export function courseAlbumFeedback(
-  context,
-  AlbumID,
-  CatalogID,
-  types,
-  content,
-  images,
-) {
-  if (!types.length) throw new Error("请选择专辑错误类型");
-  if (String(content).trim().length < 5)
-    throw new Error("请补充至少5个字的说明");
-  if (!images.length) throw new Error("请上传错误描述图片");
-  return {
-    BusType: 8,
-    Type: 3,
-    StuID: context.stuid,
-    BusID: CatalogID,
-    BusValue: types.join(","),
-    Content: content.trim(),
-    System_Station_ID: 1,
-    BusNumber: 0,
-    Notes: images.join(","),
-    BaseType: "专辑反馈",
-    BusParms: `AlbumID=${AlbumID}&CatalogID=${CatalogID}`,
-  };
-}

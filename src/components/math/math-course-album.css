@@ -117,32 +117,6 @@
   max-width: 100%;
   height: auto;
 }
-.mca-feedback {
-  padding: 22px;
-  background: #f6f9fd;
-  border: 1px solid #e0eaf6;
-  border-radius: 10px;
-  margin: 20px 0;
-}
-.mca-feedback h4 {
-  font-size: 14px;
-  color: #8b9fba;
-}
-.mca-feedback fieldset {
-  border: 0;
-  padding: 0;
-  display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
-  font-size: 11px;
-  color: #9aaec7;
-  margin: 20px 0;
-}
-.mca-feedback fieldset label {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
 @media (max-width: 650px) {
   .mca-content {
     padding: 14px 0;
@@ -153,9 +127,6 @@
   .mca-work {
     padding: 13px;
     gap: 12px;
-  }
-  .mca-feedback {
-    padding: 16px;
   }
   .mca-actions {
     margin-bottom: 15px;

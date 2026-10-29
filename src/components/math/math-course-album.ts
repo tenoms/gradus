@@ -1,14 +1,12 @@
 import {
   mathApi,
   mathCommand,
-  mathData,
   mathGet,
   mathPost,
   mathRows,
 } from "../../platforms/math";
 import type { MathRow } from "../../platforms/math";
 import {
-  courseAlbumFeedback,
   courseAlbumLog,
   courseAlbumOperation,
   courseAlbumWork,
@@ -143,32 +141,4 @@ export const courseAlbumApi = {
             System_Station_ID: 1,
           },
         ),
-  async feedback(
-    context: CourseAlbumContext,
-    AlbumID: any,
-    CatalogID: any,
-    types: string[],
-    content: string,
-    images: string[],
-  ) {
-    const payload = courseAlbumFeedback(
-        context,
-        AlbumID,
-        CatalogID,
-        types,
-        content,
-        images,
-      ),
-      config = mathRows(
-        await mathGet("/api/wx_xcx_info/GetListByAll", {
-          System_Station_ID: 1,
-        }),
-      )[0];
-    if (Number(config?.Parm2) === 1) {
-      const scan = await mathGet("/api/base/ScanText2", { txt: content });
-      if (scan.Data?.Labels || scan.Data?.Reason)
-        throw new Error("内容未通过平台检查，请调整后重试");
-    }
-    return mathPost("/api/sys_give/Inner_sys_give", payload);
-  },
 };

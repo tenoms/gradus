@@ -31,7 +31,6 @@ import MathNotebook from "../components/math/MathNotebook";
 import MathDiscussion, {
   MathDiscussionInbox,
 } from "../components/math/MathDiscussion";
-import { MathFeedbackButton } from "../components/math/MathQuestionTools";
 import MathQuestions, {
   NewMathQuestion,
 } from "../components/math/MathQuestions";
@@ -50,6 +49,8 @@ import MathRelatedQuestions from "../components/math/MathRelatedQuestions";
 import MathPhotoSearch from "../components/math/MathPhotoSearch";
 import MathComputing from "../components/math/MathComputing";
 import MathBookshelf from "../components/math/MathBookshelf";
+import MathLibraryTagFilter from "../components/math/MathLibraryTagFilter";
+import { mathLibraryTag, mathLibraryTagOptions, matchesMathLibraryTag } from "../platforms/math-library";
 import MathScoreRank from "../components/math/MathScoreRank";
 import { useSession } from "../lib/session";
 import { recordStudy } from "../lib/store";
@@ -191,6 +192,7 @@ function Library({ stuid }: { stuid: string }) {
   const catalogRef = useRef<HTMLDivElement>(null);
   const [searchParams] = useSearchParams();
   const [kind, setKind] = useState("全部");
+  const [tag, setTag] = useState("");
   const { subject } = useMathLearningPlan();
   const [allSubjects, setAllSubjects] = useState(false);
   const [year, setYear] = useState("全部");
@@ -206,33 +208,39 @@ function Library({ stuid }: { stuid: string }) {
   const rows = mathRows(remote.data);
   useEffect(() => {
     setSearch(searchParams.get("q") || "");
+    setTag("");
+    setKind("全部");
+    setYear("全部");
     setBook(undefined);
     setShelfShown(!searchParams.get("q")?.trim());
     setPhotoShown(false);
     setQrShown(false);
     setQrQuestion(undefined);
   }, [searchParams]);
+  useEffect(() => setTag(""), [subject]);
   const years = [
     ...new Set(rows.map((r) => String(r.BookYear || "")).filter(Boolean)),
   ]
     .sort()
     .reverse();
-  const filtered = rows.filter(
+  const scopedRows = rows.filter(
     (r) =>
-      (kind === "全部" ||
-        (kind === "真题" ? r.BusType === "试卷" : r.BusType !== "试卷")) &&
       (allSubjects || matchesMathSubject(r, subject)) &&
-      (year === "全部" || String(r.BookYear) === year) &&
-      (!search ||
-        [r.Name, r.Author, r.BookAuthor, r.BusValue, r.BookYear]
+      (year === "全部" || String(r.BookYear) === year),
+  );
+  const searchedRows = scopedRows.filter(
+    (r) => !search ||
+        [r.Name, r.Author, r.BookAuthor, r.TeacherName, r.BusValue, r.BookYear, mathLibraryTag(r)]
           .join(" ")
           .toLowerCase()
-          .includes(search.toLowerCase())),
+          .includes(search.toLowerCase()),
   );
+  const tags = mathLibraryTagOptions(searchedRows, kind);
+  const filtered = searchedRows.filter((r) => matchesMathLibraryTag(r, kind, tag));
   const pagination = usePagination({
     total: filtered.length,
     pageSize: 36,
-    resetKey: JSON.stringify([kind, subject, allSubjects, year, search]),
+    resetKey: JSON.stringify([kind, tag, subject, allSubjects, year, search]),
   });
   if (qrQuestion)
     return (
@@ -289,7 +297,7 @@ function Library({ stuid }: { stuid: string }) {
               <button
                 key={t}
                 className={kind === t ? "active" : ""}
-                onClick={() => setKind(t)}
+                onClick={() => { setKind(t); setTag(""); }}
               >
                 {t}
               </button>
@@ -347,6 +355,7 @@ function Library({ stuid }: { stuid: string }) {
             <RefreshCw size={16} />
           </button>
         </div>
+        <MathLibraryTagFilter kind={kind} options={tags} value={tag} onChange={setTag} />
         <State
           loading={remote.loading}
           error={remote.error}
@@ -373,7 +382,7 @@ function Library({ stuid }: { stuid: string }) {
               </div>
               <div className="math-book-copy">
                 <div className="math-tag">
-                  {r.BusType === "试卷" ? "历年真题" : r.BusValue || "数学教辅"}
+                  {mathLibraryTag(r)}
                 </div>
                 <h3>{mathTitle(r)}</h3>
                 <p>

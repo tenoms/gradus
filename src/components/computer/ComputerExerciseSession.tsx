@@ -32,7 +32,6 @@ import {
 import type { ComputerRecord as R } from "../../platforms/computer";
 import {
   buildComputerRedo,
-  computerFeedbackSource,
   computerLearningApi,
   computerReviewData,
 } from "./computer-learning";
@@ -828,10 +827,7 @@ export default function ExerciseSession({
         question={question}
         majorId={launch.majorId}
         chapterId={launch.chapterId}
-        examId={String(examId || "")}
-        index={current}
         examCategory={category}
-        source={computerFeedbackSource(launch)}
         onRelated={(data) =>
           setRelated({
             data,

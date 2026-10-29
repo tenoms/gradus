@@ -21,7 +21,6 @@ import "./math-choice-feedback.css";
 import LearningWorkbench, { LearningWorkbenchScope } from "../learning/LearningWorkbench";
 import MathNoteEditor from "./MathNoteEditor";
 import MathDiscussion from "./MathDiscussion";
-import { MathFeedbackButton } from "./MathQuestionTools";
 import { NewMathQuestion } from "./MathQuestions";
 import MathContentMarks from "./MathContentMarks";
 import MathQuestionVideo from "./MathQuestionVideo";
@@ -352,12 +351,6 @@ function QuestionReader({
           >
             <BookOpen size={17} />
           </button>
-          <MathFeedbackButton
-            stuid={stuid}
-            qid={qid}
-            bookId={Number(book?.ID || q.BookID || 0)}
-            compact
-          />
         </div>
       </div>
       <div className="tabs math-question-tabs">
@@ -713,7 +706,6 @@ function AnalysisBlock({
         <MathContentMarks
           fileId={row.ID}
           questionId={row.QuestionID}
-          bookId={Number(row.BookID || 0)}
           baseType={row.BusType || "文字解析"}
         />
       )}

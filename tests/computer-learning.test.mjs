@@ -77,15 +77,6 @@ test("custom subjects preserve independent graduate/final categories and origina
   assert.equal(adapter.computerPracticeType(2), 10);
   assert.equal(adapter.computerPracticeType(2, true), 9);
 });
-test('feedback origin retains the distinct original source enum for every exercise family',()=>{
-  const base={data:{},title:'test',majorId:'m',examType:2};
-  for(const[source,expected]of Object.entries({school:'COLLEGE_EXAM',mooc:'ENHANCE_PASS',self:'BASE_PASS',online:'MODAL_EXAM',hot:'MISTAKE_REPORT',photo:'PHOTO_SEARCH',scan:'SCAN_CODE'}))assert.equal(adapter.computerFeedbackSource({...base,source}),expected);
-  assert.equal(adapter.computerFeedbackSource(base),'KNOWLEDGE_TAG');
-  assert.equal(adapter.computerFeedbackSource({...base,voice:true}),'TEACHER_RECRUITMENT');
-  assert.equal(adapter.computerFeedbackSource({...base,random:true}),'HOLE_PASS');
-  assert.equal(adapter.computerFeedbackSource({...base,readOnly:true}),'ANSWER_PARSE');
-  assert.equal(adapter.computerFeedbackSource({...base,examType:22}),'COLLEGE_MODAL_EXAM');
-});
 test("review redo uses direct single-answer contract and distinct collection/mistake answer sources", async () => {
   const calls = [];
   globalThis.__computerLearningRequest = async (...args) => {
@@ -207,7 +198,7 @@ test("specialized practice and stage requests use verified source routes and par
   assert.equal(calls[3][0], "/api/exam/wx/practice/basic/progress/stat");
   assert.equal(calls[3][1].examType, 22);
 });
-test("subject mutations, feedback and date counters preserve the actual original payload", async () => {
+test("subject mutations and date counters preserve the actual original payload", async () => {
   const calls = [];
   globalThis.__computerLearningRequest = async (...args) => {
     calls.push(args);
@@ -223,13 +214,6 @@ test("subject mutations, feedback and date counters preserve the actual original
     true,
   );
   await adapter.computerLearningApi.dates("m", 2, 2);
-  await adapter.computerLearningApi.feedback({
-    exerciseId: "q",
-    source: "KNOWLEDGE_TAG",
-    errorType: "1,3",
-    errorDetail: "fixture",
-    pictureAdd: "",
-  });
   assert.deepEqual(calls[0], [
     "/api/exam/wx/personal/addMajorCustom",
     {},
@@ -238,8 +222,6 @@ test("subject mutations, feedback and date counters preserve the actual original
   ]);
   assert.equal(calls[1][0], "/api/exam/wx/personal/deleteMajor");
   assert.deepEqual(calls[2][1], { majorId: "m", examCategory: 2, itemFlag: 2 });
-  assert.equal(calls[3][2], "POST");
-  assert.equal(calls[3][3].errorType, "1,3");
 });
 test("related practice uses real chapter lookup, excludes the current question and never fabricates a related API", async () => {
   const calls = [];

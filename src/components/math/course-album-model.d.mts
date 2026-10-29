@@ -17,11 +17,3 @@ export function courseAlbumLog(
   previous?: Record<string, any>,
   now?: number,
 ): Record<string, any>;
-export function courseAlbumFeedback(
-  context: Record<string, any>,
-  AlbumID: any,
-  CatalogID: any,
-  types: string[],
-  content: string,
-  images: string[],
-): Record<string, any>;

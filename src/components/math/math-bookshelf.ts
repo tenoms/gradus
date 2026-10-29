@@ -64,13 +64,30 @@ export function mergeShelfBooks(
   user: ShelfRow,
 ): ShelfRow[] {
   const ids = [...shelfIds(user.EBookIDs), ...shelfIds(user.PaperIDs)];
+  const paperIds = new Set(shelfIds(user.PaperIDs));
   return ids
-    .map((id) => {
+    .map((id): ShelfRow | null => {
       const book = all.find((b) => String(b.ID) === id),
         plan = progress.find((p) => String(p.ID) === id);
-      return book || plan ? { ...book, ...plan } : null;
+      if (!book && !plan) return null;
+      const merged = enrichShelfBooks([plan || book!], all)[0];
+      return { ...merged, BusType: merged.BusType || (paperIds.has(id) ? "试卷" : "书籍") };
     })
     .filter((r): r is ShelfRow => r !== null);
+}
+/** Reading records are sparse; keep catalogue classification while retaining their progress. */
+export function enrichShelfBooks(records: ShelfRow[], catalog: ShelfRow[]): ShelfRow[] {
+  const byId = new Map(catalog.map(book => [String(book.ID), book]));
+  return records.map(record => {
+    const book = byId.get(String(record.ID));
+    if (!book) return { ...record };
+    const merged = { ...book };
+    for (const [key, value] of Object.entries(record))
+      if (value !== undefined && value !== null && value !== "") merged[key] = value;
+    for (const key of ["BusType", "TeacherName"])
+      if (book[key]) merged[key] = book[key];
+    return merged;
+  });
 }
 export const bookshelfApi = {
   async load(stuid: string) {
@@ -103,7 +120,7 @@ export const bookshelfApi = {
       user,
       books: shelfRows(catalog),
       shelf: mergeShelfBooks(shelfRows(catalog), progress, user),
-      recent: shelfRows(recent),
+      recent: enrichShelfBooks(shelfRows(recent), shelfRows(catalog)),
       progress,
     };
   },

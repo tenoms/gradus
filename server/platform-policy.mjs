@@ -93,6 +93,8 @@ const responseCredentialFields = new Set([
   "token",
   "authorization",
 ]);
+const removedMathFeedback = (parameters) =>
+  Number(parameters?.Type) === 3 || Number(parameters?.BusType) === 9;
 export function publicPlatformResponse(value) {
   if (Array.isArray(value)) return value.map(publicPlatformResponse);
   if (!value || typeof value !== "object") return value;
@@ -136,8 +138,7 @@ export function validatePlatformRequest(name, input) {
   if (
     name === "math" &&
     requestPath.startsWith("/api/sys_give/") &&
-    Number(data.Type ?? query.Type) === 3 &&
-    Number(data.BusType ?? query.BusType) === 6
+    removedMathFeedback({ ...query, ...data })
   )
     throw new ApiError("此接口不属于已启用的学习能力", 403);
   if (
@@ -157,7 +158,7 @@ export function validatePlatformRequest(name, input) {
       } catch {
         throw new ApiError("数学查询参数不是有效的 JSON", 400);
       }
-      if (Number(parameters?.Type) === 3 && Number(parameters?.BusType) === 6)
+      if (removedMathFeedback(parameters))
         throw new ApiError("此接口不属于已启用的学习能力", 403);
     }
   }

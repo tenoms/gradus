@@ -565,7 +565,6 @@ function ComputingPaper({
             stuid={context.stuid}
             qid={question.QuestionID}
             bookId={Number(question._question_list?.BookID || 0)}
-            question={question._question_list || question}
             source="选择题库"
             isCourse={false}
           />

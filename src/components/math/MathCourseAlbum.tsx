@@ -4,7 +4,6 @@ import {
   BookOpen,
   Check,
   ChevronRight,
-  Flag,
   Heart,
   LoaderCircle,
   RefreshCw,
@@ -16,7 +15,6 @@ import type { MathRow as Row } from "../../platforms/math";
 import MathQuestionReader from "./MathQuestionReader";
 import MathQuestionVideo from "./MathQuestionVideo";
 import MathModelTraining from "./MathModelTraining";
-import { AttachmentInput } from "./MathQuestions";
 import { courseAlbumApi as api } from "./math-course-album";
 import type { CourseAlbumContext } from "./math-course-album";
 import { courseAlbumTree } from "./course-album-model.mjs";
@@ -110,10 +108,6 @@ export default function MathCourseAlbum({
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState(""),
     [error, setError] = useState(""),
-    [feedback, setFeedback] = useState(false),
-    [types, setTypes] = useState<string[]>([]),
-    [text, setText] = useState(""),
-    [images, setImages] = useState<string[]>([]),
     [position, setPosition] = useState<string | number>(0),
     [log, setLog] = useState<Row>({});
   const info: Row = remote.data?.info || {},
@@ -168,24 +162,6 @@ export default function MathCourseAlbum({
     try {
       await api.like(context, AlbumID, catalog.ID, reading.data?.likes || {});
       reading.reload();
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function submitFeedback(e: React.FormEvent) {
-    e.preventDefault();
-    if (!catalog) return;
-    setBusy(true);
-    setError("");
-    try {
-      await api.feedback(context, AlbumID, catalog.ID, types, text, images);
-      setFeedback(false);
-      setNotice("专辑反馈已提交。");
-      setTypes([]);
-      setText("");
-      setImages([]);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -377,13 +353,6 @@ export default function MathCourseAlbum({
                 {likes.MyLogID ? "已赞" : "点赞"} {likes.counts || 0}
               </button>
               <button
-                className="btn btn-secondary"
-                onClick={() => setFeedback((v) => !v)}
-              >
-                <Flag size={14} />
-                专辑反馈
-              </button>
-              <button
                 className="math-icon-button"
                 aria-label="刷新专辑内容"
                 onClick={() => {
@@ -417,46 +386,6 @@ export default function MathCourseAlbum({
                 <p className="mc-status">本章暂未返回学习内容。</p>
               )}
             </>
-          )}
-          {feedback && (
-            <form className="mca-feedback" onSubmit={submitFeedback}>
-              <h4>反馈专辑内容问题</h4>
-              <fieldset>
-                {["有错别字", "视频出错", "其他"].map((type) => (
-                  <label key={type}>
-                    <input
-                      type="checkbox"
-                      checked={types.includes(type)}
-                      onChange={() =>
-                        setTypes((v) =>
-                          v.includes(type)
-                            ? v.filter((t) => t !== type)
-                            : [...v, type],
-                        )
-                      }
-                    />
-                    {type}
-                  </label>
-                ))}
-              </fieldset>
-              <label className="math-field">
-                补充说明
-                <textarea
-                  className="input"
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  minLength={5}
-                  maxLength={4000}
-                  rows={3}
-                  required
-                />
-              </label>
-              <p className="math-field">错误描述图片</p>
-              <AttachmentInput value={images} onChange={setImages} max={5} />
-              <button className="btn btn-primary" disabled={busy}>
-                提交专辑反馈
-              </button>
-            </form>
           )}
         </>
       ) : (

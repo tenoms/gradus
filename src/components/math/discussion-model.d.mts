@@ -14,13 +14,3 @@ export function discussionGivePayload(
   row: Record<string, any>,
   liked: boolean,
 ): Record<string, any>;
-export function feedbackPayload(input: {
-  qid: string | number;
-  stuid: string;
-  bookId?: number;
-  types: string[];
-  content: string;
-  images: string[];
-  answerImages?: string[];
-  baseType?: string;
-}): Record<string, any>;

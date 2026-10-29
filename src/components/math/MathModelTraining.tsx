@@ -20,7 +20,7 @@ import MathQuestionVideo from "./MathQuestionVideo";
 import MathQuestionStem from "./MathQuestionStem";
 import { mathOptionFeedback, mathQuestionChoice, mathQuestionPrompt } from "./math-question-presentation.mjs";
 import "./math-choice-feedback.css";
-import MathQuestionTools, { MathFeedbackButton } from "./MathQuestionTools";
+import MathQuestionTools from "./MathQuestionTools";
 import {
   mathApi,
   mathCommand,
@@ -786,7 +786,6 @@ function ModuleQuestion({
             stuid={stuid}
             qid={row.QuestionID}
             bookId={Number(q.BookID || 0)}
-            question={q}
             source={isCourse ? "课程" : "专辑"}
             isCourse={isCourse}
           />
@@ -904,7 +903,6 @@ function ModuleMarks({
         <Flag size={16} fill={marked ? "currentColor" : "none"} />
         {marked ? "已标为重点" : "标为重点"}
       </button>
-      <MathFeedbackButton stuid={stuid} qid={questionId} baseType="小模块" />
       {notice && <span className="math-error-text">{notice}</span>}
     </div>
   );

@@ -5,7 +5,6 @@ import { useSession } from "../../lib/session";
 import { mathCommand, mathGet, mathPost, mathRows } from "../../platforms/math";
 import type { MathRow } from "../../platforms/math";
 import { mathContentLikeDelete } from "../../platforms/math-content-marks";
-import { MathFeedbackButton } from "./MathQuestionTools";
 import "./math-video-feedback.css";
 export default function MathVideoFeedback({
   vid,
@@ -13,14 +12,12 @@ export default function MathVideoFeedback({
   stuid: actor,
   questionId,
   fileId,
-  bookId = 0,
 }: {
   vid: string;
   videoId?: string | number;
   stuid?: string;
   questionId?: string | number;
   fileId?: string | number;
-  bookId?: number;
 }) {
   const { session } = useSession();
   const stuid = actor || session.platforms.math?.user?.StuID || "";
@@ -214,12 +211,6 @@ export default function MathVideoFeedback({
             <Flag size={15} fill={flag ? "currentColor" : "none"} />
             {flag ? "已标记重点" : "标记重点"}
           </button>
-          <MathFeedbackButton
-            stuid={stuid}
-            qid={questionId}
-            bookId={bookId}
-            baseType="视频解析"
-          />
         </div>
       )}
       {editing && (

@@ -32,7 +32,6 @@
     "/api/exam/wx/personal/incorrectExercise",
     "/api/exam/wx/personal/incorrectExerciseList",
     "/api/exam/wx/personal/majorCustomList",
-    "/api/exam/wx/practice/addExerciseErrata/",
     "/api/exam/wx/practice/ai/retry/score",
     "/api/exam/wx/practice/ai/score",
     "/api/exam/wx/practice/answerRecord",

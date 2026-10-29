@@ -4,7 +4,6 @@ import {
   discussionGivePayload,
   discussionReplyPayload,
   discussionTree,
-  feedbackPayload,
 } from "../src/components/math/discussion-model.mjs";
 test("discussion reply payload preserves original parent, reply and recipient semantics for each level", () => {
   const input = {
@@ -65,22 +64,4 @@ test("liking identifies the recipient author while cancellation uses only the or
     ID: 5,
     Give: -1,
   });
-});
-test("error feedback uses the source learning-feedback record and retains both evidence image sets", () => {
-  const p = feedbackPayload({
-    qid: 10,
-    stuid: "me",
-    bookId: 3,
-    types: ["解析有误"],
-    content: "推导过程存在错误",
-    images: ["error.png"],
-    answerImages: ["answer.png"],
-    baseType: "文字解析",
-  });
-  assert.equal(p.BusType, 1);
-  assert.equal(p.Type, 3);
-  assert.equal(p.BusID, 10);
-  assert.equal(p.Notes, "error.png");
-  assert.equal(p.AnswerImg, "answer.png");
-  assert.equal(p.BaseType, "文字解析");
 });

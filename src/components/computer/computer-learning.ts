@@ -26,13 +26,6 @@ export interface ComputerExerciseLaunch {
   voice?: boolean;
   redo?: { kind: "mistakes" | "collection"; dateFlag: string; sort: string };
 }
-export function computerFeedbackSource(launch: ComputerExerciseLaunch) {
-  if(launch.voice)return 'TEACHER_RECRUITMENT';
-  const sources:Record<string,string>={school:'COLLEGE_EXAM',mooc:'ENHANCE_PASS',self:'BASE_PASS',online:'MODAL_EXAM',hot:'MISTAKE_REPORT',photo:'PHOTO_SEARCH',scan:'SCAN_CODE'};
-  if(launch.source&&sources[launch.source])return sources[launch.source];
-  const stages:Record<number,string>={20:'CENTER_TEST',21:'PREPARE_TEST',22:'COLLEGE_MODAL_EXAM'};
-  return stages[launch.examType]||(launch.random?'HOLE_PASS':launch.readOnly?'ANSWER_PARSE':'KNOWLEDGE_TAG');
-}
 export const computerSubjectGroups = [
   { name: "计算机考研", children: computerSubjects },
   {
@@ -224,13 +217,6 @@ export const computerLearningApi = {
       examCategory,
       dateFlag,
     }),
-  feedback: (data: R) =>
-    computerRequest(
-      "/api/exam/wx/practice/addExerciseErrata/",
-      {},
-      "POST",
-      data,
-    ),
   specialList: (kind: string, majorId: string) =>
     kind === "short"
       ? computerRequest("/api/exam/wx/practice/majorId/examination/list", {

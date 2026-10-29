@@ -1,0 +1,9 @@
+.math-library-tag-filter { display: flex; align-items: flex-start; gap: 15px; padding: 0 24px 18px; }
+.math-library-tag-caption { flex-shrink: 0; padding-top: 9px; color: var(--muted); font-size: 12px; }
+.math-library-tag-options { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.math-library-tag-options > button { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: 8px; padding: 7px 11px; color: var(--muted); background: #fff; font: inherit; font-size: 12px; line-height: 1.5; cursor: pointer; }
+.math-library-tag-options > button:hover { border-color: #cdbde8; color: var(--accent); }
+.math-library-tag-options > button.active { color: #65459f; border-color: #cdbde8; background: #f2eef9; }
+.math-library-tag-options > button > span { padding: 1px 5px; border-radius: 5px; background: #f2f1f5; font-size: 10px; font-variant-numeric: tabular-nums; }
+.math-library-tag-options > button.active > span { background: #e5dcf3; }
+@media (max-width: 600px) { .math-library-tag-filter { padding: 0 16px 16px; gap: 10px; flex-direction: column; } .math-library-tag-caption { padding-top: 0; } }

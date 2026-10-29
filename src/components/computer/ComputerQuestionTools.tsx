@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Flag, ImagePlus, LoaderCircle, Mic, Square, X } from "lucide-react";
+import { Mic, Square } from "lucide-react";
 import { computerUpload, safeLink } from "../../platforms/computer";
 import type { ComputerRecord as R } from "../../platforms/computer";
 import { computerLearningApi, computerVoiceAnswer } from "./computer-learning";
@@ -9,26 +9,16 @@ export default function ComputerQuestionTools({
   question,
   majorId,
   chapterId = "",
-  examId = "",
-  index,
-  source,
   examCategory = 1,
   onRelated,
 }: {
   question: R;
   majorId: string;
   chapterId?: string;
-  examId?: string;
-  index: number;
-  source: string;
   examCategory?: number;
   onRelated: (data: R) => void;
 }) {
-  const [open, setOpen] = useState(false),
-    [types, setTypes] = useState<number[]>([]),
-    [detail, setDetail] = useState(""),
-    [images, setImages] = useState<string[]>([]),
-    [busy, setBusy] = useState(false),
+  const [busy, setBusy] = useState(false),
     [markedWrong,setMarkedWrong] = useState(Number(question.incorrectNumber)>0),
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
@@ -71,47 +61,6 @@ export default function ComputerQuestionTools({
       setBusy(false);
     }
   }
-  async function upload(files: FileList | null) {
-    if (!files) return;
-    setBusy(true);
-    setError("");
-    try {
-      for (const file of Array.from(files).slice(0, 4 - images.length)) {
-        const data = await computerUpload(file),
-          url = data.previewUrl || data.url;
-        if (!url) throw new Error("上传服务没有返回图片地址");
-        setImages((a) => [...a, url]);
-      }
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function submit() {
-    setBusy(true);
-    setError("");
-    try {
-      if (!types.length) throw new Error("请至少选择一种错误类型");
-      if (!detail.trim()) throw new Error("请填写详细纠错内容");
-      await computerLearningApi.feedback({
-        exerciseId: question.exerciseId || question.id,
-        majorId: question.majorId || majorId,
-        examId,
-        exerciseSort: index + 1,
-        source,
-        pictureAdd: images.join(","),
-        errorDetail: detail,
-        errorType: types.join(","),
-      });
-      setOpen(false);
-      setNotice("纠错已提交，感谢反馈。");
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setBusy(false);
-    }
-  }
   return (
     <div className="computer-question-tools">
       <div className="computer-toolbar">
@@ -122,16 +71,6 @@ export default function ComputerQuestionTools({
           onClick={() => void related()}
         >
           同章节同类练习
-        </button>
-        <button
-          className="btn btn-secondary"
-          onClick={() => {
-            setOpen(!open);
-            setError("");
-          }}
-        >
-          <Flag size={15} />
-          题目纠错
         </button>
         <button className="btn btn-secondary" onClick={() => void share()}>
           复制题目链接
@@ -146,87 +85,6 @@ export default function ComputerQuestionTools({
         <p className="computer-error" role="alert">
           {error}
         </p>
-      )}
-      {open && (
-        <div className="computer-tool-form">
-          <h3>反馈题目问题</h3>
-          <div className="computer-toolbar">
-            {[
-              [1, "题干错误"],
-              [2, "答案错误"],
-              [3, "解析错误"],
-              [5, "题目超纲"],
-              [4, "其他"],
-            ].map(([id, title]) => (
-              <button
-                className={`btn btn-secondary ${types.includes(Number(id)) ? "selected" : ""}`}
-                key={id}
-                onClick={() =>
-                  setTypes((t) =>
-                    t.includes(Number(id))
-                      ? t.filter((v) => v !== id)
-                      : [...t, Number(id)],
-                  )
-                }
-              >
-                {title}
-              </button>
-            ))}
-          </div>
-          <textarea
-            className="input"
-            aria-label="题目纠错详情"
-            rows={4}
-            value={detail}
-            onChange={(e) => setDetail(e.target.value)}
-            placeholder="说明问题所在，方便核对修正"
-          />
-          <div className="computer-tool-images">
-            {images.map((url, i) => (
-              <div key={i}>
-                {safeLink(url) && (
-                  <a href={safeLink(url)} target="_blank" rel="noreferrer">
-                    <img src={safeLink(url)} alt={`纠错附件 ${i + 1}`} />
-                  </a>
-                )}
-                <button
-                  className="computer-icon"
-                  aria-label={`移除附件 ${i + 1}`}
-                  onClick={() => setImages((a) => a.filter((_, j) => j !== i))}
-                >
-                  <X size={15} />
-                </button>
-              </div>
-            ))}
-          </div>
-          <div className="computer-toolbar">
-            <label className="btn btn-secondary computer-upload">
-              <ImagePlus size={15} />
-              添加图片（{images.length}/4）
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                disabled={busy || images.length >= 4}
-                onChange={(e) => void upload(e.target.files)}
-              />
-            </label>
-            <button
-              className="btn btn-primary"
-              disabled={busy || !types.length || !detail.trim()}
-              onClick={() => void submit()}
-            >
-              {busy ? <LoaderCircle size={15} className="spin" /> : null}
-              提交纠错
-            </button>
-            <button
-              className="btn btn-secondary"
-              onClick={() => setOpen(false)}
-            >
-              收起
-            </button>
-          </div>
-        </div>
       )}
     </div>
   );

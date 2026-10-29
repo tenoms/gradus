@@ -15,6 +15,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { mathImage, mathTitle } from "../../platforms/math";
+import { mathLibraryTag, mathLibraryTagOptions, matchesMathLibraryTag } from "../../platforms/math-library";
+import MathLibraryTagFilter from "./MathLibraryTagFilter";
 import {
   bookshelfApi,
   changeShelfIds,
@@ -50,6 +52,7 @@ export default function MathBookshelf({
     [version, setVersion] = useState(0),
     [tab, setTab] = useState("shelf"),
     [kind, setKind] = useState("全部"),
+    [tag, setTag] = useState(""),
     [allSubjects, setAllSubjects] = useState(false),
     [search, setSearch] = useState(""),
     [selected, setSelected] = useState<string[]>([]),
@@ -74,6 +77,7 @@ export default function MathBookshelf({
       active = false;
     };
   }, [stuid, version]);
+  useEffect(() => setTag(""), [subject]);
   const selectedIds = [
       ...shelfIds(data?.user.EBookIDs),
       ...shelfIds(data?.user.PaperIDs),
@@ -84,12 +88,9 @@ export default function MathBookshelf({
         : tab === "recent"
           ? data?.recent || []
           : data?.shelf || [],
-    rows = all.filter(
+    scoped = all.filter(
       (row) =>
-        (kind === "全部" ||
-          (kind === "教辅"
-            ? row.BusType !== "试卷"
-            : row.BusType === "试卷")) &&
+        matchesMathLibraryTag(row, kind) &&
         (allSubjects || matchesMathSubject(row, subject)) &&
         (!search ||
           [
@@ -99,15 +100,18 @@ export default function MathBookshelf({
             row.BookAuthor,
             row.TeacherName,
             row.BookYear,
+            mathLibraryTag(row),
           ]
             .join(" ")
             .toLowerCase()
             .includes(search.toLowerCase())),
     );
+  const tagOptions = mathLibraryTagOptions(scoped, kind),
+    rows = scoped.filter(row => matchesMathLibraryTag(row, kind, tag));
   const pagination = usePagination({
     total: rows.length,
     pageSize: 24,
-    resetKey: JSON.stringify([stuid, tab, kind, subject, allSubjects, search]),
+    resetKey: JSON.stringify([stuid, tab, kind, tag, subject, allSubjects, search]),
   });
   async function add(book: R) {
     if (!data) return;
@@ -194,6 +198,7 @@ export default function MathBookshelf({
           className="btn btn-primary"
           onClick={() => {
             setTab("library");
+            setTag("");
           }}
         >
           <Plus size={16} />
@@ -213,6 +218,7 @@ export default function MathBookshelf({
                 key={id}
                 onClick={() => {
                   setTab(id);
+                  setTag("");
                   setManaging(false);
                   setSelected([]);
                 }}
@@ -224,7 +230,7 @@ export default function MathBookshelf({
           <label className="bookshelf-search">
             <Search size={16} />
             <input
-              placeholder="搜索书名、作者、年份"
+              placeholder="搜索书名、作者、标签、年份"
               aria-label="搜索我的数学书架"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -244,7 +250,7 @@ export default function MathBookshelf({
             className="input"
             aria-label="筛选书籍类型"
             value={kind}
-            onChange={(e) => setKind(e.target.value)}
+            onChange={(e) => { setKind(e.target.value); setTag(""); }}
           >
             {["全部", "教辅", "真题"].map((v) => (
               <option key={v}>{v}</option>
@@ -264,6 +270,7 @@ export default function MathBookshelf({
             </button>
           )}
         </div>
+        {!loading && !error && <MathLibraryTagFilter kind={kind} options={tagOptions} value={tag} onChange={setTag} />}
         {loading && (
           <div className="bookshelf-status" role="status">
             <LoaderCircle size={22} className="spin" />
@@ -290,21 +297,21 @@ export default function MathBookshelf({
           <div className="empty-state">
             <BookOpen size={31} />
             <h3>
-              {tab === "shelf"
+              {all.length ? "当前筛选下没有资料" : tab === "shelf"
                 ? "书架还是空的"
                 : tab === "recent"
                   ? "还没有最近阅读记录"
                   : "当前筛选下没有资料"}
             </h3>
             <p>
-              {tab === "shelf"
+              {all.length ? "可切换标签、调整关键词或浏览其他科目。" : tab === "shelf"
                 ? "从书籍库加入常用教辅或试卷，开始安排学习。"
-                : "学习后，这里会显示真实阅读进度。"}
+                : tab === "recent" ? "学习后，这里会显示真实阅读进度。" : "平台暂未返回资料，可稍后刷新。"}
             </p>
-            {tab !== "library" && (
+            {all.length ? <button className="btn btn-secondary" onClick={() => { setKind("全部"); setTag(""); setSearch(""); }}>清除筛选</button> : tab !== "library" && (
               <button
                 className="btn btn-primary"
-                onClick={() => setTab("library")}
+                onClick={() => { setTab("library"); setTag(""); }}
               >
                 去书籍库
                 <ArrowRight size={15} />
@@ -358,9 +365,7 @@ export default function MathBookshelf({
                   )}
                 </button>
                 <span className="bookshelf-tag">
-                  {book.BusType === "试卷"
-                    ? "历年真题"
-                    : book.BusValue || "数学教辅"}
+                  {mathLibraryTag(book)}
                 </span>
                 <h3>{mathTitle(book)}</h3>
                 <p>
