@@ -27,8 +27,8 @@ const deferred = () => {
   return { promise, resolve, reject };
 };
 
-function session({ data = {}, launch = {}, cache = new Map(), load, save = async () => true, report = { examRecord: { id: "own-record" }, answerList: [] }, buildAnswer, confirm = async () => true } = {}) {
-  const hooks = [], loads = [], saves = [], studyTimers = [], activities = [];
+function session({ data = {}, launch = {}, cache = new Map(), load, save = async () => true, report = { examRecord: { id: "own-record" }, answerList: [] }, buildAnswer, confirm = async () => true, collectionIds = async () => [], collect = async () => true } = {}) {
+  const hooks = [], loads = [], saves = [], studyTimers = [], activities = [], collectionLoads = [], collectionWrites = [];
   let cursor = 0, dirty = true, pending = [], tree;
   const scope = {
     ...workflow,
@@ -68,6 +68,8 @@ function session({ data = {}, launch = {}, cache = new Map(), load, save = async
     computerLearningApi: {
       saveSheetIndex: async (...args) => { saves.push(args); return save(...args); },
       submittedReport: async () => report,
+      collectionIds: async (...args) => { collectionLoads.push(args); return collectionIds(...args); },
+      collect: async (...args) => { collectionWrites.push(args); return collect(...args); },
     },
     exerciseSource: () => "",
     typeNames: { 4: "综合题" },
@@ -103,7 +105,7 @@ function session({ data = {}, launch = {}, cache = new Map(), load, save = async
   }
   render();
   return {
-    loads, saves, render, settle, cache, activities,
+    loads, saves, render, settle, cache, activities, collectionLoads, collectionWrites,
     answer: value => elements(node => node.type === "textarea" && node.props?.["aria-label"] === "填写答案")[0].props.onChange({ target: { value } }),
     answerInput: () => elements(node => node.type === "textarea" && node.props?.["aria-label"] === "填写答案")[0]?.props,
     studyTimer: () => studyTimers.at(-1),
@@ -117,6 +119,9 @@ function session({ data = {}, launch = {}, cache = new Map(), load, save = async
     report: () => elements(node => node.type === "ComputerExamReport")[0]?.props.data,
     error: () => elements(node => node.type === "Status")[0]?.props.error,
     notice: () => elements(node => node.props?.className === "computer-notice").map(textOf).join(""),
+    favorite: () => elements(node => node.type === "button" && ["收藏题目", "取消收藏"].includes(node.props?.["aria-label"]))[0]?.props,
+    favoriteFill: () => elements(node => node.type === "Star")[0]?.props.fill,
+    retry: () => elements(node => node.type === "Status")[0]?.props.retry?.(),
     unmount: () => { for (const hook of hooks) hook.cleanup?.(); },
   };
 }
@@ -314,5 +319,110 @@ test("an incomplete paper waits for the application confirmation and cancellatio
   assert.ok(view.button("交卷"), "cancel returns to the current paper");
   assert.equal(view.loads.filter(call => call[0].endsWith("/submitExam")).length, 0);
   assert.equal(view.activities.length, 0);
+  view.unmount();
+});
+
+test("review and search entries restore saved favorites and toggles persist without a success prompt", async () => {
+  const saved = new Set(["q1"]);
+  const options = {
+    launch: { readOnly: true },
+    collectionIds: async () => [...saved],
+    collect: async (item, major, chapter, category, remove) => {
+      assert.equal(major, "major");
+      assert.equal(category, 1);
+      if (remove) saved.delete(item.exerciseId);
+      else saved.add(item.exerciseId);
+      return true;
+    },
+    confirm: async () => assert.fail("favorite changes need no success confirmation"),
+  };
+  const view = session(options);
+  assert.equal(view.favorite().disabled, true, "the action waits for persisted state");
+  await view.settle();
+  assert.equal(view.favorite()["aria-pressed"], true);
+  assert.equal(view.favoriteFill(), "currentColor");
+  assert.match(view.favorite().className, /selected/);
+  view.favorite().onClick(); await view.settle();
+  assert.equal(view.favorite()["aria-pressed"], false);
+  assert.equal(view.favoriteFill(), "none");
+  assert.equal(view.notice(), "");
+  assert.equal(view.collectionWrites[0][4], true, "an existing favorite is removed");
+  view.unmount();
+
+  const reopened = session(options); await reopened.settle();
+  assert.equal(reopened.favorite()["aria-pressed"], false, "reopening reads the saved cancellation");
+  reopened.favorite().onClick(); await reopened.settle();
+  assert.equal(reopened.favoriteFill(), "currentColor");
+  assert.equal(reopened.notice(), "");
+  reopened.unmount();
+  const savedAgain = session(options); await savedAgain.settle();
+  assert.equal(savedAgain.favorite()["aria-pressed"], true, "reopening reads the saved addition");
+  savedAgain.unmount();
+});
+
+test("every question flip checks persisted favorites including cached questions", async () => {
+  const saved = new Set(["q2"]);
+  const view = session({ collectionIds: async () => [...saved] });
+  await view.settle();
+  assert.equal(view.favoriteFill(), "none");
+  view.button("下一题").onClick(); await view.settle();
+  assert.equal(view.favoriteFill(), "currentColor");
+  saved.delete("q2");
+  view.workbench().previous(); await view.settle();
+  assert.equal(view.favoriteFill(), "none");
+  view.button("下一题").onClick(); await view.settle();
+  assert.equal(view.favoriteFill(), "none", "cached question content does not cache favorite status");
+  assert.equal(view.collectionLoads.length, 4);
+  assert.equal(view.loads.length, 1, "favorite refresh leaves question caching intact");
+  view.unmount();
+});
+
+test("late favorite responses cannot replace the current question's saved state", async () => {
+  const first = deferred();
+  let reads = 0;
+  const view = session({ collectionIds: async () => ++reads === 1 ? first.promise : ["q2"] });
+  await view.settle();
+  view.button("下一题").onClick(); await view.settle();
+  assert.equal(view.favoriteFill(), "currentColor");
+  first.resolve(["q1"]); await view.settle();
+  assert.equal(view.favoriteFill(), "currentColor");
+  assert.equal(view.favorite().disabled, false);
+  view.unmount();
+});
+
+test("unavailable favorite state offers retry and failed writes preserve the selected star", async () => {
+  let reads = 0;
+  const view = session({
+    collectionIds: async () => {
+      if (++reads === 1) throw new Error("offline");
+      return ["q1"];
+    },
+    collect: async () => { throw new Error("save failed"); },
+  });
+  await view.settle();
+  assert.match(view.error(), /收藏状态暂时无法读取/);
+  assert.equal(view.favorite().disabled, true);
+  view.retry(); await view.settle();
+  assert.equal(view.error(), "");
+  assert.equal(view.favorite().disabled, false);
+  assert.equal(view.favoriteFill(), "currentColor");
+  view.favorite().onClick(); await view.settle();
+  assert.equal(view.error(), "save failed");
+  assert.equal(view.favoriteFill(), "currentColor");
+  assert.equal(view.notice(), "");
+  view.unmount();
+});
+
+test("numeric favorite IDs from the initial response match string question IDs", async () => {
+  const pending = deferred();
+  const view = session({
+    data: { exercises: [{ ...question(1), exerciseId: 42 }], collectExerciseId: [42] },
+    collectionIds: async () => pending.promise,
+  });
+  assert.equal(view.favoriteFill(), "currentColor");
+  assert.equal(view.favorite().disabled, true);
+  pending.resolve(["42"]); await view.settle();
+  assert.equal(view.favoriteFill(), "currentColor");
+  assert.equal(view.favorite().disabled, false);
   view.unmount();
 });

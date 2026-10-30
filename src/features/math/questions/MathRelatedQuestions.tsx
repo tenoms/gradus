@@ -25,6 +25,7 @@ import {
   mathTables,
 } from "../api/math";
 import type { MathRow } from "../api/math";
+import type { MathFavoriteControl } from "../notebook/use-math-favorite";
 import {
   matchesRelatedProperties,
   relatedGradeState,
@@ -51,6 +52,7 @@ export interface RelatedReaderProps {
     details?: { question: MathRow; options: MathRow[] },
   ) => Promise<void>;
   readOnly?: boolean;
+  favorite?: MathFavoriteControl;
 }
 function useData(key: string, load: () => Promise<any>) {
   const [data, setData] = useState<any>(),
@@ -863,6 +865,7 @@ function RelatedReader({
     ]),
   );
   const [exercise, setExercise] = useState<MathRow>();
+  const [annotationRecords, setAnnotationRecords] = useState<MathRow[]>();
   const [annotation, setAnnotation] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -885,7 +888,8 @@ function RelatedReader({
   const crowdRight = Number(publicStats[1]?.[0]?.counts || 0);
   const tables = detail.data ? mathTables(detail.data[1]) : [];
   const previous = exercise || tables[5]?.[0] || {};
-  const annotations = tables[4] || [];
+  const annotations: MathRow[] = annotationRecords ?? tables[4] ?? [];
+  const isFavorite = annotations.some(r => r.Type === "收藏");
   const current = {
     ...row,
     ...previous,
@@ -897,12 +901,14 @@ function RelatedReader({
     setNotice("");
     try {
       const existing = annotations.find((r) => r.Type === Type);
-      if (existing && Type !== "笔记")
-        await mathPost("/api/rel_question_log/Del_rel_question_log", {
+      if (existing && Type !== "笔记") {
+        const response = await mathPost("/api/rel_question_log/Del_rel_question_log", {
           ID: existing.ID,
         });
-      else
-        await mathPost("/api/rel_question_log/Inner_rel_question_log", {
+        if (mathData(response) === false) throw new Error("取消未成功，请重试");
+        setAnnotationRecords(annotations.filter(row => row !== existing));
+      } else {
+        const payload = {
           Type,
           QuestionID: row.QuestionID,
           StuID: stuid,
@@ -915,15 +921,17 @@ function RelatedReader({
                 UpdateColumns: "ID,Content,ContentImg",
               }
             : { UpdateColumns: "ID,Content" }),
-        });
-      setNotice(
-        Type === "笔记"
+        };
+        const response = await mathPost("/api/rel_question_log/Inner_rel_question_log", payload);
+        const id = existing?.ID || Number(mathData(response));
+        if (mathData(response) === false || !id) throw new Error("保存未成功，请重试");
+        setAnnotationRecords([...annotations.filter(row => row !== existing), { ...existing, ...payload, ID: id }]);
+      }
+      if (Type !== "收藏") setNotice(Type === "笔记"
           ? "题库笔记已保存"
           : existing
             ? `已取消${Type}`
-            : `已${Type}`,
-      );
-      detail.reload();
+            : `已${Type}`);
     } catch (e: any) {
       setNotice(e.message);
     } finally {
@@ -996,6 +1004,11 @@ function RelatedReader({
             next,
             onAnswered: answer,
             readOnly: Number(previous.IsSubmit) === 1,
+            favorite: {
+              active: isFavorite,
+              busy: busy || detail.loading,
+              toggle: () => void flag("收藏"),
+            },
           })}
           <div className="panel mrq-annotations">
             {crowdDone > 0 && (
@@ -1007,12 +1020,13 @@ function RelatedReader({
             )}
             <div>
               <button
-                className="btn btn-secondary"
+                className="btn btn-secondary math-favorite-button"
+                aria-pressed={isFavorite}
                 disabled={busy}
                 onClick={() => flag("收藏")}
               >
-                <Star size={16} />
-                {annotations.some((r) => r.Type === "收藏")
+                <Star size={16} fill={isFavorite ? "currentColor" : "none"} />
+                {isFavorite
                   ? "取消收藏"
                   : "收藏本题"}
               </button>

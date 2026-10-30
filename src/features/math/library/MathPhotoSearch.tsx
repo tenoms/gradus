@@ -521,7 +521,7 @@ export default function MathPhotoSearch({
             </button>
           </div>
           {recognition && (
-            <p className="math-qa-footnote">
+            <p className="math-footnote">
               已完成当前图片的识别，可以按页码与题号人工核对索引。
             </p>
           )}

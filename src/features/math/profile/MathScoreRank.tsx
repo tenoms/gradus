@@ -8,7 +8,7 @@ import {
   RefreshCw,
   Trophy,
 } from "lucide-react";
-import { uploadMathAttachment } from "../community/MathQuestions";
+import { uploadMathAttachment } from "../shared/MathAttachmentInput";
 import {
   buildFirstScore,
   emptyFirstScore,

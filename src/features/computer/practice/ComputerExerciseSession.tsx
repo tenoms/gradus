@@ -105,9 +105,12 @@ export default function ExerciseSession({
       ),
     ),
     [skipped, setSkipped] = useState<string[]>(() => computerSkippedIds(launch.data)),
-    [collected, setCollected] = useState<string[]>(
-      launch.data.collectExerciseId || (launch.data.collected && launch.data.exerciseId ? [String(launch.data.exerciseId)] : []),
-    ),
+    [collected, setCollected] = useState<string[]>(() => {
+      const ids = launch.data.collectExerciseId;
+      return (Array.isArray(ids) ? ids : ids ? [ids] : initial.filter(item => item.collected === true).map(item => item.exerciseId || item.id)).map(String);
+    }),
+    [collectionChecked, setCollectionChecked] = useState(""),
+    [collectionVersion, setCollectionVersion] = useState(0),
     [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
@@ -137,6 +140,9 @@ export default function ExerciseSession({
       question.exerciseTotalScore || question.exerciseProperty?.score || 2,
     );
   const category = launch.examCategory || 1;
+  const collectionMajor = String(question.majorId || launch.majorId);
+  const collectionKey = JSON.stringify([session?.user?.id, collectionMajor, category, id]);
+  const isCollected = collected.includes(id);
   const immediateChoice = computerImmediateChoice(launch, type);
   const storageKey = `study:computer:draft:${computerDraftScope(session)}:${launch.majorId}:${category}:${launch.data.examRecordId || launch.recordId || examId || launch.chapterId || "random"}:${launch.examType}:${launch.examGroupId || ""}:${launch.redo ? `${launch.redo.kind}:${launch.redo.dateFlag}:${launch.redo.sort}` : ""}`;
   useStudyTimer({
@@ -174,6 +180,22 @@ export default function ExerciseSession({
         JSON.stringify({ answers, current, updated: Date.now() }),
       );
   }, [answers, current, storageKey, isReadOnly, draftLoaded]);
+  useEffect(() => {
+    if (!id) return;
+    let active = true;
+    setCollectionChecked("");
+    computerLearningApi.collectionIds(collectionMajor, category)
+      .then(ids => {
+        if (active) {
+          setCollected(ids);
+          setCollectionChecked(collectionKey);
+        }
+      })
+      .catch((error: any) => {
+        if (active) setError(`收藏状态暂时无法读取：${error.message}`);
+      });
+    return () => { active = false; };
+  }, [collectionKey, collectionVersion]);
   function setAnswer(value: string) {
     setAnswers((a) => ({ ...a, [id]: value }));
   }
@@ -369,19 +391,13 @@ export default function ExerciseSession({
     }
   }
   async function collect() {
+    if (loading || collectionChecked !== collectionKey) return;
     setLoading(true);
     setError("");
     try {
-      const removing = collected.includes(id);
-      await request("/api/exam/wx/personal/collectExercise", {
-        majorId: question.majorId || launch.majorId,
-        chapterId: launch.chapterId || "",
-        exerciseId: id,
-        collectFlag: removing ? 1 : 0,
-        examCategory: category,
-      });
+      const removing = isCollected;
+      await computerLearningApi.collect(question, launch.majorId, launch.chapterId || "", category, removing);
       setCollected((c) => (removing ? c.filter((x) => x !== id) : [...c, id]));
-      setNotice(removing ? "已取消收藏" : "已收藏");
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -529,14 +545,15 @@ export default function ExerciseSession({
           {exerciseSource(question.exerciseFrom)}
         </span>
         <button
-          aria-label={collected.includes(id) ? "取消收藏" : "收藏题目"}
-          className={`computer-icon ${collected.includes(id) ? "selected" : ""}`}
-          disabled={loading}
+          aria-label={isCollected ? "取消收藏" : "收藏题目"}
+          aria-pressed={isCollected}
+          className={`computer-icon ${isCollected ? "selected" : ""}`}
+          disabled={loading || collectionChecked !== collectionKey}
           onClick={() => void collect()}
         >
           <Star
             size={19}
-            fill={collected.includes(id) ? "currentColor" : "none"}
+            fill={isCollected ? "currentColor" : "none"}
           />
         </button>
       </div>
@@ -769,7 +786,10 @@ export default function ExerciseSession({
           </button>
         </div>
       )}
-      <Status loading={loading} error={error} />
+      <Status loading={loading} error={error} retry={error.startsWith("收藏状态") ? () => {
+        setError("");
+        setCollectionVersion(version => version + 1);
+      } : undefined} />
       {notice && (
         <p className="computer-notice" role="status">
           {notice}

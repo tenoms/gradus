@@ -79,7 +79,7 @@ export function createLearningRouter({service,identities,connections,auth,accoun
     catch(error){if(error.status===401)throw new ApiError('拍照搜题暂不可用，请联系管理员',502);throw error;}
   });
   router.post('/platform/:platform/upload',authenticated,express.raw({type:'multipart/form-data',limit:runtimeConfig.http.uploadBodyLimit}),async(req,res)=>{
-    const name=req.params.platform,allowed={computer:['/api/user/v1/attachment/upload/','/api/exam/wx/searchExercise/photo','/api/exam/wx/searchExercise/text/similarity'],math:['/api/sys_attachment/SearchUploadImg','/api/sys_attachment/LayuiUpImg','/api/sys_attachment/UpFile']},requestPath=req.query.path;
+    const name=req.params.platform,allowed={computer:['/api/user/v1/attachment/upload/','/api/exam/wx/searchExercise/photo','/api/exam/wx/searchExercise/text/similarity'],math:['/api/sys_attachment/SearchUploadImg','/api/sys_attachment/LayuiUpImg']},requestPath=req.query.path;
     if(!allowed[name]?.includes(requestPath))throw new ApiError('未启用此上传操作',403);
     if(!Buffer.isBuffer(req.body)||!req.body.length)throw new ApiError('请选择要上传的图片或文件',400);
     const query=new URLSearchParams();

@@ -333,3 +333,34 @@ test('mistake mutations reject an unconfirmed false result and cloud continuatio
   await adapter.computerLearningApi.saveSheetIndex('own-record',2);
   assert.deepEqual(calls[2],['/api/exam/wx/practice/submit/sheet/index',{},'POST',{examRecordId:'own-record',sheetIndex:2}]);
 });
+
+test("favorite state reads every local page and normalizes saved question IDs", async () => {
+  const calls = [];
+  globalThis.__computerLearningRequest = async (...args) => {
+    calls.push(args);
+    return args[1].pageNum === 1
+      ? { list: [{ exerciseId: 42 }, { exerciseId: "first" }], total: 101, pages: 2 }
+      : { list: [{ exerciseId: "last" }, { exerciseId: 42 }], total: 101, pages: 2 };
+  };
+  assert.deepEqual(await adapter.computerLearningApi.collectionIds("major", 2), ["42", "first", "last"]);
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls[0], ["/api/exam/wx/personal/collectExerciseList", { majorId: "major", examCategory: 2, pageNum: 1, pageSize: 100 }]);
+  assert.equal(calls[1][1].pageNum, 2);
+  globalThis.__computerLearningRequest = async () => ({ list: [], total: 0, pages: 0 });
+  assert.deepEqual(await adapter.computerLearningApi.collectionIds("major", 1), []);
+});
+
+test("favorite writes retain source question identity and reject unconfirmed results", async () => {
+  const calls = [];
+  globalThis.__computerLearningRequest = async (...args) => { calls.push(args); return true; };
+  const item = { exerciseId: "question", majorId: "actual-major", chapterId: "actual-chapter" };
+  await adapter.computerLearningApi.collect(item, "fallback-major", "fallback-chapter", 2);
+  await adapter.computerLearningApi.collect(item, "fallback-major", "fallback-chapter", 2, true);
+  assert.deepEqual(calls[0], ["/api/exam/wx/personal/collectExercise", {
+    exerciseId: "question", majorId: "actual-major", chapterId: "actual-chapter", examCategory: 2, collectFlag: 0,
+  }]);
+  assert.equal(calls[1][1].collectFlag, 1);
+  globalThis.__computerLearningRequest = async () => false;
+  await assert.rejects(adapter.computerLearningApi.collect(item, "major", "chapter", 1), /尚未确认收藏已保存/);
+  await assert.rejects(adapter.computerLearningApi.collect(item, "major", "chapter", 1, true), /尚未确认已取消收藏/);
+});

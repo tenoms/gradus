@@ -6,6 +6,7 @@ import {
   Star,
 } from "lucide-react";
 import MathNoteEditor from "../notebook/MathNoteEditor";
+import { useMathFavorite } from "../notebook/use-math-favorite";
 import MathDiscussion from "../community/MathDiscussion";
 import type { NoteKind } from "../api/math";
 import "../community/MathDiscussion.css";
@@ -24,6 +25,7 @@ export default function MathQuestionTools({
 }) {
   const [kind, setKind] = useState<NoteKind>(),
     [discussion, setDiscussion] = useState(false);
+  const favorite = useMathFavorite(stuid, qid);
   return (
     <div className="mqt-tools">
       <div className="mqt-actions">
@@ -31,9 +33,15 @@ export default function MathQuestionTools({
           <BookOpen size={15} />
           加入错题
         </button>
-        <button className="btn btn-secondary" onClick={() => setKind("收藏")}>
-          <Star size={15} />
-          收藏题目
+        <button
+          className="btn btn-secondary math-favorite-button"
+          aria-pressed={favorite.active}
+          aria-busy={favorite.loading}
+          disabled={favorite.loading}
+          onClick={favorite.error ? favorite.reload : () => setKind("收藏")}
+        >
+          <Star size={15} fill={favorite.active ? "currentColor" : "none"} />
+          {favorite.error ? "重新读取收藏状态" : favorite.active ? "已收藏，编辑收藏" : "收藏题目"}
         </button>
         <button className="btn btn-secondary" onClick={() => setKind("笔记")}>
           <PencilLine size={15} />
@@ -61,6 +69,7 @@ export default function MathQuestionTools({
           source={source}
           isCourse={isCourse}
           close={() => setKind(undefined)}
+          onSaved={() => { if (kind === "收藏") favorite.saved(); }}
         />
       )}
     </div>

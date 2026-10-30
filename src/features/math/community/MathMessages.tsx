@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  ArrowLeft,
   ChevronRight,
   ExternalLink,
   LoaderCircle,
@@ -9,11 +8,10 @@ import {
   RefreshCw,
 } from "lucide-react";
 import RichContent from "../../../shared/content/RichContent";
-import { useSession } from "../../../shared/auth/session";
 import { mathApi, mathGet, mathRows } from "../api/math";
 import type { MathRow } from "../api/math";
 import { mathMessageTarget } from "./math-messages";
-import MathQuestions from "./MathQuestions";
+import "./math-messages.css";
 export default function MathMessages({
   stuid,
   onQuestion,
@@ -21,12 +19,10 @@ export default function MathMessages({
   stuid: string;
   onQuestion: (row: MathRow) => void;
 }) {
-  const { session } = useSession();
   const [page, setPage] = useState(1),
     [category, setCategory] = useState("全部"),
     [rows, setRows] = useState<MathRow[]>([]),
     [current, setCurrent] = useState<MathRow>(),
-    [order, setOrder] = useState<MathRow>(),
     [loading, setLoading] = useState(true),
     [error, setError] = useState(""),
     [version, setVersion] = useState(0);
@@ -67,21 +63,6 @@ export default function MathMessages({
         setError(e.message);
       }
   };
-  if (order)
-    return (
-      <div className="math-workspace">
-        <button className="math-back" onClick={() => setOrder(undefined)}>
-          <ArrowLeft size={15} />
-          返回学习消息
-        </button>
-        <MathQuestions
-          stuid={stuid}
-          userId={session.user?.id}
-          initialOrder={order}
-          onQuestion={onQuestion}
-        />
-      </div>
-    );
   const target = current ? mathMessageTarget(current) : undefined;
   return (
     <div className="math-workspace">
@@ -100,7 +81,6 @@ export default function MathMessages({
               "全部",
               "系统消息",
               "系统通知",
-              "答疑回复",
               "讨论回复",
               "题目报错",
               "专题报错",
@@ -161,7 +141,7 @@ export default function MathMessages({
             ))}
           </div>
         )}
-        <div className="math-qa-pagination">
+        <div className="math-message-pagination">
           <button
             className="btn btn-secondary"
             disabled={page === 1 || loading}
@@ -217,18 +197,6 @@ export default function MathMessages({
                   onClick={() => onQuestion({ QuestionID: target.id })}
                 >
                   查看原题与解析
-                  <ChevronRight size={15} />
-                </button>
-              )}
-              {target?.kind === "qa" && (
-                <button
-                  className="btn btn-primary"
-                  onClick={() => {
-                    setOrder({ ID: target.id, QuestionID: target.qid });
-                    setCurrent(undefined);
-                  }}
-                >
-                  查看答疑解答
                   <ChevronRight size={15} />
                 </button>
               )}

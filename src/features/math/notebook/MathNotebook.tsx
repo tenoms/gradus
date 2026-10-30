@@ -25,13 +25,15 @@ import RichContent from "../../../shared/content/RichContent";
 import { publicConfig } from "../../../shared/config/public.mjs";
 import {
   mathFreshCommand as mathCommand,
+  mathData,
   mathGet,
   mathPost,
   mathRows,
   mathTables,
 } from "../api/math";
 import type { MathRow, NoteKind } from "../api/math";
-import { AttachmentInput } from "../community/MathQuestions";
+import type { MathFavoriteControl } from "./use-math-favorite";
+import { AttachmentInput } from "../shared/MathAttachmentInput";
 import {
   moveNotesPayload,
   noteExportLinks,
@@ -75,7 +77,7 @@ export default function MathNotebook({
 }: {
   stuid: string;
   initialKind: NoteKind;
-  renderQuestion: (row: MathRow) => ReactNode;
+  renderQuestion: (row: MathRow, favorite?: MathFavoriteControl) => ReactNode;
 }) {
   const { subject } = useMathLearningPlan();
   useEffect(() => setCatalog("0"), [subject]);
@@ -289,11 +291,18 @@ export default function MathNotebook({
   if (open)
     return (
       <div className="math-workspace">
-        <button className="math-back" onClick={() => setOpen(undefined)}>
+        <button className="math-back" onClick={() => { setOpen(undefined); entries.reload(); }}>
           <ArrowLeft size={16} />
           返回{kind}记录
         </button>
-        {renderQuestion(noteQuestionRow(open, origin))}
+        {origin === "bank" ? (
+          <NotebookBankQuestion
+            key={`${stuid}:${noteRecordId(open, origin)}`}
+            row={noteQuestionRow(open, origin)}
+            stuid={stuid}
+            renderQuestion={renderQuestion}
+          />
+        ) : renderQuestion(noteQuestionRow(open, origin))}
       </div>
     );
   return (
@@ -763,7 +772,7 @@ export default function MathNotebook({
                 />
                 <span className="mn-entry-icon">
                   {kind === "收藏" ? (
-                    <Star size={19} />
+                    <Star size={19} fill="currentColor" />
                   ) : (
                     <BookOpen size={19} />
                   )}
@@ -845,4 +854,57 @@ export default function MathNotebook({
       </>
     );
   }
+}
+
+function NotebookBankQuestion({ row, stuid, renderQuestion }: {
+  row: MathRow;
+  stuid: string;
+  renderQuestion: (row: MathRow, favorite?: MathFavoriteControl) => ReactNode;
+}) {
+  const qid = row.QuestionID;
+  const scope = row.BusID ?? 0;
+  const remote = useNotes(JSON.stringify(["bank-favorite", stuid, String(qid), String(scope)]), () =>
+    mathGet("/api/rel_question_log/GetListByPage", { StuID: stuid, Type: "收藏", QuestionID: qid, BusID: scope, page: 1, limit: 100 }),
+  );
+  const [records, setRecords] = useState<MathRow[]>();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const favorites = records ?? mathRows(remote.data);
+  const toggle = async () => {
+    if (saving || remote.loading || remote.error) return;
+    setSaving(true);
+    setError("");
+    try {
+      const existing = favorites[0];
+      if (existing) {
+        const response = await mathPost("/api/rel_question_log/Del_rel_question_log", { ID: existing.ID });
+        if (mathData(response) === false) throw new Error("取消收藏未成功，请重试");
+        setRecords(favorites.filter(record => record.ID !== existing.ID));
+      } else {
+        const payload = { Type: "收藏", QuestionID: qid, StuID: stuid, BusID: scope, ID: 0, UpdateColumns: "ID,Content" };
+        const response = await mathPost("/api/rel_question_log/Inner_rel_question_log", payload);
+        const id = Number(mathData(response));
+        if (mathData(response) === false || !id) throw new Error("保存收藏未成功，请重试");
+        setRecords([{ ...payload, ID: id }]);
+      }
+    } catch (e: any) {
+      setError(e.message || "收藏更新失败，请重试");
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <>
+      {(error || remote.error) && (
+        <div className="error-banner" role="alert">
+          <span>{error || remote.error}</span>
+          <button className="text-link" disabled={saving || remote.loading} onClick={() => {
+            if (remote.error) remote.reload();
+            else void toggle();
+          }}>重试</button>
+        </div>
+      )}
+      {renderQuestion(row, { active: favorites.length > 0, busy: saving || remote.loading || !!remote.error, toggle: () => void toggle() })}
+    </>
+  );
 }

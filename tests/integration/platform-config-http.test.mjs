@@ -69,7 +69,7 @@ test("saved management configuration reaches YYB login, uploads and OCR instead 
     assert.equal(oauth.options.headers["Tenant-Code"], "saved-tenant");
     assert.equal(oauth.options.headers.Authorization, `Basic ${Buffer.from("saved-client:saved-oauth-secret").toString("base64")}`);
     const upload = (name, path) => app.request(`/api/learning/platform/${name}/upload?path=${encodeURIComponent(path)}`, { auth: learning, method: "POST", body: Buffer.from("fixture-body"), headers: { "content-type": "multipart/form-data; boundary=fixture" } });
-    assert.equal((await upload("math", "/api/sys_attachment/UpFile")).status, 200);
+    assert.equal((await upload("math", "/api/sys_attachment/LayuiUpImg")).status, 200);
     assert.equal(calls.at(-1).url.host, "math.saved.test");
     assert.equal((await upload("computer", "/api/user/v1/attachment/upload/")).status, 200);
     assert.equal(calls.at(-1).url.host, "computer.saved.test");

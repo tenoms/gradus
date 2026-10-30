@@ -1484,3 +1484,11 @@
 .math-library > .math-filters .btn { min-height: 32px; padding: 5px 10px; font-size: 12px; }
 .math-library > .math-filters .btn[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
 .math-library > .math-library-tag-filter { padding: 0 2px 12px; }
+
+.math-footnote {
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+  line-height: 1.8;
+  margin: 20px 0 0;
+}

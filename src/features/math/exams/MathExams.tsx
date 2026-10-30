@@ -19,7 +19,7 @@ import {
 import MathQuestionTools from "../questions/MathQuestionTools";
 import MathTeacherRecommendations from "../courses/MathTeacherRecommendations";
 import MathExamReport, { MathReportDownloads } from "./MathExamReport";
-import { uploadMathAttachment } from "../community/MathQuestions";
+import { uploadMathAttachment } from "../shared/MathAttachmentInput";
 import RichContent from "../../../shared/content/RichContent";
 import MathAnalysisContent from "../questions/MathAnalysisContent";
 import { answerProgress } from "../../learning/workbench/answer-progress.mjs";

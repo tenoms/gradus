@@ -7,7 +7,6 @@ import {
   BookOpen,
   Check,
   FileText,
-  HelpCircle,
   LoaderCircle,
   RefreshCw,
   Star,
@@ -20,8 +19,9 @@ import { mathOptionFeedback, mathQuestionChoice, mathQuestionMedia, mathQuestion
 import "./math-choice-feedback.css";
 import LearningWorkbench, { LearningWorkbenchScope } from "../../learning/workbench/LearningWorkbench";
 import MathNoteEditor from "../notebook/MathNoteEditor";
+import { useMathFavorite } from "../notebook/use-math-favorite";
+import type { MathFavoriteControl } from "../notebook/use-math-favorite";
 import MathDiscussion from "../community/MathDiscussion";
-import { NewMathQuestion } from "../community/MathQuestions";
 import MathContentMarks from "./MathContentMarks";
 import MathQuestionVideo from "./MathQuestionVideo";
 import { mathVideoDescription } from "../media/math-video-source.mjs";
@@ -137,6 +137,7 @@ function QuestionReader({
   noteSource,
   isCourse,
   selfAssessmentOnly = false,
+  favorite: favoriteControl,
 }: {
   row: MathRow;
   book?: MathRow;
@@ -154,6 +155,7 @@ function QuestionReader({
     correct: boolean,
     details?: { question: MathRow; options: MathRow[] },
   ) => Promise<void>;
+  favorite?: MathFavoriteControl;
 }) {
   const qid = mathQuestionId(row);
   const remote = useRemote(`question-${qid}`, async () => {
@@ -183,7 +185,11 @@ function QuestionReader({
   const [viewSyncError, setViewSyncError] = useState(""),
     viewRecordKey = useRef("");
   const [noteKind, setNoteKind] = useState<NoteKind>();
-  const [newQa, setNewQa] = useState(false);
+  const favorite = useMathFavorite(stuid, qid, !favoriteControl);
+  const isFavorite = favoriteControl?.active ?? favorite.active;
+  const favoriteLabel = !favoriteControl && favorite.error
+    ? "重新读取收藏状态"
+    : isFavorite ? favoriteControl ? "取消收藏" : "已收藏，编辑收藏" : "加入收藏";
   const [trainingFile, setTrainingFile] = useState<MathRow>();
   const [selected, setSelected] = useState<string[]>(
     row.MyAnswer ? String(row.MyAnswer).split(",") : [],
@@ -302,7 +308,7 @@ function QuestionReader({
       setSaving(false);
     }
   };
-  const navigationDisabled = saving || remote.loading || !!noteKind || newQa;
+  const navigationDisabled = saving || remote.loading || !!noteKind || favoriteControl?.busy;
   return (
     <LearningWorkbench
       title={`第 ${row.QuestionSort || q.QuestionID || qid} 题`}
@@ -334,13 +340,6 @@ function QuestionReader({
         </span>
         <div className="math-question-tools">
           <button
-            title="向老师提问"
-            aria-label="向老师提问"
-            onClick={() => setNewQa(true)}
-          >
-            <HelpCircle size={17} />
-          </button>
-          <button
             title="加入错题本"
             aria-label="加入错题本"
             onClick={() => setNoteKind("错题")}
@@ -348,11 +347,15 @@ function QuestionReader({
             <FileText size={17} />
           </button>
           <button
-            title="加入收藏"
-            aria-label="加入收藏"
-            onClick={() => setNoteKind("收藏")}
+            className="math-favorite-button"
+            title={favoriteLabel}
+            aria-label={favoriteLabel}
+            aria-pressed={isFavorite}
+            aria-busy={favoriteControl?.busy || favorite.loading}
+            disabled={favoriteControl?.busy || favorite.loading}
+            onClick={favoriteControl?.toggle || (favorite.error ? favorite.reload : () => setNoteKind("收藏"))}
           >
-            <Star size={17} />
+            <Star size={17} fill={isFavorite ? "currentColor" : "none"} />
           </button>
           <button
             title="写笔记"
@@ -635,21 +638,6 @@ function QuestionReader({
           <ArrowRight size={15} />
         </button>
       </div>
-      {newQa && (
-        <NewMathQuestion
-          stuid={stuid}
-          question={{
-            ...q,
-            ...row,
-            QuestionID: qid,
-            BookName: book
-              ? mathTitle(book)
-              : q._book_list?.Name || row.BookName,
-          }}
-          close={() => setNewQa(false)}
-          saved={() => setNewQa(false)}
-        />
-      )}
       {noteKind && (
         <MathNoteEditor
           qid={qid}
@@ -663,6 +651,7 @@ function QuestionReader({
           }
           isCourse={isCourse ?? row.IsCourse === "2"}
           close={() => setNoteKind(undefined)}
+          onSaved={() => { if (noteKind === "收藏") favorite.saved(); }}
         />
       )}
     </div>

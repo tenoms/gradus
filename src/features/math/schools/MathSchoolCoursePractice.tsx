@@ -222,7 +222,7 @@ export default function MathSchoolCoursePractice(props: Props) {
               {notice}
             </p>
           )}
-          {busy && <p className="math-qa-footnote">正在同步训练进度…</p>}
+          {busy && <p className="math-footnote">正在同步训练进度…</p>}
           {schoolAllAnswered(rows) && (
             <div className="panel math-state">
               <CheckCircle2 size={28} />

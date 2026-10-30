@@ -594,7 +594,7 @@ function ModulePractice({
           {notice}
         </p>
       )}
-      {saving && <p className="math-qa-footnote">正在同步训练记录…</p>}
+      {saving && <p className="math-footnote">正在同步训练记录…</p>}
     </div>
   );
 }

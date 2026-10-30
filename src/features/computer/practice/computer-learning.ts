@@ -190,6 +190,30 @@ export const computerLearningApi = {
         : "/api/exam/wx/personal/collectExerciseList",
       query,
     ),
+  async collectionIds(majorId: string, examCategory: number): Promise<string[]> {
+    const ids: string[] = [];
+    let pageNum = 1, pages = 1;
+    do {
+      const data = await computerRequest("/api/exam/wx/personal/collectExerciseList", {
+        majorId, examCategory, pageNum, pageSize: 100,
+      });
+      ids.push(...records(data).map(item => String(item.exerciseId || "")).filter(Boolean));
+      pages = Number(data?.pages || Math.ceil(Number(data?.total || 0) / 100) || 1);
+      pageNum++;
+    } while (pageNum <= pages);
+    return [...new Set(ids)];
+  },
+  async collect(question: R, majorId: string, chapterId: string, examCategory: number, remove = false) {
+    const result = await computerRequest("/api/exam/wx/personal/collectExercise", {
+      exerciseId: question.exerciseId || question.id,
+      majorId: question.majorId || majorId,
+      chapterId: question.chapterId || chapterId,
+      examCategory,
+      collectFlag: remove ? 1 : 0,
+    });
+    if (result === false) throw new Error(remove ? "尚未确认已取消收藏，请重试。" : "尚未确认收藏已保存，请重试。");
+    return result;
+  },
   redo: (payload: R) =>
     computerRequest("/api/exam/wx/personal/exerciseRedo", {}, "POST", payload),
   async markMistake(question: R, majorId: string, chapterId: string, examCategory: number, remove = false) {

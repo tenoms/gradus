@@ -34,6 +34,7 @@ async function timerSetup(path, name) {
       useData: key => key.startsWith("module-info") ? { ...loaded, data: { albumId: 5, chapters: [] } } : loaded,
       useAlbumData: key => key.startsWith("content-") ? loaded : { ...loaded, data: [] },
       useMathLearningPlan: () => ({ stage: "基础" }),
+      useMathFavorite: () => ({ active: false, loading: false, error: "" }),
       useStudyTimer: options => { timer = options; },
       mathRows: rows,
       mathTitle: row => row.Name || row.Title || "学习内容",

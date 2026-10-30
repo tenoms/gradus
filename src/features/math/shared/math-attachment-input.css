@@ -1,0 +1,60 @@
+.math-attachments {
+  display: flex;
+  align-items: start;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.math-attachments > div:not(.math-error-text) {
+  width: 78px;
+  height: 78px;
+  position: relative;
+}
+.math-attachments img {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.math-attachments > div > button {
+  position: absolute;
+  right: -4px;
+  top: -4px;
+  border: 0;
+  background: var(--media-bg);
+  color: var(--on-media);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+.math-attach-button {
+  position: relative;
+  width: 78px;
+  height: 78px;
+  border: 1px dashed var(--accent-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 8px;
+  color: var(--accent);
+  background: var(--surface-soft);
+  cursor: pointer;
+  font-size: 11px;
+}
+.math-attach-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+.math-attachments > p {
+  font-size: 11px;
+  flex-basis: 100%;
+  margin: 0;
+}

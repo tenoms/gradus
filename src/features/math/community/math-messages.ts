@@ -3,7 +3,6 @@ export function mathMessageTarget(
   row: Row,
 ):
   | { kind: "question"; id: string }
-  | { kind: "qa"; id: string; qid: string }
   | { kind: "route"; path: string; label: string }
   | { kind: "external"; url: string }
   | undefined {
@@ -13,11 +12,8 @@ export function mathMessageTarget(
     decoded = decodeURIComponent(raw);
   } catch {}
   const params = new URLSearchParams(decoded.split("?")[1] || "");
-  if (/wenda\/pages\/question\/info/.test(decoded)) {
-    const id = params.get("orderid"),
-      qid = params.get("qid");
-    if (id && qid) return { kind: "qa", id, qid };
-  }
+  if (row.BusType === "答疑回复" || /wenda\/pages\/question\/info/.test(decoded))
+    return undefined;
   if (row.BusType === "题目报错" && row.BusRelationID)
     return { kind: "question", id: String(row.BusRelationID) };
   const q = params.get("courseID") || params.get("QuestionID");

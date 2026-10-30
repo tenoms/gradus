@@ -75,8 +75,6 @@ const MathComputing = lazy(() => import("./practice/MathComputing"));
 const MathScoreRank = lazy(() => import("./profile/MathScoreRank"));
 const MathDiscussion = lazy(() => import("./community/MathDiscussion"));
 const MathDiscussionInbox = lazy(() => import("./community/MathDiscussion").then(module => ({ default: module.MathDiscussionInbox })));
-const MathQuestions = lazy(() => import("./community/MathQuestions"));
-const NewMathQuestion = lazy(() => import("./community/MathQuestions").then(module => ({ default: module.NewMathQuestion })));
 
 function useRemote<T>(key: string, load: () => Promise<T>) {
   const [data, setData] = useState<T>();
@@ -171,11 +169,11 @@ export default function MathWorkspace({ section }: { section: string }) {
       <MathNotebook
         stuid={stuid}
         initialKind={section === "review" ? "错题" : "笔记"}
-        renderQuestion={(row) => <QuestionReader row={row} stuid={stuid} />}
+        renderQuestion={(row, favorite) => <QuestionReader row={row} stuid={stuid} favorite={favorite} />}
       />
     );
   else if (section === "community")
-    content = <Community stuid={stuid} userId={learnerId} />;
+    content = <Community stuid={stuid} />;
   else if (section === "courses") content = <MathCourses stuid={stuid} />;
   else if (section === "exams") content = <MathExams stuid={stuid} />;
   else if (section === "schools") content = <SchoolCenter stuid={stuid} />;
@@ -1234,15 +1232,15 @@ function Albums({ stuid }: { stuid: string }) {
   return <MathAlbums stuid={stuid} onQuestion={setSelected} />;
 }
 
-function Community({ stuid, userId }: { stuid: string; userId: string }) {
-  const [tab, setTab] = useState("学习答疑");
+function Community({ stuid }: { stuid: string }) {
+  const [tab, setTab] = useState("收到的讨论回复");
   const [question, setQuestion] = useState<MathRow>();
   if (question)
     return (
       <div className="math-workspace">
         <button className="math-back" onClick={() => setQuestion(undefined)}>
           <ArrowLeft size={16} />
-          返回学习答疑
+          返回学习社区
         </button>
         <QuestionReader row={question} stuid={stuid} />
       </div>
@@ -1251,13 +1249,11 @@ function Community({ stuid, userId }: { stuid: string; userId: string }) {
     <div className="math-workspace">
       <WorkspaceBar label="学习社区导航" navigation={<WorkspaceTabs
         label="学习社区导航"
-        items={["学习答疑", "收到的讨论回复", "平台消息"].map(value => ({ value, label: value }))}
+        items={["收到的讨论回复", "平台消息"].map(value => ({ value, label: value }))}
         value={tab}
         onChange={setTab}
       />} />
-      {tab === "学习答疑" ? (
-        <MathQuestions stuid={stuid} userId={userId} onQuestion={setQuestion} />
-      ) : tab === "收到的讨论回复" ? (
+      {tab === "收到的讨论回复" ? (
         <MathDiscussionInbox stuid={stuid} />
       ) : (
         <MathMessages stuid={stuid} onQuestion={setQuestion} />

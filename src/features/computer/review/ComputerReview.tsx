@@ -313,14 +313,8 @@ export default function ComputerReview({
       if (tab === "mistakes")
         await computerLearningApi.markMistake(item,major,item.chapterId,category,true);
       else
-        await request("/api/exam/wx/personal/collectExercise", {
-          exerciseId: item.exerciseId,
-          majorId: item.majorId || major,
-          chapterId: item.chapterId,
-          examCategory: category,
-          collectFlag: 1,
-        });
-      setNotice(tab === "mistakes" ? "已从错题本移除" : "已取消收藏");
+        await computerLearningApi.collect(item, major, item.chapterId || "", category, true);
+      if (tab === "mistakes") setNotice("已从错题本移除");
       list.reload();
       dates.reload();
       counts.reload();
