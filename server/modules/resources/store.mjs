@@ -111,6 +111,18 @@ export async function createResourceStore(database, { publicRefreshAfterDays } =
     const row=(await database.query(`SELECT * FROM ${resources} WHERE source_id=$1 AND platform=$2 AND request_key=$3`,[sourceId,platform,resourceKey(request)])).rows[0];
     return row?{...summary(row),response:row.response}:null;
   }
+  async function findPlayback({config,request}) {
+    const params={...request.query,...request.data},domain=config.computer;
+    if(!params.mediaId)return null;
+    const row=(await database.query(`SELECT r.* FROM ${resources} r JOIN ${sources} s ON s.id=r.source_id
+      WHERE r.platform='computer' AND r.kind='computer.media' AND r.scope IN ('volatile','public')
+        AND r.request->>'path'=$1 AND coalesce(r.request->'data'->>'mediaId',r.request->'query'->>'mediaId')=$2
+        AND coalesce(r.request->'data'->>'format',r.request->'query'->>'format','m3u8')=$3
+        AND rtrim(s.metadata->>'baseUrl','/')=$4 AND s.metadata->>'appId' IS NOT DISTINCT FROM $5
+        AND s.metadata->>'tenantCode' IS NOT DISTINCT FROM $6
+      ORDER BY r.synced_at DESC LIMIT 1`,[request.path,String(params.mediaId),String(params.format || 'm3u8'),String(domain.baseUrl || '').replace(/\/+$/,''),domain.appId ?? null,domain.tenantCode==null?null:String(domain.tenantCode)])).rows[0];
+    return row?{...summary(row),response:row.response}:null;
+  }
   const identity = input=>{
     if(!input||typeof input.sourceId!=='string'||!input.sourceId||input.sourceId.length>160||!['math','computer'].includes(input.platform)||typeof input.key!=='string'||!/^[a-f0-9]{64}$/.test(input.key))throw new ApiError('资源标识格式不正确',400);
     return [input.sourceId,input.platform,input.key];
@@ -207,5 +219,5 @@ export async function createResourceStore(database, { publicRefreshAfterDays } =
     return {resources:result.rows.map(summary),pagination:{page,pageSize,total,totalPages},summary:{...count,mediaReferences:mediaCount.rows[0].count},facets:{kinds:kinds.rows.map(row=>({...row,label:row.value.startsWith('computer.')||row.value.startsWith('math.')?`${row.value.startsWith('computer.')?'计算机 408':'考研数学'} · ${resourceTypeLabels[row.value]||resourceTypeLabel({kind:row.value,platform:row.value.split('.')[0],request:{path:''}})}`:'其他学习资料'})),sources:presentResourceSources(sourceCounts.rows)}};
   }
   async function resolveContent(args) { return await content.resolve(args) || await content.questions({...args,includeIncomplete:true}); }
-  return { getSettings, updateSettings, rememberSource, save, lookup, resolveContent, localPractice:args=>content.questions(args), findEntities, status, list,detail,update,invalidate,remove,batch };
+  return { getSettings, updateSettings, rememberSource, save, lookup, findPlayback, resolveContent, localPractice:args=>content.questions(args), findEntities, status, list,detail,update,invalidate,remove,batch };
 }

@@ -126,6 +126,8 @@ export function validatePlatformRequest(name, input) {
   const method = String(input.method || "GET").toUpperCase();
   if (!["GET", "POST", "PUT", "DELETE"].includes(method))
     throw new ApiError("不支持的请求方法", 400);
+  if (input.refresh !== undefined && (typeof input.refresh !== "boolean" || name !== "computer" || method !== "GET" || !["/api/exam/wx/course/get_play_info/v2", "/api/exam/wx/course/vod/get_play_info"].includes(requestPath)))
+    throw new ApiError("仅课程播放地址支持重新获取", 400);
   const data = input.data ?? {};
   const query = input.query ?? {};
   if (
@@ -164,7 +166,7 @@ export function validatePlatformRequest(name, input) {
         throw new ApiError("此接口不属于已启用的学习能力", 403);
     }
   }
-  return { path: requestPath, method, data, query };
+  return { path: requestPath, method, data, query, ...(input.refresh ? { refresh: true } : {}) };
 }
 export function injectMathUser(input, platform, stationId) {
   input = withMathStation(input, stationId);

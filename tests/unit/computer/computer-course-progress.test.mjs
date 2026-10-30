@@ -15,15 +15,15 @@ const executable = ts.transpileModule(component.getText(ast).replace(/^export de
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None, jsx: ts.JsxEmit.React, jsxFactory: "element" },
 }).outputText;
 const mediaUrl = "https://media.example.test/shared.mp4";
-const makeMedia = () => ({ currentTime: 0, duration: 200, paused: false, seeking: false, readyState: 4 });
+const makeMedia = () => ({ currentTime: 0, duration: 200, paused: false, seeking: false, readyState: 4, playCalls: 0, async play() { this.playCalls++; this.paused = false; } });
 const nodes = tree => !tree || typeof tree !== "object" ? [] : [tree, ...(tree.props?.children || []).flat(Infinity).flatMap(nodes)];
 
-function player({ initialPosition = 0, failures = 0, loadSecond } = {}) {
+function player({ initialPosition = 0, failures = 0, loadSecond, mediaId, storagePlatform, loadSource } = {}) {
   const course = { id: "package", name: "408课程", courseRelated: "a,b", courses: [{ id: "a", name: "分课A" }, { id: "b", name: "分课B" }] };
-  const first = { id: "first", lessonName: "第一课", videoUrl: mediaUrl, watchHistoryTime: initialPosition };
-  const second = { id: "second", lessonName: "第二课", videoUrl: loadSecond ? undefined : mediaUrl, mediaId: "second-media", watchHistoryTime: 4 };
+  const first = { id: "first", lessonName: "第一课", videoUrl: mediaUrl, mediaId, storagePlatform, watchHistoryTime: initialPosition };
+  const second = { id: "second", lessonName: "第二课", videoUrl: loadSecond ? undefined : mediaUrl, mediaId: loadSecond ? "second-media" : undefined, watchHistoryTime: 4 };
   const states = { 2: course, 3: "a", 4: { ...first, _studyCourseId: "a" }, 8: mediaUrl };
-  const refs = [], effects = [], writes = [], activities = [];
+  const refs = [], effects = [], writes = [], activities = [], sourceRequests = [];
   const listeners = { document: new Map(), window: new Map() };
   let stateCursor, refCursor, effectCursor, tree, media = makeMedia(), clock = 1000;
   const surface = name => ({
@@ -63,10 +63,14 @@ function player({ initialPosition = 0, failures = 0, loadSecond } = {}) {
     plain: value => String(value || ""),
     safeLink: value => /^https?:\/\//.test(String(value || "")) ? String(value) : undefined,
     recordActivity: activity => activities.push(activity),
-    request: async (route, query, method, data) => {
-      if (route === "/api/exam/wx/course/get_play_info/v2" && loadSecond) {
-        assert.equal(query.mediaId, "second-media");
-        return loadSecond();
+    request: async (route, query, method, data, options) => {
+      if (/\/get_play_info(?:\/v2)?$/.test(route)) {
+        sourceRequests.push({ route, query: structuredClone(query), method, options: structuredClone(options) });
+        if (loadSource) return loadSource({ route, query, options });
+        if (loadSecond) {
+          assert.equal(query.mediaId, "second-media");
+          return loadSecond();
+        }
       }
       assert.equal(route, "/api/exam/wx/lessonHistory/add/", "direct video URLs need no upstream request");
       assert.equal(method, "POST");
@@ -81,7 +85,12 @@ function player({ initialPosition = 0, failures = 0, loadSecond } = {}) {
     stateCursor = refCursor = effectCursor = 0;
     tree = renderComponent();
     const video = nodes(tree).find(node => node.type === "LearningVideo");
+    if (nextMedia !== media) {
+      media.currentTime = 0;
+      media.duration = NaN;
+    }
     if (video) video.props.ref.current = nextMedia;
+    else refs[1].current = null;
     media = nextMedia;
     for (const effect of effects) if (effect.pending) {
       effect.previous?.cleanup?.();
@@ -99,7 +108,7 @@ function player({ initialPosition = 0, failures = 0, loadSecond } = {}) {
   render();
   fire("onLoadedMetadata");
   return {
-    writes, activities, listeners,
+    writes, activities, listeners, sourceRequests,
     advance: milliseconds => { clock += milliseconds; },
     fire, render,
     find: predicate => nodes(tree).find(predicate),
@@ -290,5 +299,112 @@ test("lesson loading and failures stay in the reserved player area instead of th
   assert.equal(mediaArea().props["aria-busy"], false);
   assert.ok(nodes(mediaArea()).some(node => node.props.className?.includes("cc-player-placeholder")), "failure preserves the same player space");
   const feedback = view.find(node => node.props.className === "cc-player-feedback");
-  assert.equal(nodes(feedback).find(node => node.type === "Status").props.error, "播放地址读取失败");
+  assert.equal(nodes(feedback).find(node => node.type === "Status").props.error, "视频加载失败：播放地址读取失败");
+});
+
+
+test("lessons with mediaId obtain the backend's cached playback URL before an old directory direct link", async () => {
+  const cached = "https://media.example.test/cached.mp4";
+  for (const storagePlatform of [undefined, "Tencent"]) {
+    const view = player({ mediaId: "saved-media", storagePlatform, loadSource: () => ({ mediaList: [{ playURL: cached }] }) });
+    view.find(node => node.type === "button" && node.props.className?.startsWith("computer-lesson ")).props.onClick();
+    await settle();
+    view.render(makeMedia());
+    assert.equal(view.find(node => node.type === "LearningVideo").props.src, cached);
+    assert.equal(view.sourceRequests.length, 1);
+    assert.equal(view.sourceRequests[0].query.mediaId, "saved-media");
+    assert.equal(view.sourceRequests[0].options, undefined, "normal selection reuses the backend cache");
+    assert.equal(view.sourceRequests[0].route, storagePlatform === "Tencent" ? "/api/exam/wx/course/vod/get_play_info" : "/api/exam/wx/course/get_play_info/v2");
+  }
+});
+
+test("an expired source refreshes once and resumes the same lesson position and playback intent", async () => {
+  const refreshed = "https://media.example.test/refreshed.mp4";
+  const view = player({ initialPosition: 50, mediaId: "saved-media", loadSource: () => ({ url: refreshed }) });
+  view.fire("onPlaying");
+  view.advance(8000);
+  view.fire("onTimeUpdate", 58);
+  view.fire("onSourceError");
+  view.fire("onSourceError");
+  await settle();
+  const replacement = makeMedia();
+  view.render(replacement);
+  view.fire("onLoadedMetadata");
+  await settle();
+  assert.equal(view.sourceRequests.length, 1, "duplicate source errors share the one automatic refresh");
+  assert.equal(view.sourceRequests[0].options.refresh, true);
+  assert.equal(view.find(node => node.type === "LearningVideo").props.src, refreshed);
+  assert.equal(replacement.currentTime, 58);
+  assert.equal(replacement.playCalls, 1, "previously playing video resumes after its URL changes");
+  view.fire("onPlaying");
+  assert.equal(view.activities.length, 1, "URL renewal does not create a second watched-lesson activity");
+  view.fire("onSourceError");
+  view.render();
+  assert.equal(view.sourceRequests.length, 1, "a refreshed source failure cannot trigger an infinite renewal loop");
+  const status = nodes(view.find(node => node.props.className === "cc-player-feedback")).find(node => node.type === "Status");
+  assert.match(status.props.error, /更新后仍无法播放/);
+  assert.equal(typeof status.props.retry, "function");
+});
+
+test("URL refresh preserves a paused lesson without starting playback", async () => {
+  const view = player({ initialPosition: 25, mediaId: "saved-media", loadSource: () => ({ url: mediaUrl }) });
+  const previousKey = view.find(node => node.type === "LearningVideo").props.key;
+  view.fire("onPause");
+  view.fire("onSourceError");
+  await settle();
+  const replacement = makeMedia();
+  view.render(replacement);
+  view.fire("onLoadedMetadata");
+  assert.equal(replacement.currentTime, 25);
+  assert.equal(replacement.playCalls, 0);
+  assert.notEqual(view.find(node => node.type === "LearningVideo").props.key, previousKey, "even a renewed identical URL remounts its failed source");
+  view.pagehide();
+  assert.ok(view.writes.every(row => row.watchHistoryTime === 25), "lifecycle listeners follow the renewed element instead of its cleared predecessor");
+});
+
+test("a failed URL renewal offers a manual retry without losing the resume position", async () => {
+  let attempts = 0;
+  const view = player({ initialPosition: 12, mediaId: "saved-media", loadSource: () => {
+    if (++attempts === 1) throw new Error("source temporarily unavailable");
+    return { url: "https://media.example.test/retry.mp4" };
+  } });
+  view.fire("onSourceError");
+  await settle();
+  view.render();
+  const status = nodes(view.find(node => node.props.className === "cc-player-feedback")).find(node => node.type === "Status");
+  assert.match(status.props.error, /视频地址更新失败/);
+  assert.equal(typeof status.props.retry, "function");
+  status.props.retry();
+  await settle();
+  const replacement = makeMedia();
+  view.render(replacement);
+  view.fire("onLoadedMetadata");
+  assert.equal(view.sourceRequests.length, 2);
+  assert.ok(view.sourceRequests.every(call => call.options.refresh));
+  assert.equal(replacement.currentTime, 12);
+  assert.equal(view.find(node => node.type === "LearningVideo").props.src, "https://media.example.test/retry.mp4");
+});
+
+test("a failing direct-only lesson reports its error without contacting YYB", () => {
+  const view = player();
+  view.fire("onSourceError");
+  view.render();
+  assert.equal(view.sourceRequests.length, 0);
+  const status = nodes(view.find(node => node.props.className === "cc-player-feedback")).find(node => node.type === "Status");
+  assert.match(status.props.error, /视频暂时无法加载/);
+  assert.equal(status.props.retry, undefined);
+});
+
+
+test("source recovery preserves a deliberate seek back to the beginning", async () => {
+  const view = player({ initialPosition: 50, mediaId: "saved-media", loadSource: () => ({ url: mediaUrl }) });
+  view.fire("onSeeking", 0);
+  view.fire("onSeeked");
+  view.fire("onTimeUpdate");
+  view.fire("onSourceError");
+  await settle();
+  const replacement = makeMedia();
+  view.render(replacement);
+  view.fire("onLoadedMetadata");
+  assert.equal(replacement.currentTime, 0, "zero is a valid current resume point");
 });

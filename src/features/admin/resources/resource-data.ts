@@ -41,7 +41,7 @@ export const dateTime = (value?: string | null) => {
   return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false });
 };
 export const expired = (resource: ResourceItem) => resource.expired === true || !resource.expiresAt || Date.parse(resource.expiresAt) <= Date.now();
-export const validityName = (resource: ResourceItem) => resource.scope !== "public" ? "实时更新" : expired(resource) ? "待复核" : "暂不需复核";
+export const validityName = (resource: ResourceItem) => resource.kind === "computer.media" ? "失效时更新" : resource.scope !== "public" ? "实时更新" : expired(resource) ? "待复核" : "暂不需复核";
 export const pretty = (value: unknown) => JSON.stringify(value, null, 2) ?? "null";
 export function parseResource(value: string) {
   let response: unknown;

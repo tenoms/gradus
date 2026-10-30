@@ -135,11 +135,11 @@ test('computer numbered and whole-paper reads serve stale local content and pres
   } finally { blocked?.release();await app.close(); }
 });
 
-test('account responses and volatile playback responses never use saved copies when the source fails',async()=>{
+test('account responses and other volatile responses still require the source',async()=>{
   const {app,first,f}=await setup();
   try {
     const account={path:'/api/Master/Model',method:'POST',data:{command:'GetMajorComputingAndUserAllocation',data:'{}'}};
-    const volatile={path:'/api/exam/wx/course/get_play_info/v2',query:{mediaId:'media'}};
+    const volatile={path:'/api/user/wx/user/permission'};
     await read(app,first,'math',account);await read(app,first,'computer',volatile);
     const stored=await app.app.locals.resourceStore.list({});assert.deepEqual(stored.resources.map(row=>row.scope).sort(),['account','volatile']);
     f.setFailure('network');

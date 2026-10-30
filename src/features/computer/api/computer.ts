@@ -48,8 +48,9 @@ export function computerRequest(
   query: ComputerRecord = {},
   method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
   data?: any,
+  options: { refresh?: boolean } = {},
 ): Promise<any> {
-  const load = () => readComputerResponse(path, query, method, data);
+  const load = () => readComputerResponse(path, query, method, data, options);
   return method === "GET" && concurrentCatalogPaths.has(path)
     ? catalogResource(JSON.stringify(["computer", path, query]), load, 0)
     : load();
@@ -59,12 +60,14 @@ async function readComputerResponse(
   query: ComputerRecord = {},
   method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
   data?: any,
+  options: { refresh?: boolean } = {},
 ): Promise<any> {
   const input = {
     path,
     method,
     query,
     data,
+    ...(options.refresh ? { refresh: true } : {}),
   };
   let response = await (path === "/api/exam/wx/lessonHistory/add/"
     ? platformRequest("computer", input, { keepalive: true })

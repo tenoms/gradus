@@ -15,9 +15,12 @@ import type { MediaStudy, MediaStudyHandle } from "./MediaStudyContext";
 /** Uses MediaSource HLS when supported, with native HLS as a fallback. */
 const LearningVideo = forwardRef<
   HTMLVideoElement,
-  VideoHTMLAttributes<HTMLVideoElement> & { src: string; study?: MediaStudy }
->(function LearningVideo({ src, study, ...props }, ref) {
+  VideoHTMLAttributes<HTMLVideoElement> & { src: string; study?: MediaStudy; onSourceError?: () => void }
+>(function LearningVideo({ src, study, onSourceError, ...props }, ref) {
   const element = useRef<HTMLVideoElement>(null);
+  const sourceErrorCallback = useRef(onSourceError);
+  sourceErrorCallback.current = onSourceError;
+  const nativeSourceError = useRef<(() => void) | undefined>(undefined);
   const registerStudy = useContext(MediaStudyContext);
   const studyTimer = useRef<MediaStudyHandle | undefined>(undefined);
   const [playing, setPlaying] = useState(false);
@@ -41,6 +44,17 @@ const LearningVideo = forwardRef<
     let hls: Hls | undefined;
     let disposed = false;
     const isHls = /\.m3u8(?:[?#]|$)/i.test(src);
+    let nativeSource = !isHls, sourceErrorReported = false;
+    const reportSourceError = () => {
+      if (disposed || sourceErrorReported || !sourceErrorCallback.current) return;
+      sourceErrorReported = true;
+      sourceErrorCallback.current();
+    };
+    const reportNativeSourceError = () => {
+      // Native loading failures can be reported as NETWORK or SRC_NOT_SUPPORTED.
+      if (nativeSource && [2, 4].includes(video.error?.code || 0)) reportSourceError();
+    };
+    nativeSourceError.current = reportNativeSourceError;
     async function attachSource() {
       if (!video || disposed) return;
       if (!isHls) {
@@ -52,7 +66,10 @@ const LearningVideo = forwardRef<
         if (disposed) return;
         // Some browsers advertise native HLS but cannot play all HLS assets.
         if (!HlsPlayer.isSupported()) {
-          if (video.canPlayType("application/vnd.apple.mpegurl")) video.src = src;
+          if (video.canPlayType("application/vnd.apple.mpegurl")) {
+            nativeSource = true;
+            video.src = src;
+          }
           else setError("当前浏览器无法播放此视频，请换用其他浏览器。");
           return;
         }
@@ -62,6 +79,7 @@ const LearningVideo = forwardRef<
             setPlaying(false);
             setError("视频加载失败，请重试。");
             setErrorDetail(data.details);
+            if (data.type === HlsPlayer.ErrorTypes.NETWORK_ERROR && data.details !== HlsPlayer.ErrorDetails.INTERNAL_ABORTED) reportSourceError();
           }
         });
         hls.loadSource(src);
@@ -73,6 +91,7 @@ const LearningVideo = forwardRef<
     void attachSource();
     return () => {
       disposed = true;
+      if (nativeSourceError.current === reportNativeSourceError) nativeSourceError.current = undefined;
       hls?.destroy();
       video.removeAttribute("src");
       video.load();
@@ -99,6 +118,7 @@ const LearningVideo = forwardRef<
         onError={(event) => {
           setPlaying(false);
           setError("视频加载失败，请检查网络后重试。");
+          nativeSourceError.current?.();
           props.onError?.(event);
         }}
       />

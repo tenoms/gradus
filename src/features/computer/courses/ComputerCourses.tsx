@@ -113,7 +113,8 @@ export default function ComputerCourses() {
     [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
-    [search, setSearch] = useState("");
+    [search, setSearch] = useState(""),
+    [sourceVersion, setSourceVersion] = useState(0);
   const list = useResource(
     "/api/exam/wx/course/courseList",
     scope === "joined" ? { type: 1, scene: "joined" } : {},
@@ -141,6 +142,9 @@ export default function ComputerCourses() {
   const recordedPlayback = useRef(false);
   const playbackPosition = useRef({ currentTime: 0, duration: 0 });
   const savedProgress = useRef(new Map<string, R>());
+  const sourceRecovery = useRef({ attempted: false, busy: false });
+  const resumeAfterRecovery = useRef<{ position: number; playing: boolean } | null>(null);
+  const playbackIntent = useRef(false);
   const progressKey = (courseId: unknown, lessonId: unknown) => JSON.stringify([String(courseId), String(lessonId)]);
   const subcourses = course ? orderedSubcourses(course) : [];
   const files = courseAttachments(lesson, detail.data);
@@ -170,7 +174,6 @@ export default function ComputerCourses() {
     lastSave.current = Number(lesson?.watchHistoryTime || 0);
     studySeconds.current = 0;
     playStart.current = 0;
-    recordedPlayback.current = false;
     const position = playbackPosition.current = {
       currentTime: lastSave.current,
       duration: element?.duration || 0,
@@ -191,10 +194,23 @@ export default function ComputerCourses() {
       document.removeEventListener("visibilitychange", visibility);
       window.removeEventListener("pagehide", onLeave);
     };
-  }, [video, lesson?.id]);
+  }, [video, lesson?.id, sourceVersion]);
+  async function videoUrl(item: R, refresh = false) {
+    const mediaId = String(item.mediaId || "").trim();
+    if (!mediaId) return safeLink(item.videoUrl || item.playUrl);
+    const data = await request(
+      item.storagePlatform === "Tencent"
+        ? "/api/exam/wx/course/vod/get_play_info"
+        : "/api/exam/wx/course/get_play_info/v2",
+      { mediaId, format: "m3u8" },
+      "GET", undefined, refresh ? { refresh: true } : undefined,
+    );
+    return safeLink(Array.isArray(data)
+      ? data[0]?.url
+      : data?.mediaList?.[0]?.playURL || data?.url || data?.playUrl);
+  }
   async function play(item: R) {
-    const directUrl = safeLink(item.videoUrl || item.playUrl);
-    if (!String(item.mediaId || "").trim() && !directUrl) {
+    if (!String(item.mediaId || "").trim() && !safeLink(item.videoUrl || item.playUrl)) {
       setError("此课时暂时无法播放，请稍后重试。");
       return;
     }
@@ -202,6 +218,10 @@ export default function ComputerCourses() {
     setError("");
     if (videoRef.current && lesson) await saveProgress(videoRef.current, true);
     trackPlayback(false);
+    sourceRecovery.current = { attempted: false, busy: false };
+    resumeAfterRecovery.current = null;
+    playbackIntent.current = false;
+    recordedPlayback.current = false;
     setVideo("");
     setNotice("");
     setLesson({
@@ -210,23 +230,53 @@ export default function ComputerCourses() {
       _studyCourseId: groupCourseId,
     });
     try {
-      const data = directUrl ? null : await request(
-        item.storagePlatform === "Tencent"
-          ? "/api/exam/wx/course/vod/get_play_info"
-          : "/api/exam/wx/course/get_play_info/v2",
-        { mediaId: String(item.mediaId || "").trim(), format: "m3u8" },
-      );
-      const url = directUrl || safeLink(
-        Array.isArray(data)
-          ? data[0]?.url
-          : data?.mediaList?.[0]?.playURL || data?.url || data?.playUrl,
-      );
-      if (!url) throw new Error("视频暂时无法播放，请稍后重试。");
+      const url = await videoUrl(item);
+      if (!url) throw new Error("未取得可用的视频地址，请稍后重试。");
       setVideo(url);
     } catch (e: any) {
-      setError(e.message);
+      setError(`视频加载失败：${e.message}`);
     } finally {
       setLoading(false);
+    }
+  }
+  async function recoverVideo(manual = false) {
+    if (!lesson) return;
+    trackPlayback(false);
+    const recovery = sourceRecovery.current;
+    if (recovery.busy) return;
+    if (!String(lesson.mediaId || "").trim()) {
+      setError("视频暂时无法加载，请稍后重试。");
+      return;
+    }
+    if (recovery.attempted && !manual) {
+      setError("视频地址更新后仍无法播放，请重试。");
+      return;
+    }
+    recovery.attempted = true;
+    recovery.busy = true;
+    const element = videoRef.current;
+    const lastPosition = playbackPosition.current.currentTime;
+    const position = element && Number.isFinite(element.currentTime) && (element.currentTime > 0 || lastPosition === 0)
+      ? element.currentTime : lastPosition;
+    resumeAfterRecovery.current = { position, playing: playbackIntent.current };
+    if (element) void saveProgress({ currentTime: position, duration: element.duration }, true);
+    setLesson(current => current?.id === lesson.id ? { ...current, watchHistoryTime: position } : current);
+    setLoading(true);
+    setError("");
+    setNotice("视频地址暂时不可用，正在更新…");
+    setVideo("");
+    try {
+      const url = await videoUrl(lesson, true);
+      if (!url) throw new Error("未取得可用的视频地址。");
+      if (sourceRecovery.current !== recovery) return;
+      setSourceVersion(value => value + 1);
+      setVideo(url);
+      setNotice("视频地址已更新");
+    } catch (e: any) {
+      if (sourceRecovery.current === recovery) setError(`视频地址更新失败：${e.message}`);
+    } finally {
+      recovery.busy = false;
+      if (sourceRecovery.current === recovery) setLoading(false);
     }
   }
   async function saveProgress(element: Pick<HTMLVideoElement, "currentTime" | "duration">, force = false) {
@@ -431,17 +481,20 @@ export default function ComputerCourses() {
                 {video ? (
                   <LearningVideo
                     ref={videoRef}
-                    key={`${lesson?.id}:${video}`}
+                    key={`${lesson?.id}:${video}:${sourceVersion}`}
                     src={video}
                     controls
                     playsInline
                     study={{ platform: "computer", title: label(lesson || course), path: "/study/courses", key: String(lesson?.id || video) }}
                     onLoadedMetadata={(e) => {
-                      e.currentTarget.currentTime = Number(
-                        lesson?.watchHistoryTime || 0,
-                      );
+                      const resume = resumeAfterRecovery.current;
+                      e.currentTarget.currentTime = resume?.position ?? Number(lesson?.watchHistoryTime || 0);
+                      resumeAfterRecovery.current = null;
+                      if (resume?.playing) void e.currentTarget.play().catch(() => setNotice("视频地址已更新，点击播放继续学习。"));
                     }}
+                    onPlay={() => { playbackIntent.current = true; }}
                     onPlaying={() => {
+                      playbackIntent.current = true;
                       trackPlayback(true);
                       if (!recordedPlayback.current && lesson) {
                         recordedPlayback.current = true;
@@ -460,11 +513,13 @@ export default function ComputerCourses() {
                     }}
                     onTimeUpdate={(e) => void saveProgress(e.currentTarget)}
                     onPause={(e) => {
+                      if (!e.currentTarget.error) playbackIntent.current = false;
                       trackPlayback(false);
                       void saveProgress(e.currentTarget, true);
                     }}
-                    onEnded={(e) => { trackPlayback(false); void saveProgress(e.currentTarget, true); }}
-                    onError={() => { trackPlayback(false); setError("视频暂时无法加载，请重新选择课时后重试。"); }}
+                    onEnded={(e) => { playbackIntent.current = false; trackPlayback(false); void saveProgress(e.currentTarget, true); }}
+                    onError={() => trackPlayback(false)}
+                    onSourceError={() => void recoverVideo()}
                   />
                 ) : (
                   <div className="empty-state cc-player-placeholder" role={loading ? "status" : undefined}>
@@ -474,7 +529,7 @@ export default function ComputerCourses() {
                 )}
               </div>
               <div className="cc-player-feedback">
-                <Status error={error} />
+                <Status error={error} retry={!loading && lesson?.mediaId && error.startsWith("视频") ? () => void recoverVideo(true) : undefined} />
                 {!error && notice && (
                   <p className="computer-notice" role="status">{notice}</p>
                 )}

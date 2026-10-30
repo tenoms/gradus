@@ -130,6 +130,7 @@ export interface PlatformRequest {
   data?: any;
   query?: Record<string, any>;
   encrypted?: boolean;
+  refresh?: boolean;
 }
 export function platformRequest<T = any>(
   platform: Platform,

@@ -133,6 +133,13 @@ test("automatic lesson progress keeps its request alive when leaving the page", 
   assert.equal(await adapter.computerRequest('/api/exam/wx/lessonHistory/add/',{},'POST',data),true);
   assert.deepEqual(seen,['computer',{path:'/api/exam/wx/lessonHistory/add/',method:'POST',query:{},data},{keepalive:true}]);
 });
+test("a failed playback address can request a refresh without forwarding the flag as upstream query data", async () => {
+  let seen;
+  globalThis.__computerTestRequest = async (...args) => { seen=args; return {code:200,data:{url:'https://media.example.test/fresh.m3u8'}}; };
+  const path='/api/exam/wx/course/get_play_info/v2',query={mediaId:'media',format:'m3u8'};
+  await adapter.computerRequest(path,query,'GET',undefined,{refresh:true});
+  assert.deepEqual(seen,['computer',{path,method:'GET',query,data:undefined,refresh:true}]);
+});
 test("actual exercise response normalization preserves options and merges scored subquestions", () => {
   assert.equal(adapter.extractExercises({exerciseId:'random-one',exerciseType:1,collected:false}).length,1);
   const q = {

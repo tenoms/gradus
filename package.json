@@ -13,6 +13,7 @@
     "typecheck": "tsc -b",
     "verify:spaces": "node scripts/checks/bundles.mjs",
     "verify:directories": "node --experimental-strip-types scripts/live/directory-loading.mjs",
+    "verify:computer-courses": "node --experimental-strip-types scripts/live/computer-course-playback.mjs",
     "check": "npm run verify:repo && npm run typecheck && npm test && npm run verify:spaces",
     "verify:repo": "node scripts/checks/repository.mjs",
     "verify:data-architecture": "node --experimental-strip-types scripts/live/data-architecture.mjs",

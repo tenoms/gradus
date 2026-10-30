@@ -4,6 +4,7 @@ import { stripSharedPersonalState } from '../../integrations/shared-account-poli
 import { publicPlatformResponse, injectMathUser } from '../../integrations/platform-policy.mjs';
 import { sourceForSession,resourceManifest,resourceRows,inferResourceRequest,resourceIdentity,resourceKey,publicResourceResponse } from './catalog.mjs';
 import { cleanMathPractice, contentRequest, normalizeMathPractice } from './content.mjs';
+import { isCoursePlaybackRequest, playbackUrl } from './playback.mjs';
 
 function succeeded(response) {
   const code=response?.code??response?.Code,message=String(response?.Message||response?.msg||response?.Msg||'');
@@ -45,8 +46,13 @@ export function createResourceSync({store,service,configuration,accountPool}) {
   }
   async function peek({platform,session,config=configNow(),request}) {
     const identity=resourceIdentity(platform,sourceSession(session,platform),config,request);
-    if(identity.scope!=='public')return {state:'bypass',identity};
+    const playback=isCoursePlaybackRequest(platform,request);
+    if(identity.scope!=='public'&&!playback)return {state:'bypass',identity};
     try {
+      if(playback) {
+        const resource=await store.findPlayback?.({config,request});
+        return resource && playbackUrl(resource.response)?{state:'hit',identity,resource}:{state:'miss',identity};
+      }
       const content=await store.resolveContent?.({sourceId:identity.source.id,platform,request:identity.request});
       if(content?.missing)return {state:'miss',identity,missingContent:true};
       const resource=content || await store.lookup(identity.source.id,platform,identity.request);
@@ -78,11 +84,13 @@ export function createResourceSync({store,service,configuration,accountPool}) {
   }
   async function read(args) {
     const config=args.config||configNow(),identity=resourceIdentity(args.platform,sourceSession(args.session,args.platform),config,args.request);
+    const playback=isCoursePlaybackRequest(args.platform,args.request);
     const content=identity.scope==='public'?contentRequest(args.platform,identity.request):null;
     const key=content?`content:${identity.source.id}:${content.variant}:${content.id}`:`response:${identity.source.id}:${resourceKey(identity.request)}`;
     const fetch=async previous=>{
       const response=await args.load();
-      if(identity.scope==='public'&&!succeeded(response))throw new ApiError('资源暂时无法更新，请稍后重试',502);
+      if((identity.scope==='public'||playback)&&!succeeded(response))throw new ApiError('资源暂时无法更新，请稍后重试',502);
+      if(playback&&!playbackUrl(response))throw new ApiError('视频地址暂时无法取得，请稍后重试',502);
       if(previous&&stableContentKind.test(previous.kind||inferResourceRequest(args.platform,identity.request).kind)) {
         const body=response?.data??response?.Data;
         if(!hasContent(body)||(resourceRows(previous.response).length>0&&!resourceRows(response).length))
@@ -92,14 +100,14 @@ export function createResourceSync({store,service,configuration,accountPool}) {
       return identity.scope==='public'?publicResourceResponse(response):response;
     };
     const load=async()=>{
-      const current=await peek({...args,config});
+      const current=playback && args.request.refresh?{state:'miss'}:await peek({...args,config});
       if(current.resource) {
         if(current.state==='stale')refresh(key,()=>fetch(current.resource));
         return publicResourceResponse(current.resource.response);
       }
       return fetch();
     };
-    return identity.scope==='public'?inRead(key,load):load();
+    return identity.scope==='public'||playback?inRead(key,load):load();
   }
   async function acquire(session,name,{force=false,invalidToken}={}) {
     if(accountPool?.acquireSource && session.user?.id) {
