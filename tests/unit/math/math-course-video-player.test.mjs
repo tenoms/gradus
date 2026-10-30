@@ -35,9 +35,15 @@ const deferred = () => {
 // MathVideoPlayer; these tests exercise the course's readiness and business events.
 function mount(code, props, extra = {}) {
   const states = [], refs = [], effects = [];
-  let stateCursor, refCursor, effectCursor, tree;
+  const listeners = { document: new Map(), window: new Map() };
+  const surface = name => ({
+    addEventListener: (event, handler) => listeners[name].set(event, handler),
+    removeEventListener: (event, handler) => { if (listeners[name].get(event) === handler) listeners[name].delete(event); },
+  });
+  const document = { ...surface("document"), hidden: false };
+  let stateCursor, refCursor, effectCursor, tree, mountedMedia;
   const scope = {
-    React: { Fragment: "Fragment" },
+    React: { Fragment: "Fragment" }, document, window: surface("window"),
     element: (type, properties, ...children) => ({ type, props: { ...properties, children } }),
     useState(initial) {
       const index = stateCursor++;
@@ -63,7 +69,7 @@ function mount(code, props, extra = {}) {
     stateCursor = refCursor = effectCursor = 0;
     tree = Component(props);
     const player = nodes(tree).find(node => node.type === "MathVideoPlayer");
-    if (player?.props.ref && media) player.props.ref.current = media;
+    if (player?.props.ref && media) player.props.ref.current = mountedMedia = media;
     for (const effect of effects) if (effect.pending) {
       effect.previous?.cleanup?.();
       effect.cleanup = effect.setup();
@@ -72,7 +78,23 @@ function mount(code, props, extra = {}) {
     return tree;
   }
   render();
-  return { render, find: predicate => nodes(tree).find(predicate) };
+  return {
+    render, listeners, find: predicate => nodes(tree).find(predicate),
+    fire(event, position = mountedMedia.currentTime) {
+      mountedMedia.currentTime = position;
+      nodes(tree).find(node => node.type === "MathVideoPlayer").props[event]?.({ currentTarget: mountedMedia });
+    },
+    pagehide() { listeners.window.get("pagehide")?.(); },
+    hide() { document.hidden = true; listeners.document.get("visibilitychange")?.(); },
+    unmount() {
+      if (mountedMedia) {
+        mountedMedia.currentTime = 0;
+        mountedMedia.duration = NaN;
+        for (const ref of refs) if (ref.current === mountedMedia) ref.current = null;
+      }
+      for (const effect of effects) effect.cleanup?.();
+    },
+  };
 }
 
 const context = { StuID: "web-student", CourseID: 5, CalendarID: 6, ProductID: 7 };
@@ -177,4 +199,144 @@ test("product introductions pass product provenance to the shared question-video
   assert.deepEqual(structuredClone(player.props.origin), { kind: "product", productId: 77 });
   assert.equal(player.props.row.PolyvVID, "product-video");
   assert.equal(player.props.row.playsafe, "source-token");
+});
+
+
+async function courseFixture({ previous = 0, saveRecord, selectedTask = task } = {}) {
+  const writes = [], activities = [];
+  const view = mount(courseCode, { task: selectedTask, context, onSaved() {}, onRetry() {} }, {
+    courseApi: {
+      records: async () => ({ data: previous ? [{ ID: 19, BusValue: previous }] : [] }),
+      saveRecord: input => {
+        writes.push(structuredClone(input));
+        return saveRecord ? saveRecord(input, writes.length) : Promise.resolve({ data: 19 });
+      },
+    },
+    recordActivity: activity => activities.push(activity),
+  });
+  await settle();
+  const media = { currentTime: 0, duration: 100 };
+  view.render(media);
+  view.fire("onLoadedMetadata");
+  return { ...view, writes, activities, media };
+}
+
+test("math course progress saves every 20 seconds without a manual save control or duplicate fractional writes", async () => {
+  const view = await courseFixture();
+  assert.equal(view.find(node => node.type === "button" && node.props.children.includes("保存播放进度")), undefined);
+  view.fire("onTimeUpdate", 19.9);
+  assert.equal(view.writes.length, 0);
+  view.fire("onTimeUpdate", 20.4);
+  await settle();
+  assert.equal(view.writes.length, 1);
+  assert.equal(view.writes[0].BusValue, 20);
+  view.fire("onPause", 20.8);
+  await settle();
+  assert.equal(view.writes.length, 1, "pause does not resend the same integer position");
+});
+
+test("pause saves the final sub-interval automatically and backward seeking keeps the furthest learned position", async () => {
+  const view = await courseFixture({ previous: 40 });
+  view.fire("onTimeUpdate", 48);
+  assert.equal(view.writes.length, 0);
+  view.fire("onPause", 49);
+  await settle();
+  assert.equal(view.writes[0].BusValue, 49);
+  view.fire("onTimeUpdate", 12);
+  view.fire("onPause");
+  await settle();
+  assert.equal(view.writes.length, 1, "course completion continues to use the furthest observation");
+});
+
+test("hidden and pagehide events flush pending progress once and unregister on exit", async () => {
+  const view = await courseFixture();
+  view.fire("onTimeUpdate", 8);
+  view.hide();
+  view.pagehide();
+  await settle();
+  assert.equal(view.writes.length, 1);
+  assert.equal(view.writes[0].BusValue, 8);
+  view.unmount();
+  await settle();
+  assert.equal(view.writes.length, 1);
+  assert.equal(view.listeners.window.size, 0);
+  assert.equal(view.listeners.document.size, 0);
+});
+
+test("switching lessons through unmount saves the captured observation after the old video is cleared", async () => {
+  const first = await courseFixture();
+  first.fire("onTimeUpdate", 13.5);
+  first.unmount();
+  await settle();
+  assert.equal(first.writes.length, 1);
+  assert.equal(first.writes[0].BusValue, 13);
+  assert.equal(first.writes[0].BusID, 9);
+  const second = await courseFixture({ selectedTask: { ...task, BusID: 10 } });
+  second.pagehide();
+  await settle();
+  assert.equal(second.writes.length, 0, "opening another unwatched lesson never writes zero progress");
+});
+
+test("leaving before records are ready never writes an empty progress record", async () => {
+  const records = deferred(), writes = [];
+  const view = mount(courseCode, { task, context, onSaved() {}, onRetry() {} }, {
+    courseApi: { records: () => records.promise, saveRecord: async input => { writes.push(input); return { data: 19 }; } },
+    recordActivity() {},
+  });
+  view.hide(); view.pagehide(); view.unmount();
+  records.resolve({ data: [{ ID: 19, BusValue: 40 }] });
+  await settle();
+  assert.equal(writes.length, 0);
+  assert.equal(view.listeners.window.size, 0);
+  assert.equal(view.listeners.document.size, 0);
+});
+
+test("pause and exit during an in-flight periodic save deliver the latest observed tail afterward", async () => {
+  const first = deferred();
+  const view = await courseFixture({ saveRecord: (_input, attempt) => attempt === 1 ? first.promise : Promise.resolve({ data: 19 }) });
+  view.fire("onTimeUpdate", 20);
+  assert.equal(view.writes.length, 1);
+  view.fire("onTimeUpdate", 27);
+  view.fire("onPause");
+  view.fire("onTimeUpdate", 29.5);
+  view.unmount();
+  assert.equal(view.writes.length, 1, "final events do not launch concurrent writes");
+  first.resolve({ data: 19 });
+  await settle();
+  assert.equal(view.writes.length, 2);
+  assert.deepEqual(view.writes.map(value => value.BusValue), [20, 29]);
+  assert.equal(view.writes[1].ID, 19, "the follow-up uses the record identity returned by the first save");
+});
+
+test("failed periodic saves retain progress for the next automatic update", async () => {
+  const view = await courseFixture({ saveRecord: (_input, attempt) => attempt === 1 ? Promise.reject(new Error("connection interrupted")) : Promise.resolve({ data: 19 }) });
+  view.fire("onTimeUpdate", 20);
+  await settle();
+  view.fire("onTimeUpdate", 21);
+  await settle();
+  assert.deepEqual(view.writes.map(value => value.BusValue), [20, 21]);
+});
+
+test("a failed pause save keeps its observed tail available through the explicit error retry", async () => {
+  const view = await courseFixture({ saveRecord: (_input, attempt) => attempt === 1 ? Promise.reject(new Error("connection interrupted")) : Promise.resolve({ data: 19 }) });
+  view.fire("onPause", 8);
+  await settle();
+  view.render();
+  assert.ok(view.find(node => node.props.role === "alert"));
+  view.find(node => node.type === "button" && node.props.children.includes("重试")).props.onClick();
+  await settle();
+  assert.deepEqual(view.writes.map(value => value.BusValue), [8, 8]);
+  view.render();
+  assert.equal(view.find(node => node.props.role === "alert"), undefined);
+});
+
+test("an in-flight failure honors one pending final save and stops retrying without another event", async () => {
+  const first = deferred();
+  const view = await courseFixture({ saveRecord: (_input, attempt) => attempt === 1 ? first.promise : Promise.reject(new Error("still offline")) });
+  view.fire("onTimeUpdate", 20);
+  view.fire("onPause", 27);
+  view.unmount();
+  first.reject(new Error("offline"));
+  await settle(); await settle();
+  assert.deepEqual(view.writes.map(value => value.BusValue), [20, 27], "only the requested final observation is retried");
 });

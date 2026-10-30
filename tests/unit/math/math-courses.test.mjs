@@ -318,6 +318,19 @@ test("course catalogues only read without activating subscriptions", async () =>
   assert.equal(Object.hasOwn(courseAdapter.courseApi, "freeClaim"), false);
 });
 
+test("course video progress survives page departure through keepalive", async () => {
+  const calls = [];
+  globalThis.__coursePost = async (...args) => { calls.push(args); return { data: 19 }; };
+  const video = { CourseID: 10, CalendarID: 20, ProductID: 30, BusType: 2, BusID: 40, BusValue: 27 };
+  const question = { ...video, BusType: 1, Answer: "A" };
+  await courseAdapter.courseApi.saveRecord(video);
+  await courseAdapter.courseApi.saveRecord(question);
+  assert.deepEqual(calls, [
+    ["/api/c_course_users_record/Inner_c_course_users_record", video, { keepalive: true }],
+    ["/api/c_course_users_record/Inner_c_course_users_record", question],
+  ]);
+});
+
 import { courseQuestionRecord } from "../../../src/features/math/courses/course-model.mjs";
 test("standalone calendar questions retain their original relation ID and answer-only update contract", () => {
   const context = { StuID: "s", CourseID: 10, CalendarID: 20, ProductID: 30 },

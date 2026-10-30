@@ -51,8 +51,9 @@ export async function mathGet(path: string, query: MathRow = {}) {
     async () => checked(await platformRequest("math", { path, method: "GET", query })),
     stableCatalogPaths.has(path) ? publicConfig.catalogCache.maxAgeMs : 0);
 }
-export async function mathPost(path: string, data: MathRow = {}) {
-  return checked(await platformRequest("math", { path, method: "POST", data }));
+export async function mathPost(path: string, data: MathRow = {}, options?: Pick<RequestInit, "keepalive">) {
+  const request = { path, method: "POST" as const, data };
+  return checked(await (options ? platformRequest("math", request, options) : platformRequest("math", request)));
 }
 export const mathData = mathResponseData;
 export function mathRows(response: any, table = 0): MathRow[] {

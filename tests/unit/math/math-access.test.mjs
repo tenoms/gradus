@@ -46,6 +46,22 @@ test("browser math requests leave the authoritative station to the server", asyn
   }
 });
 
+test("math saves forward keepalive without changing ordinary POST requests", async () => {
+  const calls = [];
+  globalThis.__mathContentRequest = async (...args) => {
+    calls.push(args);
+    return { SuccessResponse: true, data: 19 };
+  };
+  const path = "/api/c_course_users_record/Inner_c_course_users_record";
+  const progress = { CourseID: 10, CalendarID: 20, ProductID: 30, BusType: 2, BusID: 40, BusValue: 27 };
+  assert.equal(adapter.mathData(await adapter.mathPost(path, progress, { keepalive: true })), 19);
+  await adapter.mathPost("/api/sys_user_record/Inner_sys_user_record", { Type: "笔记" });
+  assert.deepEqual(calls, [
+    ["math", { path, method: "POST", data: progress }, { keepalive: true }],
+    ["math", { path: "/api/sys_user_record/Inner_sys_user_record", method: "POST", data: { Type: "笔记" } }],
+  ]);
+});
+
 test("QR lookup requests content directly and preserves every returned row", async () => {
   const seen = [];
   const rows = [{ ID: 1, IsLogin: 1 }, { ID: 2, IsActCode: 1 }];

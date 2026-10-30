@@ -192,26 +192,28 @@ function NativeVodPlayer({
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [recordsReady, setRecordsReady] = useState(false);
+  const recordsLoaded = useRef(false), pendingFinal = useRef(false);
   const callback = useRef(onSaved);
   callback.current = onSaved;
   async function save(force = false) {
+    if (!recordsLoaded.current) return;
     const element = videoRef.current;
-    const observed = Number(element?.currentTime || 0);
-    if (observed > 0) latest.current = Math.max(latest.current, observed);
+    const observed = Number(element?.currentTime);
+    if (Number.isFinite(observed) && observed > 0) latest.current = Math.max(latest.current, observed);
     if (element && Number.isFinite(element.duration) && element.duration > 0)
       duration.current = element.duration;
-    if (
-      saving.current ||
-      latest.current <= Number(record.current.BusValue || 0) ||
-      (!force && latest.current - lastSaved.current < 20)
-    )
+    if (saving.current) {
+      if (force) pendingFinal.current = true;
       return;
+    }
+    const seconds = Math.floor(latest.current);
+    if (seconds <= Number(record.current.BusValue || 0) || (!force && seconds - lastSaved.current < 20)) return;
     saving.current = true;
     try {
       const payload = videoProgressRecord(
           context,
           task,
-          latest.current,
+          seconds,
           duration.current,
           record.current,
         ),
@@ -226,29 +228,40 @@ function NativeVodPlayer({
       setNotice(
         Number(payload.IsFinished) === 1
           ? "本课时已完成，进度已同步。"
-          : "播放进度已保存",
+          : "播放进度已自动保存",
       );
       callback.current();
     } catch (e: any) {
       setError(`播放进度保存失败：${e.message}`);
     } finally {
       saving.current = false;
+      if (pendingFinal.current) {
+        pendingFinal.current = false;
+        void save(true);
+      }
     }
   }
   useEffect(() => {
     let active = true;
+    const onLeave = () => { void save(true); };
+    const onVisibility = () => { if (document.hidden) onLeave(); };
+    window.addEventListener("pagehide", onLeave);
+    document.addEventListener("visibilitychange", onVisibility);
     courseApi.records({ ...context, BusType: 2, BusID: task.BusID }).then(result => {
       if (!active) return;
       record.current = mathRows(result)[0] || {};
       latest.current = Number(record.current.BusValue || 0);
       lastSaved.current = latest.current;
+      recordsLoaded.current = true;
       setRecordsReady(true);
     }).catch((e: any) => {
       if (active) setError(e.message);
     });
     return () => {
       active = false;
-      void save(true);
+      window.removeEventListener("pagehide", onLeave);
+      document.removeEventListener("visibilitychange", onVisibility);
+      onLeave();
     };
   }, []);
   return (
@@ -284,7 +297,7 @@ function NativeVodPlayer({
           });
         }}
         onTimeUpdate={(e) => {
-          latest.current = Math.max(latest.current, e.currentTarget.currentTime);
+          if (Number.isFinite(e.currentTarget.currentTime)) latest.current = Math.max(latest.current, e.currentTarget.currentTime);
           void save();
         }}
         onPause={() => {
@@ -309,13 +322,6 @@ function NativeVodPlayer({
         </div>
       )}
       {notice && <p className="mc-notice" role="status">{notice}</p>}
-      <button
-        className="btn btn-secondary"
-        onClick={() => void save(true)}
-        disabled={!recordsReady || saving.current}
-      >
-        保存播放进度
-      </button>
       <Files item={data} />
       {vid && (
         <MathVideoFeedback

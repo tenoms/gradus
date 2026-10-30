@@ -77,8 +77,10 @@ export const courseApi = {
     mathPost("/api/c_course_product_log/Inner_c_course_product_log2", data),
   records: (data: MathRow) =>
     mathGet("/api/c_course_users_record/GetListByAll", data),
-  saveRecord: (data: MathRow) =>
-    mathPost("/api/c_course_users_record/Inner_c_course_users_record", data),
+  saveRecord: (data: MathRow) => {
+    const path = "/api/c_course_users_record/Inner_c_course_users_record";
+    return Number(data.BusType) === 2 ? mathPost(path, data, { keepalive: true }) : mathPost(path, data);
+  },
   assignments: (
     StuID: string,
     CourseID: number | string,

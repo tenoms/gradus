@@ -310,7 +310,9 @@ export async function createPrivatePlatformStore({ database, resourceStore, pers
     }
     if (sharedOperation('math',input)==='private') {
       let rows=await list(userId,'math',collection);
-      for (const field of ['QuestionID','Type','BusType','BusID','BookID','CatalogID','ExanType']) if (p[field]!==undefined && p[field]!=='') rows=rows.filter(row=>String(row[field] ?? (field==='CatalogID'?0:''))===String(p[field]));
+      const filters=['QuestionID','Type','BusType','BusID','BookID','CatalogID','ExanType'];
+      if(collection==='c_course_users_record') filters.push('ID','CourseID','CalendarID','ProductID');
+      for (const field of filters) if (p[field]!==undefined && p[field]!=='') rows=rows.filter(row=>String(row[field] ?? (field==='CatalogID'?0:''))===String(p[field]));
       const total=rows.length;if(p.page!==undefined || p.limit!==undefined){const page=Number(p.page || 1),limit=Number(p.limit || 20);if(!Number.isSafeInteger(page)||page<1||!Number.isSafeInteger(limit)||limit<1||limit>1000)throw new ApiError('分页参数不正确',400);rows=rows.slice((page-1)*limit,page*limit);}
       return {...success('math',rows),count:total};
     }
