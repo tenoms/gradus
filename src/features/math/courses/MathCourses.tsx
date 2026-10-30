@@ -54,6 +54,7 @@ import MathSchoolCoursePractice from "../schools/MathSchoolCoursePractice";
 import MathCourseRecommendations from "./MathCourseRecommendations";
 import MathCourseAlbum from "./MathCourseAlbum";
 import MathQuestionReader from "../questions/MathQuestionReader";
+import MathPacketCatalog from "./MathPacketCatalog";
 import "./math-courses.css";
 
 type Context = {
@@ -960,11 +961,10 @@ function Packet({
 }) {
   const [course, setCourse] = useState<Row>(),
     [tab, setTab] = useState("tree"),
-    [expanded, setExpanded] = useState<Row[]>([]),
+    [selectedChapterID, setSelectedChapterID] = useState<number | string>(),
     [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
-    autoResumed = useRef(false),
-    packetSections = useRef<Row[]>([]);
+    autoResumed = useRef(false);
   const packetInfo = useContent(`packet-info-${packet.ID}`, () =>
       courseApi.packet(packet.ID),
     ),
@@ -984,25 +984,22 @@ function Packet({
           : Promise.resolve({ data: [] }),
   );
   const allNodes = packetTreeRows(mathRows(tree.data)),
-    nodes = allNodes.filter(
-      (n) =>
-        Number(n.ID) !== Number(packet.ID) &&
-        n.PID !== "",
-    ),
     lastRow = mathRows(last.data)[0];
   async function select(row: Row, resume = false) {
     setError("");
-    const bound = allNodes.find((n) => String(n.ID) === String(row.ID)) || row;
-    if (row.CourseID) {
+    if (Number(row.CourseID || 0) !== 0) {
       setLoading(true);
       try {
         const details = row._c_course_list?._c_course_calendar_detail || [];
+        if (Number(row.State) !== 2)
+          await courseApi.progress(packetVisitRecord(stuid, product.ID, packet.ID, row));
+        const calendarIDs = [...new Set(details.map((detail: Row) => detail.CalendarID).filter(Boolean))];
         setCourse({
           ...row._c_course_list,
           ...row,
           ID: row.CourseID,
           BusType: row._c_course_list?.BusType || row.BusType,
-          ...(resume
+          ...(resume || calendarIDs.length === 1
             ? {
                 _resumeCalendarID: details[0]?.CalendarID || row.CalendarID,
                 _resumeBusID:
@@ -1010,33 +1007,11 @@ function Packet({
               }
             : {}),
         });
-        if (Number(row.State) !== 2)
-          await courseApi.progress(packetVisitRecord(stuid, product.ID, packet.ID, row));
       } catch (e: any) {
         setError(e.message);
       } finally {
         setLoading(false);
       }
-      return;
-    }
-    setLoading(true);
-    try {
-      const parentChapter = bound._depth >= 2 ? bound.PID : row.ID,
-        response = await courseApi.packetChapter(
-          stuid,
-          product.ID,
-          packet.ID,
-          parentChapter,
-        ),
-        sections = mathRows(response),
-        target = sections.find((s) => String(s.ID) === String(row.ID));
-      const visible = target ? [target] : sections;
-      packetSections.current = sections;
-      setExpanded(visible);
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
     }
   }
   async function resumeLast() {
@@ -1053,10 +1028,10 @@ function Packet({
         packet.ID,
         lastRow.ChapterID1 || chapter?.PID || lastRow.ChapterID2,
       );
-      packetSections.current = mathRows(response);
-      const found = packetResumeEntry(packetSections.current, lastRow);
+      const found = packetResumeEntry(mathRows(response), lastRow);
       if (!found)
         throw new Error("原学习位置暂未出现在当前目录，可手动选择章节。");
+      setSelectedChapterID(found.section.ID);
       await select(found.entry, true);
     } catch (e: any) {
       setError(e.message);
@@ -1157,54 +1132,20 @@ function Packet({
       </div>
       <Status loading={loading} error={error} />
       {tab === "tree" ? (
-        <div className="panel">
+        <div>
           <Status
             loading={tree.loading}
             error={tree.error}
-            empty={!tree.loading && !tree.error && !nodes.length}
+            empty={!tree.loading && !tree.error && !allNodes.length}
             reload={() => {
               tree.reload();
             }}
           />
-          <div className="mc-tree">
-            {nodes.map((row, i) => (
-              <button
-                className="mc-task"
-                key={row.ID || i}
-                style={{
-                  paddingLeft: `${Math.max(0, Number(row._depth) - 1) * 18}px`,
-                }}
-                onClick={() => void select(row)}
-              >
-                <BookOpen size={19} />
-                <span>
-                  <strong>{courseLabel(row)}</strong>
-                  <small>
-                    {row.CourseID ? "进入学习日程" : "展开章节"}
-                  </small>
-                </span>
-                <ChevronRight size={16} />
-              </button>
-            ))}
-          </div>
-          {expanded.map((chapter, i) => (
-            <section key={chapter.ID || i}>
-              <h3>{courseLabel(chapter)}</h3>
-              {(chapter._c_course_packet || []).map((row: Row, j: number) => (
-                <button
-                  className="mc-task"
-                  key={row.ID || j}
-                  onClick={() => void select(row)}
-                >
-                  <BookOpen size={18} />
-                  <span>
-                    <strong>{courseLabel(row)}</strong>
-                  </span>
-                  <ChevronRight size={16} />
-                </button>
-              ))}
-            </section>
-          ))}
+          {!tree.loading && !tree.error && allNodes.length > 0 && <MathPacketCatalog
+            rows={mathRows(tree.data)} packetID={packet.ID} productID={product.ID} stuid={stuid}
+            selectedID={selectedChapterID} onSelect={(row) => setSelectedChapterID(row.ID)}
+            onOpen={(row) => void select(row)} opening={loading} lastEntryID={lastRow?.CourseID2}
+          />}
         </div>
       ) : (
         <div className="panel">
