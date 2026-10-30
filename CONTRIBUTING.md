@@ -1,49 +1,71 @@
 # 开发指南
 
-## 环境与日常流程
+环境准备、启动和首次配置见 [README](README.md#快速开始)；配置项与生效规则见[系统配置](config/README.md)。本文说明代码组织、验证和维护约定。
 
-使用 `.node-version` 指定的 Node.js 24、`npm ci` 和 PostgreSQL 14+。复制 `.env.example` 为 `.env` 并填写数据库与实际接口参数，通过 `npm run dev` 启动开发服务。未由环境接管的平台字段也可在首次创建管理员后通过管理空间维护。系统通用参数统一放在 `config/system.json`，各入口职责及覆盖规则见[系统配置](config/README.md)。
+## 开发流程
 
-提交前运行：
+修改后先验证受影响的行为，提交前运行完整检查与构建：
 
 ```sh
 npm run check
 npm run build
 ```
 
-`check` 依次验证源码层次与本地引用、TypeScript、所有单元/集成测试以及生产构建依赖图。GitHub Actions 使用相同命令和临时 PostgreSQL 16；自动检查不访问真实 YYB 账号。测试进程创建随机命名的两个 schema，并在结束后清理，不使用业务 schema 存放夹具。
+`check` 包含源码结构与引用检查、TypeScript、全部单元和集成测试，以及生产构建依赖检查。CI 使用 [.node-version](.node-version) 指定的 Node.js 和 PostgreSQL 16，执行相同检查。
 
-## 放置代码
+## 代码组织
 
-- `src/app` 负责应用入口、导航和路由装配。具体学习页面及行为放在 `src/features` 对应业务目录。
-- 同一功能的 UI、模型、请求适配和样式就近存放。跨功能共用且不依赖业务的实现才进入 `src/shared`。
-- `server/modules` 按数据归属和业务职责组织，模块内部的路由与持久化实现相邻；外部协议进入 `server/integrations`，数据库及错误原语进入 `server/infrastructure`。
-- `shared` 只承载需要在浏览器和服务端共同执行的领域规则。
+新增功能放入对应业务模块，页面、模型、请求适配和样式就近维护；跨功能通用能力才进入共享目录。共享模块不反向依赖业务，基础设施不依赖平台适配，前后端目录及完整依赖规则见[代码架构](docs/architecture.md)。
 
-不要建立只转发另一个文件的兼容壳。调整路径时同时更新源码、测试读取路径、HTML 入口、验证脚本和现行文档。依赖规则由 `npm run verify:repo` 执行，完整说明见[代码架构](docs/architecture.md)。
+调整路径时更新调用方、入口、测试和文档，不保留仅转发旧文件的兼容壳。
 
-## 测试
+## 自动化测试
 
-`npm test` 递归发现 `tests/**/*.test.mjs`。不需要数据库的测试位于 `tests/unit/{math,computer,shared,server}`；使用数据库及 HTTP 夹具的用例位于 `tests/integration`。共享夹具位于 `tests/support`。
+`npm test` 运行 `tests/**/*.test.mjs`。也可单独验证受影响的文件：
 
-针对修改的行为选择测试：纯领域转换验证输入/输出，接口测试核对身份、状态和持久化效果。组织调整仍须保留已有用例语义；删除已退出产品的代码时，可同时删除只验证该废弃行为的用例。
+```sh
+node --experimental-strip-types --test tests/unit/shared/account-profile.test.mjs
+```
+
+- `tests/unit/`：按业务分类的单元与交互测试。
+- `tests/integration/`：数据库与 HTTP 集成测试。
+- `tests/support/`：共享测试夹具。
+
+集成测试需要可用的 PostgreSQL 连接，读取 `DATABASE_URL`，为每个测试创建独立的临时 schema，结束后清理。自动化测试不访问真实 YYB 账号。
+
+测试应覆盖输入输出、交互结果或接口的身份与持久化行为。重构时保留原有行为验证；删除功能时，可同时移除只验证该功能的用例。
 
 ## 真实接口验收
 
-这些命令按显式环境变量优先、否则使用管理端值的规则读取平台配置，再注入独立临时 schema，使用真实账号验证。完整 `.env` 可直接用于联调，无需先在管理端保存配置；脚本不修改业务库配置。原始证据写入 Git 忽略的 `artifacts/`。
+使用有效的 YYB 和学习平台配置，按改动范围选择命令：
 
-| 命令 | 范围 |
+| 命令 | 验证范围 |
 | --- | --- |
-| `npm run verify:directories` | 目录读取、持久化、复用、失效及并发性能；源学习写入为零 |
-| `npm run verify:tokens` | 两科认证有效期、复用与续期；源学习写入为零 |
-| `npm run verify:system-yyb` | 多 YYB 访问路径、共享账号池与注册；源学习写入为零 |
-| `npm run verify:personal-sync` | 本人身份关联、预览及单向个人记录导入 |
-| `npm run verify:data-architecture` | 资源与个人记录隔离、作答及报告；包含数学源空练习创建，运行前阅读脚本末尾 `sourceEffects` 记录 |
+| `npm run verify:directories` | 目录加载、复用、并发与失效 |
+| `npm run verify:tokens` | 两科认证复用、续期与恢复 |
+| `npm run verify:system-yyb` | 多服务账号合并、切换与注册 |
+| `npm run verify:personal-sync` | 本人账号关联、预览与单向记录导入 |
+| `npm run verify:resource-local-first` | 已保存资源优先读取、后台更新与来源故障恢复 |
+| `npm run verify:resource-reuse` | 题目跨入口复用、完整题组复用与新建个人练习 |
+| `npm run verify:data-architecture` | 公共资源与个人记录隔离、作答报告及资源维护 |
 
-真实验收与自动化夹具测试分别记录结果。外部服务业务失败不能记为线上通过。
+脚本按应用的[配置优先级](config/README.md#平台参数的优先级)读取环境变量和管理端设置，在独立的临时 schema 中验证并清理，不修改业务库配置。原始报告保存在 `artifacts/`，自动化测试与真实接口验收的结果分别记录。
 
-## 生成物与历史
+这些验收不回写小程序答案或提交小程序试卷，但部分流程会准备题组或创建空练习：
 
-`dist/`、`artifacts/`、`coverage/`、日志及 TypeScript 增量文件由工具生成，不提交。`npm run clean` 删除可重建的生产和类型构建产物；`npm run clean:reports` 还会删除原始本机验收产物，需保留的报告先另行归档。
+- `verify:resource-local-first` 会按需准备计算机章节题组。
+- `verify:resource-reuse` 完整验收会发起一次数学选题，可能留下空练习；仅验证计算机时可运行 `npm run verify:resource-reuse -- --computer-only`。
+- `verify:data-architecture` 也可能创建数学空练习。
 
-`.env`、本机旧状态、YYB 凭据与原小程序参考材料均不提交。`config/system.json` 的 `runtime` 和 `public` 只保存通用非秘密参数，不存提供商域名或 App ID；实际平台参数和秘密由 `.env` 或管理端维护，环境字段优先且在界面标明来源。新增配置应使用现有入口并补充相应校验。开发资产不参与配置读取。清理历史材料时先确认运行时引用和数据归属，对唯一证据或状态做可恢复归档。现行说明放在 `docs/`，已完成的迁移和验收材料放在 `docs/history/<日期>/` 并由索引说明适用版本。
+涉及选题的验收，运行前查看脚本末尾的 `sourceEffects`，并在报告中核对实际影响。外部服务失败应记录为验收失败，不作为通过结果。
+
+## 产物与文档维护
+
+`dist/`、`artifacts/`、`coverage/`、日志和 TypeScript 增量文件属于本机产物，不提交；`.env`、YYB 凭据和个人运行状态同样保留在本机。配置填写与保存位置统一见[系统配置](config/README.md)。
+
+| 命令 | 清理范围 |
+| --- | --- |
+| `npm run clean` | `dist/` 和根目录的 `*.tsbuildinfo` |
+| `npm run clean:reports` | 上述产物，以及整个 `artifacts/` 目录 |
+
+清理前归档需要保留的验收证据。现行文档放在 `docs/`，阶段性验收和迁移记录按日期归入 `docs/history/`；历史记录应注明适用版本，当前行为以源码和现行文档为准。
