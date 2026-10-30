@@ -38,10 +38,10 @@ export default function MathQuestionTools({
           aria-pressed={favorite.active}
           aria-busy={favorite.loading}
           disabled={favorite.loading}
-          onClick={favorite.error ? favorite.reload : () => setKind("收藏")}
+          onClick={favorite.error ? favorite.reload : favorite.active ? () => void favorite.remove() : () => setKind("收藏")}
         >
           <Star size={15} fill={favorite.active ? "currentColor" : "none"} />
-          {favorite.error ? "重新读取收藏状态" : favorite.active ? "已收藏，编辑收藏" : "收藏题目"}
+          {favorite.error ? "重新读取收藏状态" : favorite.active ? "取消收藏" : "收藏题目"}
         </button>
         <button className="btn btn-secondary" onClick={() => setKind("笔记")}>
           <PencilLine size={15} />
@@ -55,6 +55,7 @@ export default function MathQuestionTools({
           {discussion ? "收起讨论" : "题目讨论"}
         </button>
       </div>
+      {favorite.removeError && <p className="error-banner" role="alert">{favorite.removeError}</p>}
       {discussion && (
         <div className="panel mqt-discussion">
           <MathDiscussion stuid={stuid} qid={qid} />

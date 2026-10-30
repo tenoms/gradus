@@ -147,8 +147,12 @@ test("favorite hook ignores a previous question's response and retries a failed 
 
 test("question tools use the same filled star and pressed state on initial load and after saving", async () => {
   const saved = new Set([10]);
+  const deletions = [];
   const view = render(`${favoriteSource}\n${toolsSource}`, "MathQuestionTools", { stuid: "student", qid: 10 }, {
-    mathApi: { questionNotes: async (stuid, kind, qid) => ({ data: [saved.has(qid) ? [{ ID: 70 }] : []] }) },
+    mathApi: {
+      questionNotes: async (stuid, kind, qid) => ({ data: [saved.has(qid) ? [{ ID: qid === 10 ? 70 : 71 }] : []] }),
+      deleteNote: async (id, stuid) => { deletions.push([id, stuid]); saved.delete(11); return { data: true }; },
+    },
   });
   assert.equal(favoriteButton(view).props.disabled, true);
   await view.settle();
@@ -161,9 +165,15 @@ test("question tools use the same filled star and pressed state on initial load 
   const editor = view.find(node => node.type === "MathNoteEditor");
   assert.equal(editor.props.qid, 11);
   assert.equal(editor.props.kind, "收藏");
+  saved.add(11);
   editor.props.onSaved(); editor.props.close(); await view.settle();
   assert.equal(favoriteButton(view).props["aria-pressed"], true);
   assert.equal(star(view).props.fill, "currentColor");
+  assert.equal(view.find(node => node.type === "MathNoteEditor"), undefined);
+  favoriteButton(view).props.onClick(); await view.settle();
+  assert.deepEqual(deletions, [[71, "student"]], "a newly saved favorite removes its actual current-question record");
+  assert.equal(favoriteButton(view).props["aria-pressed"], false);
+  assert.equal(star(view).props.fill, "none");
   assert.equal(view.find(node => node.type === "MathNoteEditor"), undefined);
   view.unmount();
 });
@@ -176,9 +186,112 @@ test("question reader restores its filled star and no longer renders teacher que
   assert.equal(favoriteButton(view).props["aria-pressed"], true);
   assert.equal(star(view).props.fill, "currentColor");
   const toolbar = view.find(node => node.props.className === "math-question-tools");
-  assert.deepEqual(view.findAll(node => node.type === "button", toolbar).map(node => node.props["aria-label"]), ["加入错题本", "已收藏，编辑收藏", "写笔记"]);
+  assert.deepEqual(view.findAll(node => node.type === "button", toolbar).map(node => node.props["aria-label"]), ["加入错题本", "取消收藏", "写笔记"]);
   view.unmount();
 });
+
+for (const [name, source, props] of [
+  ["question reader", readerSource, { stuid: "student", row: { QuestionID: 10 } }],
+  ["question tools", toolsSource, { stuid: "student", qid: 10 }],
+]) {
+  test(`${name} removes a saved favorite and opens the editor only when adding again`, async () => {
+    const pending = deferred(), deletions = [];
+    let saved = true;
+    const view = render(`${favoriteSource}\n${source}`, name === "question reader" ? "QuestionReader" : "MathQuestionTools", props, {
+      mathApi: {
+        questionNotes: async (stuid, kind, qid) => {
+          assert.equal(qid, 10);
+          return { data: [saved ? [{ ID: 70, QuestionID: 10 }] : []] };
+        },
+        deleteNote: async (id, stuid) => {
+          deletions.push([id, stuid]);
+          await pending.promise;
+          saved = false;
+          return { data: true };
+        },
+      },
+    });
+    await view.settle();
+    assert.equal(favoriteButton(view).props["aria-pressed"], true);
+    assert.equal(star(view).props.fill, "currentColor");
+    favoriteButton(view).props.onClick(); await view.settle();
+    assert.deepEqual(deletions, [[70, "student"]]);
+    assert.equal(view.find(node => node.type === "MathNoteEditor"), undefined, "clicking a filled star cancels instead of opening editing");
+    assert.equal(favoriteButton(view).props.disabled, true);
+    assert.equal(favoriteButton(view).props["aria-pressed"], true, "keep the saved state visible until deletion succeeds");
+    pending.resolve(); await view.settle();
+    assert.equal(favoriteButton(view).props["aria-pressed"], false);
+    assert.equal(favoriteButton(view).props.disabled, false);
+    assert.equal(star(view).props.fill, "none");
+    favoriteButton(view).props.onClick(); await view.settle();
+    const editor = view.find(node => node.type === "MathNoteEditor");
+    assert.equal(editor.props.qid, 10);
+    assert.equal(editor.props.kind, "收藏");
+    assert.equal(deletions.length, 1, "the empty star starts adding instead of deleting again");
+    view.unmount();
+  });
+  test(`${name} preserves its filled star on deletion failure and retries from the same button`, async () => {
+    let attempts = 0, saved = true;
+    const view = render(`${favoriteSource}\n${source}`, name === "question reader" ? "QuestionReader" : "MathQuestionTools", props, {
+      mathApi: {
+        questionNotes: async () => ({ data: [saved ? [{ ID: 70, QuestionID: 10 }] : []] }),
+        deleteNote: async () => {
+          if (++attempts === 1) {
+            if (name === "question tools") throw new Error("取消暂不可用");
+            return { data: false };
+          }
+          saved = false;
+          return { data: true };
+        },
+      },
+    });
+    await view.settle();
+    favoriteButton(view).props.onClick(); await view.settle();
+    assert.equal(favoriteButton(view).props["aria-pressed"], true);
+    assert.equal(favoriteButton(view).props.disabled, false);
+    assert.equal(star(view).props.fill, "currentColor");
+    assert.ok(textOf(view.find(node => node.props.role === "alert")));
+    assert.equal(view.find(node => node.type === "MathNoteEditor"), undefined);
+    favoriteButton(view).props.onClick(); await view.settle();
+    assert.equal(attempts, 2, "retry cancels the favorite rather than merely reloading its state");
+    assert.equal(favoriteButton(view).props["aria-pressed"], false);
+    assert.equal(star(view).props.fill, "none");
+    assert.equal(view.find(node => node.props.role === "alert"), undefined);
+    view.unmount();
+  });
+}
+
+for (const failure of ["false", "error"]) {
+  test(`a ${failure} favorite deletion keeps the hook active and can be retried`, async () => {
+    let attempts = 0, saved = true;
+    const view = render(hookSource, "FavoriteProbe", { stuid: "student", qid: 10 }, {
+      mathApi: {
+        questionNotes: async () => ({ data: [saved ? [{ ID: 70, QuestionID: 10 }] : []] }),
+        deleteNote: async (id, stuid) => {
+          assert.equal(id, 70);
+          assert.equal(stuid, "student");
+          if (++attempts === 1) {
+            if (failure === "error") throw new Error("取消暂不可用");
+            return { data: false };
+          }
+          saved = false;
+          return { data: true };
+        },
+      },
+    });
+    await view.settle();
+    await view.current().remove(); await view.settle();
+    assert.equal(view.current().active, true);
+    assert.equal(view.current().loading, false);
+    assert.ok(view.current().removeError, "a failed cancellation remains visible");
+    await view.current().remove(); await view.settle();
+    assert.equal(attempts, 2);
+    assert.equal(view.current().active, false);
+    assert.equal(view.current().loading, false);
+    assert.equal(view.current().removeError, "");
+    view.unmount();
+  });
+}
 
 test("external favorite controls drive reader state and actions without querying book favorites", async () => {
   let toggles = 0, reads = 0;

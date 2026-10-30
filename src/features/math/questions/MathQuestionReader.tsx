@@ -189,7 +189,7 @@ function QuestionReader({
   const isFavorite = favoriteControl?.active ?? favorite.active;
   const favoriteLabel = !favoriteControl && favorite.error
     ? "重新读取收藏状态"
-    : isFavorite ? favoriteControl ? "取消收藏" : "已收藏，编辑收藏" : "加入收藏";
+    : isFavorite ? "取消收藏" : "加入收藏";
   const [trainingFile, setTrainingFile] = useState<MathRow>();
   const [selected, setSelected] = useState<string[]>(
     row.MyAnswer ? String(row.MyAnswer).split(",") : [],
@@ -308,7 +308,7 @@ function QuestionReader({
       setSaving(false);
     }
   };
-  const navigationDisabled = saving || remote.loading || !!noteKind || favoriteControl?.busy;
+  const navigationDisabled = saving || remote.loading || !!noteKind || favoriteControl?.busy || favorite.removing;
   return (
     <LearningWorkbench
       title={`第 ${row.QuestionSort || q.QuestionID || qid} 题`}
@@ -353,7 +353,7 @@ function QuestionReader({
             aria-pressed={isFavorite}
             aria-busy={favoriteControl?.busy || favorite.loading}
             disabled={favoriteControl?.busy || favorite.loading}
-            onClick={favoriteControl?.toggle || (favorite.error ? favorite.reload : () => setNoteKind("收藏"))}
+            onClick={favoriteControl?.toggle || (favorite.error ? favorite.reload : favorite.active ? () => void favorite.remove() : () => setNoteKind("收藏"))}
           >
             <Star size={17} fill={isFavorite ? "currentColor" : "none"} />
           </button>
@@ -366,6 +366,7 @@ function QuestionReader({
           </button>
         </div>
       </div>
+      {favorite.removeError && <p className="error-banner" role="alert">{favorite.removeError}</p>}
       <div className="tabs math-question-tabs">
         {[
           "题目",
