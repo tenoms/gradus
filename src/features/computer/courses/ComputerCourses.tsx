@@ -528,19 +528,21 @@ export default function ComputerCourses() {
                   </div>
                 )}
               </div>
-              <div className="cc-player-feedback">
-                <Status error={error} retry={!loading && lesson?.mediaId && error.startsWith("视频") ? () => void recoverVideo(true) : undefined} />
-                {!error && notice && (
-                  <p className="computer-notice" role="status">{notice}</p>
-                )}
-              </div>
-              <div className="computer-toolbar cc-player-toolbar">
-                {video && (
+              {(error || notice) && (
+                <div className="cc-player-feedback">
+                  <Status error={error} retry={!loading && lesson?.mediaId && error.startsWith("视频") ? () => void recoverVideo(true) : undefined} />
+                  {!error && notice && (
+                    <p className="computer-notice" role="status">{notice}</p>
+                  )}
+                </div>
+              )}
+              {video && (
+                <div className="computer-toolbar cc-player-toolbar">
                   <a className="computer-text-link" href={video} target="_blank" rel="noreferrer">
                     打开视频地址
                   </a>
-                )}
-              </div>
+                </div>
+              )}
               <WorkspaceTabs
                 label="课程详情栏目"
                 className="cc-details-tabs"
