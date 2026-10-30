@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "concurrently -k -n api,web -c cyan,magenta \"node --env-file-if-exists=.env --watch server/index.mjs\" \"vite\"",
     "build": "tsc -b && vite build",
+    "package:prod": "npm run build && node scripts/deploy/package.mjs",
     "start": "node --env-file-if-exists=.env server/index.mjs",
     "test": "node --experimental-strip-types --test \"tests/**/*.test.mjs\"",
     "typecheck": "tsc -b",

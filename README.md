@@ -49,7 +49,9 @@ npm run dev
 
 平台参数也可通过 `.env` 配置；未由环境变量指定的项目可在管理端维护。填写方式见[环境变量示例](.env.example)和[系统配置](config/README.md)。
 
-### 构建与运行
+### 构建与部署
+
+在当前机器运行生产版本：
 
 ```sh
 npm run build
@@ -57,6 +59,30 @@ npm start
 ```
 
 默认提供 [学习空间](http://127.0.0.1:3001/learn/)和[管理空间](http://127.0.0.1:3001/admin/)。使用 HTTPS 时设置 `COOKIE_SECURE=1`，反向代理需保留原始 `Host`。端口及其他部署参数见[系统配置](config/README.md)。
+
+部署到服务器前，执行：
+
+```sh
+npm run package:prod
+```
+
+命令会自动构建，再生成 `artifacts/releases/study-web-1.0.0.tar.gz`。文件名中的版本号来自 `package.json`，重复打包会更新同版本的压缩包。构建机需提供 `tar`，macOS 和 Linux 通常已自带。
+
+压缩包包含 `dist/`、`server/`、`shared/`、`config/system.json`、依赖清单、`.env.example` 和 `.node-version`；不包含 `.env`、`node_modules/`、前端源码或测试文件。
+
+服务器准备 Node.js 24、PostgreSQL 14+ 和可用数据库，上传压缩包后执行：
+
+```sh
+tar -xzf study-web-1.0.0.tar.gz
+cd study-web
+npm ci --omit=dev
+# 首次部署创建 .env；更新时保留已有配置
+test -f .env || cp .env.example .env
+# 编辑 .env，填写 DATABASE_URL、STUDY_SCHEMA_PREFIX 等配置
+NODE_ENV=production npm start
+```
+
+数据库内容不包含在压缩包中。更新部署时保留服务器上的 `.env`，并继续连接需要使用的数据库。
 
 ## 资源更新与记录导入
 
@@ -78,6 +104,7 @@ npm start
 ```sh
 npm run check              # 检查源码结构、类型、测试和构建依赖
 npm run build              # 生成生产构建
+npm run package:prod       # 自动构建并生成服务器部署包
 npm run verify:directories # 验证真实资源目录，需要有效的 YYB 配置
 npm run clean              # 清理构建产物
 npm run clean:reports      # 同时清理本机验收产物
