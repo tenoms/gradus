@@ -53,14 +53,14 @@ const LearningVideo = forwardRef<
         // Some browsers advertise native HLS but cannot play all HLS assets.
         if (!HlsPlayer.isSupported()) {
           if (video.canPlayType("application/vnd.apple.mpegurl")) video.src = src;
-          else setError("当前浏览器不支持此视频格式，请使用支持 HLS 的浏览器。");
+          else setError("当前浏览器无法播放此视频，请换用其他浏览器。");
           return;
         }
         hls = new HlsPlayer();
         hls.on(HlsPlayer.Events.ERROR, (_, data) => {
           if (!disposed && data.fatal) {
             setPlaying(false);
-            setError("视频流加载失败，请重试。");
+            setError("视频加载失败，请重试。");
             setErrorDetail(data.details);
           }
         });

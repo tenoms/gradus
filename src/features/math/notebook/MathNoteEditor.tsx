@@ -178,7 +178,7 @@ export default function MathNoteEditor({
         {saved ? (
           <div className="math-state">
             <Check size={32} />
-            <h3>已保存到当前 Web 学习账号</h3>
+            <h3>已保存</h3>
             <p>可以在复习或笔记页面继续查看。</p>
             <button className="btn btn-primary" onClick={close}>
               完成
@@ -244,7 +244,7 @@ export default function MathNoteEditor({
                     onClick={save}
                     disabled={saving}
                   >
-                    {saving ? "同步中…" : "保存到平台"}
+                    {saving ? "同步中…" : "保存"}
                   </button>
                 </div>
               </>

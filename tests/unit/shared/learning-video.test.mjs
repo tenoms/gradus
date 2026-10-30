@@ -78,7 +78,7 @@ test("HLS falls back to native playback when MediaSource is unavailable", async 
 test("unsupported HLS reports an error and ordinary video links use the native element directly", async () => {
   const unsupported = mount({ mse: false, native: "" });
   await attached();
-  assert.ok(unsupported.updates.some(value => typeof value === "string" && value.includes("不支持此视频格式")));
+  assert.ok(unsupported.updates.includes("当前浏览器无法播放此视频，请换用其他浏览器。"));
   unsupported.cleanup();
   const mp4 = mount({ src: "https://media.example/lesson.mp4" });
   await attached();
@@ -96,7 +96,7 @@ test("disposing while HLS is loading prevents a late attachment, and fatal error
   const failed = mount();
   await attached();
   failed.onHlsError("error", { fatal: true, details: "manifestLoadError" });
-  assert.ok(failed.updates.includes("视频流加载失败，请重试。"));
+  assert.ok(failed.updates.includes("视频加载失败，请重试。"));
   assert.ok(failed.updates.includes("manifestLoadError"));
   failed.cleanup();
 });

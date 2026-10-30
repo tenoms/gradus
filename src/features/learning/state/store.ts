@@ -22,7 +22,7 @@ function change(value: WithoutChangeId<StudyChange>) {
   else {
     current = applyStudyChange(current, operation);
     try { localStorage.setItem(key(), JSON.stringify({ data: current, pending: [] })); }
-    catch { syncStatus = { state: "error", pending: 0, message: "浏览器缓存不可用，请导出备份。" }; }
+    catch { syncStatus = { state: "error", pending: 0, message: "学习记录暂时无法保存，请导出备份。" }; }
     emit();
   }
 }

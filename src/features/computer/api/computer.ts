@@ -83,7 +83,7 @@ async function readComputerResponse(
   )
     throw new Error(
       [4061, 4064].includes(Number(response.code))
-        ? `平台正在整理这套题目，请稍后再试（${response.code}）`
+        ? "这套题目暂时无法练习，请稍后再试。"
         : response.code === 4010 &&
             String(response.data).includes("TooManyResultsException")
           ? "练习组读取失败，请返回章节选择练习组后重试。"
@@ -91,7 +91,7 @@ async function readComputerResponse(
             ? response.message
             : response.msg && response.msg !== "SERVICE ERROR"
               ? response.msg
-              : `学习服务暂时无法完成请求 (${response.code})`,
+              : "暂时无法完成操作，请稍后重试。",
     );
   let result =
     response && typeof response === "object" && "data" in response
@@ -101,7 +101,7 @@ async function readComputerResponse(
     try {
       result = JSON.parse(result);
     } catch {
-      throw new Error("上游返回了无法解析的内容，请稍后重试。");
+      throw new Error("内容暂时无法加载，请稍后重试。");
     }
   }
   return result;

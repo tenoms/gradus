@@ -325,7 +325,7 @@ function TargetSchools({ onClose }: { onClose: () => void }) {
     try {
       const result = await schools.saveTargets(ids, catalog);
       if (result === false || result === null)
-        throw new Error("平台未确认保存，请重试");
+        throw new Error("尚未确认保存成功，请刷新后核对。");
       setConfirm(false);
       await load();
       setNotice("目标院校已保存并重新读取。");

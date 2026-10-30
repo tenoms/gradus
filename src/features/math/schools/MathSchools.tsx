@@ -209,7 +209,7 @@ export default function MathSchools({ stuid }: { stuid: string }) {
               <Search size={17} />
               <input
                 className="input"
-                aria-label="搜索数学平台院校"
+                aria-label="搜索院校"
                 placeholder="搜索院校名称或代码"
                 value={search}
                 onChange={(e) => {
@@ -271,7 +271,7 @@ export default function MathSchools({ stuid }: { stuid: string }) {
         </section>
       )}
       <p className="footnote">
-        目录及考试科目来自平台收录数据；具体招生安排以院校当年公布的招生简章为准。
+        具体招生安排以院校当年公布的招生简章为准。
       </p>
     </div>
   );

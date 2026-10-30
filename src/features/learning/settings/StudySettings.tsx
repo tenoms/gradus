@@ -9,7 +9,7 @@ export default function StudySettings() {
   const [notice, setNotice] = useState("");
   return (
     <>
-      {session.user?.role === "admin" && <section className="panel settings-panel"><h2>管理空间</h2><div className="settings-row"><p>系统配置、用户和公告在独立管理空间中维护，需单独登录。</p><a className="btn btn-secondary" href="/admin/">打开管理空间<ArrowUpRight size={15} /></a></div></section>}
+      {session.user?.role === "admin" && <section className="panel settings-panel"><h2>管理空间</h2><div className="settings-row"><p>管理用户、学习资源和公告。</p><a className="btn btn-secondary" href="/admin/">打开管理空间<ArrowUpRight size={15} /></a></div></section>}
       <section className="panel settings-panel">
         <h2>每日学习目标</h2>
         <div className="settings-row">
@@ -36,7 +36,7 @@ export default function StudySettings() {
       <section className="panel settings-panel">
         <h2>学习记录备份</h2>
         <p className="muted">
-          计划与 Web 学习活动会同步到你的账号。导出一份 JSON 备份，或将原有备份导入当前账号。
+          备份备考设置、学习计划、目标和学习活动。导入备份将替换这些内容。
         </p>
         <div className="button-row">
           <button className="btn btn-secondary" onClick={exportStudyData}>

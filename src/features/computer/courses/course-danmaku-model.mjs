@@ -66,7 +66,7 @@ export async function sendCourseDanmaku(request, payload) {
   });
   if (Number(result?.code) !== 200)
     throw new Error(
-      result?.message || result?.msg || "弹幕未被平台接受，请爱护课程弹幕环境",
+      result?.message || result?.msg || "弹幕未发送成功，请稍后重试。",
     );
   return result;
 }

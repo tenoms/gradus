@@ -91,7 +91,7 @@ function Status({
     return (
       <div className="math-state">
         <BookOpen size={28} />
-        <p>这个专辑章节暂未返回内容</p>
+        <p>这个章节暂无学习内容</p>
       </div>
     );
   return null;
@@ -248,7 +248,7 @@ export default function MathAlbums({
             : {}),
         },
       );
-      setNotice("阅读位置已保存到当前 Web 学习账号");
+      setNotice("阅读位置已保存");
       progress.reload();
       recordStudy({
         platform: "math",

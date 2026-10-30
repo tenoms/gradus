@@ -318,7 +318,7 @@ export const mathExamApi = {
     const response = await mathPost("/api/ks_paper/RelPaper3", data);
     const result = mathData(response);
     if (!result || typeof result !== "object" || !(Number(result.PaperID) > 0))
-      throw new Error(typeof result === "string" && result.trim() ? result : "上游没有返回可作答的试卷编号，请重试。");
+      throw new Error(typeof result === "string" && result.trim() ? result : "试卷暂时无法生成，请重试。");
     return response;
   },
   ranking: (DryrunID: string | number, SchoolName = "", MajorName = "") =>

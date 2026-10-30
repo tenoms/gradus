@@ -39,7 +39,7 @@ export default function ResourceCenter() {
     try {
       const value = await api<SyncState>("/api/admin/resource-sync", { method: "PUT", body: JSON.stringify({ enabled, revision: sync.settings.revision }) });
       setSync(value);
-      setNotice(value.settings.enabled ? "已开启资源同步，后续学习访问的资源将逐步保存。" : "已关闭新增和更新资源的自动保存，现有资源和个人学习记录继续保留。");
+      setNotice(value.settings.enabled ? "已开启资源自动保存。" : "已关闭资源自动保存，已有资源和学习记录保留。");
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 409) {
         try { setSync(await api<SyncState>("/api/admin/resource-sync")); setError("同步设置已在其他页面更新，已读取最新状态，请确认后再操作。"); }
@@ -51,18 +51,18 @@ export default function ResourceCenter() {
   return <div className="resource-center">
     <header className="resource-center-intro"><span className="resource-center-icon"><FolderOpen size={25} /></span><div><h2>资源中心</h2><p>统一维护考研数学与计算机 408 的学习资源。</p></div></header>
     <section className="panel data-card resource-sync-card" aria-labelledby="resource-sync-title">
-      <div className="resource-sync-heading"><h2 id="resource-sync-title">小程序资源渐进同步</h2><button className="btn btn-secondary admin-inline-refresh" aria-label="刷新状态" title="刷新资源同步状态与统计" aria-busy={loading} disabled={loading || pending} onClick={refresh}><RefreshCw size={15} className={loading ? "spin" : ""} /><span>刷新状态</span></button><p>公共内容优先读取有效缓存，缺失或需更新时向小程序获取。资源随实际学习逐步积累。</p></div>
+      <div className="resource-sync-heading"><h2 id="resource-sync-title">资源自动保存</h2><button className="btn btn-secondary admin-inline-refresh" aria-label="刷新状态" title="刷新资源同步状态与统计" aria-busy={loading} disabled={loading || pending} onClick={refresh}><RefreshCw size={15} className={loading ? "spin" : ""} /><span>刷新状态</span></button></div>
       {loading && !sync && <p className="resource-sync-loading" role="status"><LoaderCircle className="spin" size={18} />正在读取同步状态…</p>}
       {error && <div className="error-banner" role="alert"><CircleAlert size={17} /><span>{error}</span><button className="text-link" disabled={loading || pending} onClick={refresh}>重试</button></div>}
       {notice && <p className="notice" role="status"><Check size={16} />{notice}</p>}
       {sync && <>
-        <SettingSwitch label="启用学习过程资源同步" description="立即保存设置，不影响个人记录与导入。" checked={sync.settings.enabled} pending={pending} disabled={loading || pending} onChange={value => { void toggleSync(value); }} />
-        <dl className="resource-center-stats" aria-label="全库资源统计">
-          <div><dt>全库资源</dt><dd>{sync.resources.total.toLocaleString("zh-CN")}</dd></div>
+        <SettingSwitch label="自动保存学习资源" description="学习者访问资源时自动保存，便于后续使用。" checked={sync.settings.enabled} pending={pending} disabled={loading || pending} onChange={value => { void toggleSync(value); }} />
+        <dl className="resource-center-stats" aria-label="全部资源统计">
+          <div><dt>全部资源</dt><dd>{sync.resources.total.toLocaleString("zh-CN")}</dd></div>
           <div><dt>考研数学</dt><dd>{(sync.resources.byPlatform.math || 0).toLocaleString("zh-CN")}</dd></div>
           <div><dt>计算机 408</dt><dd>{(sync.resources.byPlatform.computer || 0).toLocaleString("zh-CN")}</dd></div>
           <div><dt>资源来源</dt><dd>{sync.sources?.length || 0}</dd></div>
-          <div><dt>媒体 / 链接引用</dt><dd>{sync.resources.mediaReferences.toLocaleString("zh-CN")}</dd></div>
+          <div><dt>视频与附件链接</dt><dd>{sync.resources.mediaReferences.toLocaleString("zh-CN")}</dd></div>
         </dl>
         <p className="resource-sync-last">最近同步：{lastSyncedAt ? <time dateTime={lastSyncedAt}>{syncTime(lastSyncedAt)}</time> : "暂无同步记录"}{loading && <span role="status"> · 更新统计中…</span>}</p>
         {sync.lastError && <p className="data-sync-error" role="status">最近一次资源保存未完成：{sync.lastError}。后续访问时会重新尝试。</p>}

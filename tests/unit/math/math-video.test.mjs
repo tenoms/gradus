@@ -50,6 +50,6 @@ test("direct math playback avoids the provider resolver and VID playback uses th
   const result = await loadMathVideo({ BusType: "视频解析", BusValue: "vid", PlayToken: "given-token" });
   assert.equal(result.url, "https://media.example/resolved.mp4");
   assert.deepEqual(calls, [["/api/platform/math/video", { method: "POST", body: JSON.stringify({ vid: "vid", playsafe: "given-token" }) }]]);
-  await assert.rejects(loadMathVideo({ FileUrl: "https://media.example/handout.pdf" }), /尚未返回可播放/);
+  await assert.rejects(loadMathVideo({ FileUrl: "https://media.example/handout.pdf" }), /此视频暂时无法播放，请稍后重试。/);
   assert.equal(calls.length, 1);
 });

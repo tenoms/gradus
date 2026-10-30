@@ -5,8 +5,8 @@ export default function StudySyncIndicator() {
   const sync = useStudySync();
   const busy = sync.state === "loading" || sync.state === "saving";
   const error = sync.state === "error";
-  const text = error ? "待同步" : busy ? "同步中" : sync.state === "local" ? "本地记录" : "已同步";
-  return <span className={`study-sync-indicator ${error ? "sync-error" : ""}`} title={error ? sync.message : "备考设置、学习计划、目标和 Web 学习活动随账号保存"} role="status">
+  const text = error ? "待同步" : busy ? "同步中" : sync.state === "local" ? "未同步" : "已同步";
+  return <span className={`study-sync-indicator ${error ? "sync-error" : ""}`} title={error ? sync.message : "备考设置、学习计划与学习活动自动保存"} role="status">
     {busy ? <LoaderCircle size={15} className="spin" /> : error ? <CloudOff size={15} /> : <Cloud size={15} />}<span>{text}</span>
   </span>;
 }

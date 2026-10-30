@@ -44,8 +44,8 @@ export async function requestJson(url, options = {}, timeoutMs) {
   } catch (error) {
     throw new ApiError(
       error.name === "TimeoutError"
-        ? "上游请求超时，请稍后重试"
-        : "无法连接上游学习服务",
+        ? "连接超时，请稍后重试"
+        : "暂时无法连接学习服务，请稍后重试",
       502,
     );
   }
@@ -55,7 +55,7 @@ export async function requestJson(url, options = {}, timeoutMs) {
     body = JSON.parse(raw);
   } catch {
     throw new ApiError(
-      `上游返回非 JSON 响应（HTTP ${response.status}）`,
+      "学习服务暂不可用，请稍后重试",
       [400, 401, 403, 404, 409, 413, 429].includes(response.status)
         ? response.status
         : 502,
@@ -66,7 +66,7 @@ export async function requestJson(url, options = {}, timeoutMs) {
       body.Message ||
         body.message ||
         body.msg ||
-        `上游请求失败（HTTP ${response.status}）`,
+        "操作未完成，请稍后重试",
       [400, 401, 403, 404, 409, 413, 429].includes(response.status)
         ? response.status
         : 502,
@@ -186,7 +186,7 @@ export function decodeComputerVideoResponse(body, config) {
     };
   } catch {
     throw new ApiError(
-      "计算机录播地址解密失败，请检查服务端配置或稍后重试",
+      "视频暂时无法播放，请稍后重试；如仍无法播放，请联系管理员",
       502,
     );
   }
@@ -327,7 +327,7 @@ async function mathOAuthToken(config, request, stuId) {
   const token = tokenData?.access_token;
   if (!token)
     throw new ApiError(
-      tokenBody.Message || tokenBody.msg || "数学登录令牌获取失败",
+      tokenBody.Message || tokenBody.msg || "数学学习服务暂不可用，请稍后重试",
       [401,403].includes(Number(tokenBody.Code??tokenBody.code)) ? Number(tokenBody.Code??tokenBody.code) : 502,
     );
   return tokenData;
@@ -336,7 +336,7 @@ async function mathOAuthToken(config, request, stuId) {
 function successful(body) {
   if (body?.SuccessResponse === false || body?.success === false ||
       (body?.code !== undefined && !["0", "200"].includes(String(body.code))))
-    throw new ApiError("上游未返回成功业务结果", 502);
+    throw new ApiError("操作未完成，请稍后重试", 502);
   return body;
 }
 
@@ -361,14 +361,14 @@ export function createUpstreamClient(configuration, { requestJson: providedTrans
       const config=getConfig();
       if(name==='math') {
         const stuId=state.stuId || state.user?.StuID;
-        if(!stuId)throw new ApiError('数学续期缺少已确认的学习身份',401);
+        if(!stuId)throw new ApiError('无法连接数学学习服务，请稍后重试',401);
         const data=await mathOAuthToken(config,transport,stuId);
-        if(data.User?.StuID && String(data.User.StuID)!==String(stuId))throw new ApiError('数学续期返回了不同学习身份',409);
+        if(data.User?.StuID && String(data.User.StuID)!==String(stuId))throw new ApiError('数学学习账号已变更，请重新确认账号',409);
         return {...state,token:data.access_token,user:data.User || state.user,stuId,auth:tokenMetadata(name,data)};
       }
       if(name!=='computer')throw new ApiError('未知学习平台',404);
       const target=JSON.stringify([config.computer.baseUrl,config.computer.tenantCode,config.computer.oauthClientId]);
-      if(!state.refreshToken||unsupportedRefresh.has(target))throw Object.assign(new ApiError('来源未提供可用的刷新令牌协议',501),{code:'REFRESH_UNSUPPORTED'});
+      if(!state.refreshToken||unsupportedRefresh.has(target))throw Object.assign(new ApiError('暂时无法恢复学习服务连接',501),{code:'REFRESH_UNSUPPORTED'});
       // This is the source mini-program's declared protocol, not the OAuth password/code flow.
       const url=new URL('/api/auth/wx/refreshToken',config.computer.baseUrl);
       addQuery(url,{grant_type:'wx',scope:'read',refresh_token:state.refreshToken});
@@ -376,8 +376,8 @@ export function createUpstreamClient(configuration, { requestJson: providedTrans
       try{body=await transport(url,{method:'GET',headers:{Accept:'application/json',Authorization:bearer(state.token),'Tenant-Code':config.computer.tenantCode}});}
       catch(error){if([404,405,501].includes(Number(error.status)))unsupportedRefresh.add(target);throw error;}
       const data=body.data??body.Data??body;
-      if(!data?.access_token)throw new ApiError('计算机来源未返回有效刷新令牌',[400,401,403].includes(Number(body.code??body.Code))?Number(body.code??body.Code):502);
-      if(data.user?.userId&&state.user?.userId&&String(data.user.userId)!==String(state.user.userId))throw new ApiError('计算机续期返回了不同学习身份',409);
+      if(!data?.access_token)throw new ApiError('无法连接计算机学习服务，请稍后重试',[400,401,403].includes(Number(body.code??body.Code))?Number(body.code??body.Code):502);
+      if(data.user?.userId&&state.user?.userId&&String(data.user.userId)!==String(state.user.userId))throw new ApiError('计算机学习账号已变更，请重新确认账号',409);
       return {...state,token:data.access_token,refreshToken:data.refresh_token||state.refreshToken,auth:tokenMetadata(name,data)};
     },
     async probe({ target = "all", ref, yyb } = {}) {
@@ -393,14 +393,14 @@ export function createUpstreamClient(configuration, { requestJson: providedTrans
           checks.push({ name, ok: true, message, durationMs: Date.now() - start });
         } catch (error) {
           const status = Number(error.status) || 502;
-          const description = status === 503 ? "配置未完成或平台已停用" : [401, 403].includes(status) ? "上游拒绝了身份认证" : status === 404 ? "配置的服务未提供此接口" : "上游连接或业务验证未成功";
+          const description = status === 503 ? "配置未完成或平台已停用" : [401, 403].includes(status) ? "账号验证未通过，请检查连接设置" : status === 404 ? "此服务暂不可用，请检查服务地址" : "连接检查未通过，请稍后重试";
           checks.push({ name, ok: false, message: `${description}（${status}）`, durationMs: Date.now() - start });
         }
       };
       if (["yyb", "all"].includes(target)) {
         await check("YYB 服务健康", async () => {
           await yybRequestWith(config, transport, "/health");
-          return "YYB 健康接口返回成功";
+          return "YYB 服务连接正常";
         });
         await check("YYB 学习账号目录", async () => {
           accounts = await yybRequestWith(config, transport, "/accounts");
@@ -414,14 +414,14 @@ export function createUpstreamClient(configuration, { requestJson: providedTrans
           if (!config[name].enabled) throw new ApiError("平台已停用", 503);
           if (name === "math") {
             successful(await mathRequestWith(config, transport, "/api/wx_xcx_info/GetListByAll", { query: { System_Station_ID: config.math.stationId } }));
-            return "数学小程序配置接口返回成功";
+            return "数学学习平台连接正常";
           }
           try {
             await computerRequestWith(config, transport, "/api/user/wx/user/detail");
           } catch (error) {
             if (![401, 403].includes(error.status)) throw error;
           }
-          return "计算机服务可达；选择学习账号后可进一步检测本人身份";
+          return "计算机学习平台连接正常；可选择账号继续检查登录";
         });
         if (ref) await check(`${label}小程序登录与本人资料`, async () => {
           accounts ||= await yybRequestWith(config, transport, "/accounts");

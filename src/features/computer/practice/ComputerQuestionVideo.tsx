@@ -11,6 +11,6 @@ export default function ComputerQuestionVideo({ question }: { question: Computer
     <h4><PlayCircle size={18} />视频解析</h4>
     {source.kind === "media"
       ? <LearningVideo key={source.url} src={source.url} controls playsInline preload="none" aria-label="题目视频解析播放器" study={{ platform: "computer", title: "计算机题目视频解析", path: "/study/question-bank", key: String(question.exerciseId || question.id || source.url) }} />
-      : <div className="computer-question-video-state"><PlayCircle size={32} /><p>此视频由原平台页面提供</p><a className="btn btn-secondary" href={source.url} target="_blank" rel="noreferrer">打开视频页面<ExternalLink size={15} /></a></div>}
+      : <div className="computer-question-video-state"><PlayCircle size={32} /><p>请打开视频页面观看</p><a className="btn btn-secondary" href={source.url} target="_blank" rel="noreferrer">打开视频页面<ExternalLink size={15} /></a></div>}
   </section>;
 }

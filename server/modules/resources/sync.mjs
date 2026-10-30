@@ -123,17 +123,17 @@ export function createResourceSync({store,service,configuration,accountPool}) {
       return inSource(sourceForSession(platform,{...session,...source},config).id,async()=>{
         if(query.examGroupId) {
           const prepared=await requestSource({session,name:platform,path:'/api/exam/wx/practice/cache/examination/group',input:{method:'POST',query:{groupId:query.examGroupId},data:{}},source});
-          if(!succeeded(prepared))throw new ApiError('源章节组缓存准备失败',502);
+          if(!succeeded(prepared))throw new ApiError('章节题目暂时无法加载，请稍后重试',502);
         }
         let response=await requestSource({session,name:platform,path:current.path,input:current,source});
         // Only a whole-paper learning action may request its complete content.
         if(!succeeded(response)&&!number&&current.path.endsWith('/exerciseList')) {
           const first=await requestSource({session,name:platform,path:current.path,input:{...current,query:{...query,number:1}},source});
           const firstData=first?.data??first?.Data;
-          if(!succeeded(first)||!firstData?.examId)throw new ApiError('源平台未能返回当前试卷',502);
+          if(!succeeded(first)||!firstData?.examId)throw new ApiError('当前试卷暂时无法加载，请稍后重试',502);
           response=await requestSource({session,name:platform,path:'/api/exam/wx/practice/examExercise',input:{method:'GET',query:{examId:firstData.examId},data:{}},source});
         }
-        if(!succeeded(response))throw new ApiError(`上游业务未成功（${response?.code??response?.Code??'无业务码'}）`,502);
+        if(!succeeded(response))throw new ApiError('题目暂时无法加载，请稍后重试',502);
         const saved=await capture({...args,request:current,response});
         return result(response,latest.state,saved.captured);
       });

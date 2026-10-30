@@ -49,7 +49,7 @@ export default function AccountProfile({ userId }: { userId: string }) {
       const value = await api<{ profile: AccountProfileValue }>("/api/learning/profile", { method: "PUT", body: JSON.stringify(form) });
       setForm(value.profile);
       await refresh();
-      setNotice("个人资料已保存，下次登录可继续使用。");
+      setNotice("个人资料已保存。");
     } catch (cause) { setError(cause instanceof Error ? cause.message : "资料保存失败，请重试。"); }
     finally { setSaving(false); }
   }

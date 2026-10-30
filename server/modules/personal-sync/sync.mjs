@@ -8,7 +8,7 @@ import {createTokenLifecycle,isSourceAuthFailure} from '../../integrations/token
 const stable=value=>Array.isArray(value)?value.map(stable):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(key=>[key,stable(value[key])])):value;
 const hash=value=>createHash('sha256').update(JSON.stringify(stable(value))).digest('hex');
 const time=()=>new Date().toISOString();
-const message=error=>error instanceof ApiError?error.message:'个人来源暂时不可用，请稍后重试';
+const message=error=>error instanceof ApiError?error.message:'暂时无法读取小程序记录，请稍后重试';
 const domain=(service,name)=>{const value=service.getConfig()[name];return hash([name,value.baseUrl,value.appId,value.stationId??null,value.tenantCode??null]);};
 const collections={math:{profile:['bookshelf'],sys_user_book_question:['favorites','mistakes','notes'],rel_question_log:['favorites','mistakes','notes','answers'],sys_user_book_catalog:['favorites','mistakes','notes'],choice_question_exercise:['reports'],sys_user_record:['progress']},computer:{collection:['favorites','notes'],mistakes:['mistakes'],exams:['reports'],answers:['answers'],progress:['progress']}};
 const aliases=(name,collection)=>name==='math'&&collection==='rel_question_log'?['rel_question_log','sys_user_book_question']:[collection];
@@ -48,7 +48,7 @@ export async function createPersonalSync({database,service,identities,tokenLifec
   function publicBinding(row,config){
     if(!row)return null;
     const verified=row.connection_revision===config?.revision;
-    return {id:row.id,openid:row.openid,nickname:row.nickname,ref:row.account_ref,platforms:Object.fromEntries(['math','computer'].map(name=>[name,{...row.platforms[name],...(!verified?{status:'needs_verification',error:'YYB 连接已更换，请重新确认个人账号'}:{})}]))};
+    return {id:row.id,openid:row.openid,nickname:row.nickname,ref:row.account_ref,platforms:Object.fromEntries(['math','computer'].map(name=>[name,{...row.platforms[name],...(!verified?{status:'needs_verification',error:'连接设置已更改，请重新确认关联账号'}:{})}]))};
   }
   async function status(userId){
     const [config,linked,prefs,counts]=await Promise.all([connection(userId),binding(userId),settings(userId),summary(userId)]);
@@ -61,27 +61,27 @@ export async function createPersonalSync({database,service,identities,tokenLifec
   }
   const transport=config=>({baseUrl:config.base_url,apiKey:config.api_key});
   async function directory(userId){
-    const config=await connection(userId);if(!config)throw new ApiError('请先保存自己的 YYB 连接',409);
-    let rows;try{rows=await service.yybRequest('/accounts',undefined,undefined,transport(config));}catch{throw new ApiError('无法读取自有 YYB 账号目录，请检查地址和密钥',502);}
-    if(!Array.isArray(rows))throw new ApiError('自有 YYB 账号目录格式不正确',502);
+    const config=await connection(userId);if(!config)throw new ApiError('请先保存账号连接设置',409);
+    let rows;try{rows=await service.yybRequest('/accounts',undefined,undefined,transport(config));}catch{throw new ApiError('无法加载账号列表，请检查连接设置',502);}
+    if(!Array.isArray(rows))throw new ApiError('无法加载账号列表，请稍后重试',502);
     return {config,rows};
   }
   async function accounts(userId){const {rows}=await directory(userId);return {accounts:rows.filter(account=>accountRef(account)).map(account=>({ref:accountRef(account),openid:openidOf(account),nickname:account.nickname||account.alias||'微信学习账号',status:account.status||'unknown'}))};}
   async function login(userId,linked,name,config,account,{force=false,invalidToken,freshLogin=false}={}){
     let state;
     try{state=await tokens.acquire(name,{...account,ref:accountRef(account)},transport(config),{force,invalidToken,freshLogin});}
-    catch(error){throw new ApiError(error.status===401?'个人来源授权失败，请检查自有 YYB 后重试':message(error),error.status===503?503:502);}
+    catch(error){throw new ApiError(error.status===401?'账号连接失败，请检查连接设置后重试':message(error),error.status===503?503:502);}
     const subjectId=name==='math'?String(state?.stuId||state?.user?.StuID||''):String(state?.user?.userId||'');
-    if(!state?.connected||!subjectId)throw new ApiError(`${name==='math'?'数学':'计算机'}来源未返回真实学习身份，个人同步已暂停`,502);
+    if(!state?.connected||!subjectId)throw new ApiError(`无法连接${name==='math'?'数学':'计算机'}小程序账号，记录导入已暂停`,502);
     const previous=linked.platforms?.[name];
-    if(previous?.subjectId&&previous.domain===domain(service,name)&&previous.subjectId!==subjectId)throw new ApiError('相同微信账号返回了不同学习身份，请检查个人来源后重新关联',409);
+    if(previous?.subjectId&&previous.domain===domain(service,name)&&previous.subjectId!==subjectId)throw new ApiError('小程序账号已变更，请确认后重新关联',409);
     return state;
   }
   async function bind(userId,input){
     if(typeof input?.ref!=='string'||!input.ref||input.ref.length>160||input.replace!==undefined&&typeof input.replace!=='boolean')throw new ApiError('请选择要关联的个人账号',400);
     const {config,rows}=await directory(userId),account=rows.find(row=>accountRef(row)===input.ref),openid=openidOf(account);
-    if(!account)throw new ApiError('所选个人账号在自有 YYB 中不存在',404);
-    if(!openid)throw new ApiError('此 YYB 账号未提供 openid，无法确认跨服务的微信身份',409);
+    if(!account)throw new ApiError('未找到所选账号，请刷新账号列表',404);
+    if(!openid)throw new ApiError('无法确认所选微信账号，请检查连接后重试',409);
     const current=await binding(userId);
     if(current&&current.openid!==openid&&!input.replace)throw new ApiError('所选微信账号与当前关联不同；请明确切换关联，原导入记录会保留',409);
     const existing=await one(`SELECT * FROM ${table('personal_account_links')} WHERE user_id=$1 AND openid=$2`,[userId,openid]);
@@ -94,7 +94,7 @@ export async function createPersonalSync({database,service,identities,tokenLifec
       await database.query(`UPDATE ${table('personal_account_links')} SET active=false WHERE user_id=$1`,[userId]);
       await database.query(`INSERT INTO ${table('personal_account_links')}(id,user_id,openid,account_ref,nickname,active,connection_revision,platforms) VALUES($1,$2,$3,$4,$5,true,$6,$7::jsonb) ON CONFLICT(user_id,openid) DO UPDATE SET account_ref=excluded.account_ref,nickname=excluded.nickname,active=true,connection_revision=excluded.connection_revision,platforms=excluded.platforms,updated_at=now()`,[existing?.id||randomUUID(),userId,openid,input.ref,account.nickname||account.alias||'微信学习账号',config.revision,JSON.stringify(platforms)]);
     });
-    await identities?.audit?.(await identities.user(userId),'personal_sync.linked','我的小程序学习账号','关联微信身份，个人数据仅导入 Web');
+    await identities?.audit?.(await identities.user(userId),'personal_sync.linked','我的小程序学习账号','已关联小程序账号');
     return status(userId);
   }
   async function detach(userId){
@@ -104,9 +104,9 @@ export async function createPersonalSync({database,service,identities,tokenLifec
   async function source(userId,name,{force=false,invalidToken}={}){
     const linked=await binding(userId);if(!linked)throw new ApiError('请先关联自己的小程序学习账号',409);
     const {config,rows}=await directory(userId);
-    if(config.revision!==linked.connection_revision)throw new ApiError('YYB 连接已更换，请重新确认个人账号后更新',409);
+    if(config.revision!==linked.connection_revision)throw new ApiError('连接设置已更改，请重新确认关联账号后更新',409);
     const account=rows.find(row=>accountRef(row)===linked.account_ref);
-    if(!account||openidOf(account)!==linked.openid)throw new ApiError('个人来源账号已变化，已暂停同步；请重新确认关联身份',409);
+    if(!account||openidOf(account)!==linked.openid)throw new ApiError('关联账号已变更，导入已暂停；请重新确认账号',409);
     const state=await login(userId,linked,name,config,account,{force,invalidToken});
     const verified={status:'ready',subjectId:name==='math'?String(state.stuId||state.user.StuID):String(state.user.userId),domain:domain(service,name)};
     if(linked.platforms?.[name]?.status!=='ready'||linked.platforms?.[name]?.subjectId!==verified.subjectId){
@@ -124,12 +124,12 @@ export async function createPersonalSync({database,service,identities,tokenLifec
     const acquired=await source(userId,request.platform);
     let result;
     try{result=await readPersonalPage(service,{...request,state:acquired.state});}
-    catch(error){if(!isSourceAuthFailure(error))throw error;const renewed=await source(userId,request.platform,{force:true,invalidToken:acquired.state.token});try{result=await readPersonalPage(service,{...request,state:renewed.state});}catch{throw new ApiError('个人来源授权暂时不可用，请稍后重试',502);}}
+    catch(error){if(!isSourceAuthFailure(error))throw error;const renewed=await source(userId,request.platform,{force:true,invalidToken:acquired.state.token});try{result=await readPersonalPage(service,{...request,state:renewed.state});}catch{throw new ApiError('暂时无法读取小程序记录，请稍后重试',502);}}
     return {...result,count:result.records.length,samples:result.records.slice(0,5)};
   }
   async function refresh(userId,input){
     const request=normalizePersonalRequest(input),prefs=await settings(userId),linked=await binding(userId);
-    if(!prefs.enabled)throw new ApiError('个人数据同步已关闭；本地记录仍可使用',409);
+    if(!prefs.enabled)throw new ApiError('记录导入已关闭，已导入的记录仍可使用',409);
     if(!prefs.scopes.includes(request.scope))throw new ApiError('此类个人记录未加入同步范围',409);
     const key=`${userId}:${linked?.openid||''}:${stateKey(request)}`;
     if(pending.has(key))return pending.get(key);

@@ -22,5 +22,5 @@ export async function prepareComputerAudioFile(file) {
       type: 'audio/mp4', lastModified: file.lastModified,
     });
   }
-  throw new Error('平台暂不支持这种录音格式，请选择 MP3、MP4 或 M4A 录音文件。');
+  throw new Error('暂不支持这种录音格式，请选择 MP3、MP4 或 M4A 录音文件。');
 }

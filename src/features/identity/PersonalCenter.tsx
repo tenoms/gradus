@@ -37,7 +37,7 @@ export default function PersonalCenter({ settings }: { settings: ReactNode }) {
       </WorkspaceBar>
       {error && <p className="error-banner" role="alert">{error}</p>}
       {tab === "account" ? <>
-        <section className="panel settings-panel"><h2>个人资料</h2><p className="muted">用于当前 Web 学习账号，随账号保存。</p><AccountProfile userId={stuid} /></section>
+        <section className="panel settings-panel"><h2>个人资料</h2><AccountProfile userId={stuid} /></section>
         <PasswordSettings />
       </> : tab === "source" ? <PersonalLearningAccount /> : tab === "settings" ? settings : tab === "computer" ? <Suspense fallback={<p className="loading-state"><LoaderCircle className="spin" size={20} />正在读取自选科目…</p>}><ComputerLearningSettings /></Suspense> : <>
         <WorkspaceTabs label="数学个人中心栏目" items={["备考设置", "学习记录", "学习榜单"].map(value => ({value, label: value}))} value={mathTab} onChange={value => { setQuestion(undefined); setMathTab(value); }} />

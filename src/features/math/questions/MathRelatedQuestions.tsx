@@ -500,7 +500,7 @@ function RelatedCollection({
           Object.entries(v).map(([id, r]) => [id, { ...r, IsSubmit: 1 }]),
         ),
       );
-      setNotice(`已提交 ${drafts.length} 道题，结果已保存到当前学习账号`);
+      setNotice(`已提交 ${drafts.length} 道题，结果已保存`);
       recordStudy({
         platform: "math",
         type: "test-submission",
@@ -956,7 +956,7 @@ function RelatedReader({
       payload,
     );
     const ID = previous.ID || Number(mathData(saved));
-    if (!ID) throw new Error("平台没有确认作答记录，请重试");
+    if (!ID) throw new Error("尚未确认答案已保存，请刷新后核对。");
     const result = { ...payload, ID };
     if (mode === "练习模式") {
       await mathPost("/api/rel_question_log/Inner_rel_question_log", {
@@ -1001,7 +1001,7 @@ function RelatedReader({
           <div className="panel mrq-annotations">
             {crowdDone > 0 && (
               <p className="math-muted">
-                平台答题 {crowdDone} 次 · 正确 {crowdRight} 次 · 正确率{" "}
+                大家已答 {crowdDone} 次 · 正确 {crowdRight} 次 · 正确率{" "}
                 {Math.round((crowdRight / crowdDone) * 100)}% · 收藏{" "}
                 {crowdFavorites} 次
               </p>

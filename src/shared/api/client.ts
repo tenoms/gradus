@@ -112,13 +112,13 @@ export async function api<T = any>(
   });
   const data = await response
     .json()
-    .catch(() => ({ error: "服务器返回了无法读取的响应" }));
+    .catch(() => ({ error: "暂时无法完成操作，请稍后重试" }));
   if (startedAs !== identity) throw new Error("账号已切换，请在当前空间重新操作。");
   if (!response.ok)
     throw new ApiError(
       data.message ||
         (typeof data.error === "string" ? data.error : data.error?.message) ||
-        `请求失败 (${response.status})`,
+        "操作未完成，请稍后重试",
       response.status,
       data,
     );

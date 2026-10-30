@@ -82,7 +82,7 @@ function State({
     return (
       <div className="math-state">
         <LoaderCircle className="spin" size={22} />
-        <p>正在读取数学平台内容…</p>
+        <p>正在加载学习内容…</p>
       </div>
     );
   if (error)
@@ -102,7 +102,7 @@ function State({
       <div className="math-state">
         <BookOpen size={28} />
         <p>暂无可用内容</p>
-        <small>平台尚未返回当前分类的数据，可切换分类或稍后重试。</small>
+        <small>当前分类暂无内容，可切换分类或稍后重试。</small>
       </div>
     );
   return null;

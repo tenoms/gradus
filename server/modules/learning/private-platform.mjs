@@ -225,7 +225,7 @@ export async function createPrivatePlatformStore({ database, resourceStore, pers
       return success('computer',[...counts].map(([chapterId,incorrectChapterNumber])=>({chapterId,incorrectChapterNumber})));
     }
     if (sharedOperation('computer',input)==='write') {
-      throw new ApiError('此操作尚未提供 Web 本地实现',409);
+      throw new ApiError('暂不支持此操作',409);
     }
     return success('computer',[]);
   }
@@ -234,17 +234,17 @@ export async function createPrivatePlatformStore({ database, resourceStore, pers
     if (['GetUserInfoByStuID','GetUserInfoByWxID_pt','GetSysUserClientInfo'].includes(command)) return success('math',[[await profile(userId,'math',platform.user || {})]]);
     if (/\/sys_users\/(?:Inner_sys_users|UpdateUserNickName)$/.test(path)) { await put(userId,'math','profile','profile',p); return success('math',platform.user?.ID || 1); }
     if (collection==='choice_question_exercise' && /^RelPaper/.test(action)) {
-      if(!readSource) throw new ApiError('当前学习请求无法读取题目，请稍后重试',503);
+      if(!readSource) throw new ApiError('题目暂时无法加载，请稍后重试',503);
       const sourceInput={...input,data:{...input.data,StuID:platform.stuId || platform.user?.StuID,System_Station_ID:config?.math?.stationId || 1}};
       const created=await readSource(sourceInput),value=unwrap(created);
-      if (created?.SuccessResponse===false) throw new ApiError(created.Message || '源平台未能提供练习题',502);
+      if (created?.SuccessResponse===false) throw new ApiError(created.Message || '练习暂时无法开始，请稍后重试',502);
       const sourcePracticeId=value?.ID || value?.[0]?.ID || value?.[0]?.[0]?.ID || (typeof value==='number'?value:null);
-      if (!sourcePracticeId) throw new ApiError('源平台未返回可读取的练习编号',502);
+      if (!sourcePracticeId) throw new ApiError('练习暂时无法开始，请稍后重试',502);
       const response=await readSource({path:'/api/choice_question_exercise/GetPaper',method:'GET',data:{},query:{ID:sourcePracticeId,StuID:platform.stuId || platform.user?.StuID}});
-      if (response?.SuccessResponse===false) throw new ApiError(response.Message || '源平台题目读取失败',502);
+      if (response?.SuccessResponse===false) throw new ApiError(response.Message || '题目加载失败，请稍后重试',502);
       const rows=unwrap(response);
       const questions=(Array.isArray(rows?.[0])?rows[0]:Array.isArray(rows)?rows:[]).map(stripSharedPersonalState).map(row=>({...row,sourceExerciseLogId:row.ID}));
-      if (!questions.length) throw new ApiError('源平台未返回本次练习的题目，请稍后重试',409);
+      if (!questions.length) throw new ApiError('本次练习暂无题目，请稍后重试',409);
       const practiceKey=randomUUID();
       const record=await put(userId,'math',collection,practiceKey,{...p,IsFinish:0,_key:practiceKey,sourceId,...(sourcePracticeId?{sourcePracticeId}:{})});
       const ids=[];
@@ -261,7 +261,7 @@ export async function createPrivatePlatformStore({ database, resourceStore, pers
     if (collection==='choice_question_exercise' && action==='UpdateChoiceInfo') {
       const record=(await list(userId,'math',collection)).find(row=>String(row.ID)===String(p.ID || p.id));
       if (!record) throw new ApiError('未找到本人的练习',404);
-      if(record._imported)throw new ApiError('这是小程序历史报告，请新建 Web 练习后作答',409);
+      if(record._imported)throw new ApiError('这是小程序历史报告，请新建练习后作答',409);
       await put(userId,'math',collection,record._key,{IsFinish:Number(p.IsFinish)});
       if (Number(p.IsFinish)===0) for (const row of (await list(userId,'math','choice_question_exercise_log')).filter(row=>String(row.ExerciseID)===String(record.ID))) await put(userId,'math','choice_question_exercise_log',row._key,{MyAnswer:'',State:0});
       return success('math',true);
@@ -291,7 +291,7 @@ export async function createPrivatePlatformStore({ database, resourceStore, pers
       return {...success('math',rows),count:total};
     }
     const localCollections=new Set(['rel_question_log','sys_user_book_catalog','sys_user_book_question','sys_user_record','sys_users_info','sys_users_function_allocation','choice_question_exercise','choice_question_exercise_log','sys_users_dryrun_paperlog','sys_users_dryrun_questionlog','book_highscorealbum_studylog','question_files_give','sys_give','c_course_users_progress','c_course_users_record','c_course_product_log','c_paper_users_record','c_paper_student_record','c_paper_student','ks_user_record','ks_user_paper','quesiton_extrapolation_log','sys_msg_push']);
-    if (!localCollections.has(collection)) throw new ApiError('此操作尚未提供 Web 本地实现',409);
+    if (!localCollections.has(collection)) throw new ApiError('暂不支持此操作',409);
     if(collection==='sys_user_book_question' && p.UpdateIds) {
       const ids=String(p.UpdateIds).split(',');
       for(const row of (await list(userId,'math',collection)).filter(row=>ids.includes(String(row.ID)))) await put(userId,'math',collection,row._key,{CatalogID:Number(p.CatalogID)||0});
@@ -341,7 +341,7 @@ export async function createPrivatePlatformStore({ database, resourceStore, pers
       const desiredId=number>0?questionIds[number-1]:null;
       const selectedKnown=number>0?questions.filter(row=>desiredId?String(row.exerciseId || row.id)===String(desiredId):Number(row._resourceOrder)===number-1):questions;
       const complete=!!exam?.completeQuestionSnapshot || (total>0 && questions.length>=total);
-      if (!resourceSync?.ensureQuestions) throw new ApiError('当前学习请求无法读取题目，请稍后重试',503);
+      if (!resourceSync?.ensureQuestions) throw new ApiError('题目暂时无法加载，请稍后重试',503);
       // Every learning read checks the shared PostgreSQL resource first. An owned
       // snapshot can only fill an uncached request when resource saving is off.
       const fallbackResponse=exam && (number>0?selectedKnown.length:complete)
@@ -349,7 +349,7 @@ export async function createPrivatePlatformStore({ database, resourceStore, pers
         : undefined;
       const result=await resourceSync.ensureQuestions({platform:name,session,config,request:input,onDemand:true,fallbackResponse});
       const body=unwrap(result.response),incoming=result.questions || computerQuestions(result.response);
-      if (!incoming.length) throw new ApiError('源平台尚未提供当前练习的题目，请稍后重试',409);
+      if (!incoming.length) throw new ApiError('当前练习暂无题目，请稍后重试',409);
       const returnedIds=result.questionIds?.length?result.questionIds:body?.examExerciseIdList || [];
       if(returnedIds.length)questionIds=returnedIds.map(id=>id===null || id===undefined?'':String(id));
       for(const [index,row] of incoming.entries()) {

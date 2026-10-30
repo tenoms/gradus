@@ -66,9 +66,9 @@ test('the default transport and upstream client honor configured request deadlin
     options.signal.addEventListener('abort', () => { aborted++; clearTimeout(delayed); reject(options.signal.reason); }, { once: true });
   });
   try {
-    await assert.rejects(requestJson('https://transport.example', {}, 5), /上游请求超时/);
+    await assert.rejects(requestJson('https://transport.example', {}, 5), /连接超时，请稍后重试/);
     const client = createUpstreamClient(platformConfigFixture(), { requestTimeoutMs: 5 });
-    await assert.rejects(client.computerRequest('/api/exam/wx/course/courseList', {}, { token: 'fixture' }), /上游请求超时/);
+    await assert.rejects(client.computerRequest('/api/exam/wx/course/courseList', {}, { token: 'fixture' }), /连接超时，请稍后重试/);
     assert.equal(aborted, 2);
   } finally { globalThis.fetch = originalFetch; }
 });

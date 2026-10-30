@@ -110,7 +110,7 @@ export default function MathCourseReportMore({
     try {
       const request = courseRankingVote(context.stuid, row);
       const result = await mathPost(request.path, request.data);
-      if (mathData(result) === false) throw new Error("平台未保存点赞状态，请刷新后重试。");
+      if (mathData(result) === false) throw new Error("点赞暂未保存，请刷新后重试。");
       const updated = courseRankingVoteResult(row, mathData(result));
       setRows((current) => current.map((item) =>
         String(item.id) === String(row.id) ? updated : item,
@@ -294,11 +294,11 @@ export default function MathCourseReportMore({
               </label>
               {!loading && !error && (
                 <div className="mcrm-accuracy">
-                  <small>平台本题得分率</small>
+                  <small>本题得分率</small>
                   <strong>{rate === null ? "暂无统计" : `${rate}%`}</strong>
                   {accuracy && <p>累计作答 {Number(accuracy.count) || 0} 次</p>}
                   <p className="mer-muted">
-                    按当前账号的累计得分与题目满分计算，包含主观题的部分得分。
+                    按你的累计得分与题目满分计算，包含主观题的部分得分。
                   </p>
                 </div>
               )}

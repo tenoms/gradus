@@ -9,8 +9,8 @@ export default function ImportedReportSummary({ record }: { record: Record<strin
   ].filter(([, item]) => item !== undefined);
   return <section className="settings-panel">
     <p className="muted">小程序导入 · 历史报告摘要</p>
-    <h3>{String(value("examinationName", "examName", "Name", "name", "Title") || "原平台学习报告").replace(/<[^>]*>/g," ")}</h3>
-    <p>保留原平台已有成绩与状态。此记录尚未包含完整逐题答卷；开始新练习后，新的作答会独立保存在 Web。</p>
+    <h3>{String(value("examinationName", "examName", "Name", "name", "Title") || "小程序学习报告").replace(/<[^>]*>/g," ")}</h3>
+    <p>此报告保留了小程序中的成绩与完成状态，暂不包含逐题作答详情。</p>
     <dl className="personal-form-grid">{fields.map(([label, item]) => <div key={String(label)}><dt>{String(label)}</dt><dd>{String(item)}</dd></div>)}</dl>
   </section>;
 }

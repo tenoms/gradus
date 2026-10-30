@@ -184,7 +184,7 @@ export function recommendationCompletion(context) {
 }
 export function recommendationAppend(context, meta, Links) {
   if (!meta.RelatedID)
-    throw new Error("原始测评关联信息缺失，暂时无法追加题目。");
+    throw new Error("暂时无法追加题目，请重新打开测评后重试。");
   if (!Links || String(Links) === "0") throw new Error("请先选择一个专题。");
   return {
     ID: meta.RelatedID,

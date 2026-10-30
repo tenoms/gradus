@@ -116,7 +116,7 @@ export default function MathSchoolCoursePractice(props: Props) {
         result = await courseApi.saveRecord(payload);
       const id = Number(mathData(result));
       if (!(id > 0))
-        throw new Error("平台未返回本题记录编号，请重新读取训练进度后核对。");
+        throw new Error("尚未确认本题作答已保存，请刷新训练进度后核对。");
       const next = rows.map((q, i) =>
         i === index
           ? { ...q, _c_course_users_record: { ...payload, ID: id } }
@@ -175,7 +175,7 @@ export default function MathSchoolCoursePractice(props: Props) {
           {!rows.length && !error && (
             <div className="math-state">
               <BookOpen size={28} />
-              <p>当前课程尚未返回训练题目。</p>
+              <p>当前课程暂无训练题目。</p>
             </div>
           )}
           {rows.length > 0 && (

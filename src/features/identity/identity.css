@@ -21,7 +21,6 @@
 .identity-form-wrap .btn-primary { min-height: 47px; margin-top: 18px; }
 .identity-help { display: flex; align-items: start; gap: 8px; font-size: 11px; color: var(--text-secondary); margin-top: 25px; }
 .identity-help svg { margin-top: 3px; }
-.identity-privacy { color: var(--muted); font-size: 11px; margin-top: 20px; }
 @media (min-width: 1900px) { .identity-form-wrap { width: 430px; } }
 @media (max-width: 850px) { .identity-screen { grid-template-columns: 1fr; } .identity-story { padding: 24px 30px; } .identity-story-copy, .identity-story-footer { display: none; } .identity-brand { font-size: 23px; } .identity-story::after { display: none; } .identity-form-side { padding: 24px; min-height: calc(100dvh - 81px); } }
 .identity-space-link { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; margin-top: 28px; color: var(--text-secondary); }

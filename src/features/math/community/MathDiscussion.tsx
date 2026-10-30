@@ -119,7 +119,7 @@ export default function MathDiscussion({
         throw new Error(
           typeof mathData(response) === "string"
             ? mathData(response)
-            : "平台未确认发布成功，请重试。",
+            : "尚未确认发布成功，请刷新后核对。",
         );
       setText("");
       setFiles([]);
@@ -512,7 +512,7 @@ function DiscussionThread({
                     !/^\d+$/.test(String(mathData(result))) ||
                     Number(mathData(result)) <= 0
                   )
-                    throw new Error("平台没有确认回复成功，请重试。");
+                    throw new Error("尚未确认回复成功，请刷新后核对。");
                   setText("");
                   setFiles([]);
                   setTarget(undefined);

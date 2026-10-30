@@ -11,7 +11,7 @@ test("legacy SQL exception responses become concise errors without leaking serve
     Page: 0,
     Msg: "System.IndexOutOfRangeException: Index was outside the bounds. at MySql.Data.MySqlClient.MySqlDataReader.GetString(Int32 i)",
   };
-  assert.match(mathResponseError(body), /数学平台暂时/);
+  assert.equal(mathResponseError(body), "这项内容暂时无法加载，请稍后重试。");
   assert.doesNotMatch(
     mathResponseError(body),
     /Exception|MySql|MySqlDataReader/,

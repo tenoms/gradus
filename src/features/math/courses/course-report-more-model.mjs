@@ -55,7 +55,7 @@ export function courseRankingVoteResult(row, result) {
   const id = typeof result === "number" || typeof result === "string"
     ? Number(result) : NaN;
   if (!(id > 0))
-    throw new Error("平台未返回点赞记录编号，请刷新榜单后核对。");
+    throw new Error("尚未确认点赞成功，请刷新榜单后核对。");
   return { ...row, GiveState: id, GiveCount: (Number(row.GiveCount) || 0) + 1 };
 }
 export function latestCourseExamParams(context, meta, withProduct = false) {

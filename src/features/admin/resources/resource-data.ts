@@ -17,7 +17,7 @@ export interface ResourcePage {
   summary: { total: number; fresh: number; expired: number; mediaReferences: number };
   facets: { kinds: { value: string; label?: string; count: number }[]; sources: ResourceSource[] };
 }
-export const scopeNames: Record<ResourceScope, string> = { public: "公共资源", account: "账号资源", volatile: "短效资源" };
+export const scopeNames: Record<ResourceScope, string> = { public: "公共资源", account: "账号资源", volatile: "实时资源" };
 export const platformName = (value: string) => value === "math" ? "考研数学" : "计算机 408";
 export const message = (error: unknown) => error instanceof Error ? error.message : "操作失败，请重试";
 const resourceKindNames: Record<string, string> = {
@@ -41,7 +41,7 @@ export const dateTime = (value?: string | null) => {
   return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false });
 };
 export const expired = (resource: ResourceItem) => resource.expired === true || !resource.expiresAt || Date.parse(resource.expiresAt) <= Date.now();
-export const validityName = (resource: ResourceItem) => resource.scope !== "public" ? "实时读取" : expired(resource) ? "访问时更新" : "有效缓存";
+export const validityName = (resource: ResourceItem) => resource.scope !== "public" ? "实时更新" : expired(resource) ? "访问时更新" : "有效期内";
 export const pretty = (value: unknown) => JSON.stringify(value, null, 2) ?? "null";
 export function parseResource(value: string) {
   let response: unknown;

@@ -117,7 +117,7 @@ export async function createAccountPool({database,service,connections,identities
     try{
       if(!['math','computer'].includes(name))throw new ApiError('未知学习资源来源',404);
       const runtime=service.getConfig();if(!runtime[name].enabled)throw new ApiError('该学科资源来源已停用，本地已有资源仍可使用',503);
-      const user=await identities.user(userId);if(!user||user.status!=='active')throw new ApiError('当前 Web 账号不可用',403);
+      const user=await identities.user(userId);if(!user||user.status!=='active')throw new ApiError('当前账号不可用，请联系管理员',403);
       const preferences=await identities.yybSettings(userId),override=userYybOverride(preferences);
       let account,routes;
       if(preferences.mode==='custom'){

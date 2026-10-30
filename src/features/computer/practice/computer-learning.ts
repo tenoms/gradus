@@ -200,7 +200,7 @@ export const computerLearningApi = {
       examCategory,
       flag: remove ? 2 : 1,
     });
-    if (result === false) throw new Error(remove ? "平台未完成错题移除，请刷新记录后核对。" : "平台未确认加入错题本，请刷新记录后核对。");
+    if (result === false) throw new Error(remove ? "尚未确认错题已移除，请刷新记录后核对。" : "尚未确认已加入错题本，请刷新记录后核对。");
     return result;
   },
   saveSheetIndex: (examRecordId: string, sheetIndex: number) =>
@@ -262,7 +262,7 @@ export const computerLearningApi = {
       const detail = await computerLearningApi.report(examRecordIdList[0]);
       identifier = detail.examRecord?.identifier || detail.identifier;
     }
-    if (!identifier) throw new Error("平台未返回本人学习记录标识，请刷新记录后再重置。");
+    if (!identifier) throw new Error("暂时无法重置学习记录，请刷新后重试。");
     return computerRequest(
       "/api/exam/wx/practice/examination/exercise/reset",
       {},
@@ -285,7 +285,7 @@ export const computerLearningApi = {
       const ownRecord = records(history).find(item => String(item.examinationId) === String(examinationId));
       id = ownRecord?.id || ownRecord?.examRecordId;
     }
-    if (!id) throw new Error("平台尚未返回本次提交的报告，请稍后重试读取。");
+    if (!id) throw new Error("本次报告暂时无法加载，请稍后重试。");
     return computerLearningApi.report(String(id));
   },
   retryScore: (examRecordId: string) =>

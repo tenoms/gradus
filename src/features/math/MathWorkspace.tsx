@@ -139,7 +139,7 @@ function State({
       <div className="math-state">
         <BookOpen size={28} />
         <p>暂无可用内容</p>
-        <small>平台尚未返回当前分类的数据，可切换分类或稍后重试。</small>
+        <small>当前分类暂无内容，可切换分类或稍后重试。</small>
       </div>
     );
   return null;
@@ -812,7 +812,7 @@ function Practice({ stuid }: { stuid: string }) {
       const data = mathData(res);
       const id = Number(data?.ID || mathRows(res)[0]?.ID);
       if (!id)
-        throw new Error(res?.msg || "平台没有返回可作答的练习，请尝试其他章节");
+        throw new Error(res?.msg || "这个章节暂时无法练习，请尝试其他章节。");
       setPaperReview(false);
       setPaper(id);
     } catch (e) {
@@ -1049,7 +1049,7 @@ function PracticePaper({
       recordStudy({
         platform: "math",
         type: "paper",
-        title: `完成数学练习 #${paper} · ${correct}/${rows.length} 题正确`,
+        title: `完成数学练习 · ${correct}/${rows.length} 题正确`,
         path: "/study/practice",
       });
     } catch (e) {
@@ -1066,7 +1066,7 @@ function PracticePaper({
       </button>
       <div className="math-section-heading">
         <div>
-          <span className="eyebrow">FOCUS SESSION · #{paper}</span>
+          <span className="eyebrow">FOCUS SESSION</span>
           <h2>{finished ? "这一组练习，完成了" : "专注眼前这一题"}</h2>
           <p>
             已作答 {done} / {rows.length} 题
@@ -1102,7 +1102,7 @@ function PracticePaper({
           </h3>
           <p>
             {correct} 道正确 · {rows.length - correct} 道待巩固 ·
-            成绩已保存到当前 Web 学习账号
+            成绩已保存
           </p>
           <button
             className="btn btn-secondary"

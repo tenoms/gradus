@@ -12,7 +12,7 @@ type RecordsPage = { records: ImportedRecord[]; pagination: { page: number; page
 const dataOf = (record: ImportedRecord): Record<string, any> => record.data || record;
 function recordTitle(record: ImportedRecord, scope: PersonalScope, index: number) {
   const data = dataOf(record);
-  if (scope === "bookshelf" && ("EBookIDs" in data || "PaperIDs" in data)) return "原平台书架";
+  if (scope === "bookshelf" && ("EBookIDs" in data || "PaperIDs" in data)) return "小程序书架";
   const title = data.title || data.Name || data.name || data.BookName || data.bookName || data.QuestionTitle || data.questionTitle || data.QuestionName || data.exerciseName || data.examinationName || data.examName || data.PaperName || data.paperName || data.CourseName || data.courseName;
   if (title) return String(title).replace(/<[^>]*>/g, " ").trim();
   const questionId = data.QuestionID || data.questionId || data.exerciseId;
@@ -65,7 +65,7 @@ export default function PersonalImportedRecords({ status, onChanged, disabled }:
         try {
           const result = await pendingUpdate;
           if (active) {
-            if (unsupported(result)) setError(result.message || "当前来源暂不支持读取此类记录。");
+            if (unsupported(result)) setError(result.message || "暂不支持读取此类记录，请选择其他范围。");
             else { setNextSourcePage(result.hasMore ? result.nextPage || 2 : undefined); setNotice(`当前范围已更新：新增 ${result.added || 0} 条，更新 ${result.updated || 0} 条。`); }
             await onChanged();
           }
@@ -87,7 +87,7 @@ export default function PersonalImportedRecords({ status, onChanged, disabled }:
   async function refresh(sourcePage = 1) {
     await action("refresh", async () => {
       const result = await api<RefreshResult>(`${personalSyncPath}/refresh`, { method: "POST", body: JSON.stringify({ platform, scope, context, page: sourcePage, pageSize: 20 }) });
-      if (unsupported(result)) { setError(result.message || "当前来源暂不支持导入此类记录。"); return; }
+      if (unsupported(result)) { setError(result.message || "暂不支持导入此类记录，请选择其他范围。"); return; }
       setNextSourcePage(result.hasMore ? result.nextPage || sourcePage + 1 : undefined);
       setPreview(undefined);
       setNotice(`本次新增 ${result.added || 0} 条，更新 ${result.updated || 0} 条，未变化 ${result.unchanged || 0} 条。${result.hasMore ? "还有更多历史，可继续导入下一页。" : ""}`);
@@ -96,7 +96,7 @@ export default function PersonalImportedRecords({ status, onChanged, disabled }:
   }
 
   return <section className="panel settings-panel personal-imports">
-    <div className="personal-section-heading"><div><h2>查看与导入我的记录</h2><p className="muted">每次只更新当前学科、当前范围的一页记录。已导入内容可随时查看。</p></div></div>
+    <div className="personal-section-heading"><div><h2>查看与导入我的记录</h2><p className="muted">选择学科和记录范围，预览后导入。历史较多时，可继续导入下一页。</p></div></div>
     <div className="personal-import-filters">
       <label>学科<select className="input" value={platform} disabled={blocked} onChange={event => { setPlatform(event.target.value as LearningPlatform); setPage(1); setContextId(""); }}>{Object.entries(platformNames).map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
       <label>记录范围<select className="input" value={scope} disabled={blocked} onChange={event => { setScope(event.target.value as PersonalScope); setPage(1); setContextId(""); }}>{Object.entries(personalScopes).map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>
@@ -106,24 +106,24 @@ export default function PersonalImportedRecords({ status, onChanged, disabled }:
       {platform === "math" && ["favorites", "mistakes", "notes", "reports"].includes(scope) && <label>数学科目<select className="input" value={mathSubject} disabled={blocked} onChange={event => { setMathSubject(event.target.value); setPage(1); }}>{[["数一", "数学一"], ["数二", "数学二"], ["数三", "数学三"]].map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label>}
       {platform === "math" && scope === "reports" && <><label>练习模式<select className="input" value={mathMode} disabled={blocked} onChange={event => { setMathMode(event.target.value); setPage(1); }}>{["章节模式", "精选10题"].map(name => <option key={name} value={name}>{name}</option>)}</select></label><label>题目范围<select className="input" value={mathExam} disabled={blocked} onChange={event => { setMathExam(event.target.value); setPage(1); }}>{["真题模式", "非真题模式"].map(name => <option key={name} value={name}>{name}</option>)}</select></label></>}
       {platform === "math" && scope === "progress" && <label>阅读记录类型<select className="input" value={historyType} disabled={blocked} onChange={event => { setHistoryType(event.target.value); setPage(1); }}><option value="books">教辅阅读</option><option value="paper">真题阅读</option><option value="photo">拍照搜题</option></select></label>}
-      {scope === "answers" && <label>{platform === "math" ? "题目编号" : "原平台练习记录编号"}<input className="input" value={contextId} onChange={event => setContextId(event.target.value)} disabled={blocked} placeholder={platform === "math" ? "读取该题的原平台作答历史" : "读取指定练习的原平台作答历史"} /></label>}
+      {scope === "answers" && <label>{platform === "math" ? "题目编号" : "小程序练习记录编号"}<input className="input" value={contextId} onChange={event => setContextId(event.target.value)} disabled={blocked} placeholder={platform === "math" ? "输入小程序中的题目编号" : "输入小程序中的练习记录编号"} /></label>}
     </div>
-    {platform === "math" && scope === "reports" && <p className="muted">按所选科目与练习模式读取历史；课程考试、模考等其他测评类型以来源实际支持情况为准。</p>}
-    {platform === "computer" && scope === "bookshelf" && <p className="muted">计算机小程序暂无已确认的书架导入能力，可选择收藏、错题等范围。</p>}
+    {platform === "math" && scope === "reports" && <p className="muted">请选择与小程序中一致的科目和练习模式。</p>}
+    {platform === "computer" && scope === "bookshelf" && <p className="muted">暂不支持导入计算机书架，请选择收藏、错题等记录。</p>}
     <div className="personal-sync-actions"><button className="btn btn-secondary" disabled={blocked || !status.binding || (scope === "answers" && !contextId.trim())} onClick={() => void action("preview", async () => {
       const result = await api<ImportPage>(`${personalSyncPath}/preview`, { method: "POST", body: JSON.stringify({ platform, scope, context, page: 1, pageSize: 20 }) });
-      if (unsupported(result)) { setError(result.message || "当前来源暂不支持读取此类记录。"); return; }
+      if (unsupported(result)) { setError(result.message || "暂不支持读取此类记录，请选择其他范围。"); return; }
       setPreview(result);
     })}>{busy === "preview" ? <LoaderCircle size={15} className="spin" /> : <Eye size={15} />}预览小程序记录</button><button className="btn btn-primary" disabled={blocked || !canRefresh || (scope === "answers" && !contextId.trim())} onClick={() => void refresh()}>{busy === "refresh" ? <LoaderCircle size={15} className="spin" /> : <RefreshCw size={15} />}导入并更新当前范围</button>{nextSourcePage && <button className="btn btn-secondary" disabled={blocked || !canRefresh} onClick={() => void refresh(nextSourcePage)}><Download size={15} />继续导入下一页</button>}</div>
-    {!status.binding ? <p className="muted">关联自己的小程序账号后，可预览和导入记录。</p> : !status.settings.enabled ? <p className="muted">个人数据同步已关闭。开启并保存后，可导入和按需更新；已有记录继续保留。</p> : !status.settings.scopes.includes(scope) ? <p className="muted">请先在上方允许导入“{personalScopes[scope]}”，保存后即可更新。</p> : null}
+    {!status.binding ? <p className="muted">关联自己的小程序账号后，可预览和导入记录。</p> : !status.settings.enabled ? <p className="muted">请先开启自动更新并保存设置，再导入记录。已有记录仍可查看。</p> : !status.settings.scopes.includes(scope) ? <p className="muted">请先在上方勾选“{personalScopes[scope]}”，保存后即可更新。</p> : null}
     {error && <div className="error-banner" role="alert"><CircleAlert size={16} /><span>{error}</span></div>}
     {notice && <p className="notice" role="status">{notice}</p>}
-    {preview && <div className="personal-import-preview"><div><strong>小程序记录预览</strong><span>尚未保存到 Web</span></div><p>本页返回 {preview.count ?? preview.records?.length ?? 0} 条{preview.hasMore ? "，后续还有更多历史" : ""}。</p>{(preview.samples || preview.records || []).slice(0, 3).map((record, index) => <p className="personal-import-sample" key={record.id || index}>{recordTitle(record, scope, index)}</p>)}</div>}
-    <div className="personal-import-list-heading"><h3>已导入 Web 的{personalScopes[scope]}</h3><button className="text-link" disabled={blocked} onClick={() => void action("records", async () => { await readRecords(); })}>重新读取本地记录</button></div>
+    {preview && <div className="personal-import-preview"><div><strong>小程序记录预览</strong><span>尚未导入</span></div><p>本页共 {preview.count ?? preview.records?.length ?? 0} 条{preview.hasMore ? "，后续还有更多历史" : ""}。</p>{(preview.samples || preview.records || []).slice(0, 3).map((record, index) => <p className="personal-import-sample" key={record.id || index}>{recordTitle(record, scope, index)}</p>)}</div>}
+    <div className="personal-import-list-heading"><h3>已导入的{personalScopes[scope]}</h3><button className="text-link" disabled={blocked} onClick={() => void action("records", async () => { await readRecords(); })}>刷新已导入记录</button></div>
     {busy === "records" && !records ? <p className="loading-state" role="status"><LoaderCircle size={18} className="spin" />正在读取已导入记录…</p> : records?.records.length ? <>
       <div className="personal-import-list">{records.records.map((record, index) => <ImportedRecordCard key={record.id || index} record={record} scope={scope} index={index} />)}</div>
       <Pagination label="已导入学习记录" page={records.pagination.page} pageSize={records.pagination.pageSize} total={records.pagination.total} onPageChange={setPage} disabled={blocked} />
-    </> : <div className="personal-import-empty"><BookOpen size={27} /><p>当前范围还没有导入记录。</p><small>Web 中新产生的学习记录仍在原有书架、错题和历史页面中保存。</small></div>}
+    </> : <div className="personal-import-empty"><BookOpen size={27} /><p>当前范围还没有导入记录。</p><small>可先预览小程序记录，再选择导入。</small></div>}
   </section>;
 }
 
@@ -147,7 +147,7 @@ function ImportedRecordCard({ record, scope, index }: { record: ImportedRecord; 
     {data.lastStudyTime && <p>最近学习：{syncDate(String(data.lastStudyTime))}</p>}
     {(sourcePage !== undefined || sourceQuestion !== undefined) && <p>阅读位置：{sourcePage !== undefined ? `第 ${sourcePage} 页` : ""}{sourceQuestion !== undefined ? ` · 第 ${sourceQuestion} 题` : ""}</p>}
     {scope === "progress" && progressCount !== undefined && <p>已记录 {String(progressCount)}{data.totalNumber !== undefined ? ` / ${data.totalNumber}` : ""} 题</p>}
-    {!content && !isShelf && answer === undefined && score === undefined && data.StudentCount === undefined && !data.lastStudyTime && sourcePage === undefined && sourceQuestion === undefined && progressCount === undefined && <p>此记录已保存在当前 Web 账号下，可在对应学习页面继续查看。</p>}
+    {!content && !isShelf && answer === undefined && score === undefined && data.StudentCount === undefined && !data.lastStudyTime && sourcePage === undefined && sourceQuestion === undefined && progressCount === undefined && <p>记录已导入，可在对应学习页面查看。</p>}
     {record.importedAt && <small className="muted">导入时间：{syncDate(record.importedAt)}</small>}
   </div></details>;
 }

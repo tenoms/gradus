@@ -34,7 +34,7 @@ export default function RegistrationSettings() {
     }finally{setBusy("");}
   }
   return <section className="panel data-card">
-    <div className="data-heading"><UserPlus size={22} /><div><h2>用户注册</h2><p>开放后，访客可以自行创建学习账号，无需邮箱验证。新账号仅有学习权限。</p></div></div>
+    <div className="data-heading"><UserPlus size={22} /><div><h2>用户注册</h2><p>开放后，访客可自行注册学习账号。</p></div></div>
     {error && <div className="error-banner" role="alert"><CircleAlert size={17} /><span>{error}</span><button className="text-link" disabled={!!busy} onClick={() => void load()}>重新读取</button></div>}
     {notice && <p className="notice" role="status"><Check size={16} />{notice}</p>}
     {!saved && busy && <p role="status"><LoaderCircle size={17} className="spin" />正在读取注册设置…</p>}

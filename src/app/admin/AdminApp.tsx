@@ -65,7 +65,7 @@ export default function AdminApp() {
   useEffect(() => { setMobileOpen(false); window.scrollTo(0, 0); }, [location.pathname, session.user?.id]);
   if (booting) return <Loading />;
   if (!session.authenticated) return <AuthScreen space="admin" onAuthenticated={accept} />;
-  if (session.user?.role !== "admin") return <div className="management-loading"><ShieldCheck size={30} /><h1>当前账号没有管理权限</h1><p>请使用管理员身份登录管理空间。</p><button className="btn btn-primary" disabled={loggingOut} onClick={() => void logout()}>返回管理登录</button></div>;
+  if (session.user?.role !== "admin") return <div className="management-loading"><ShieldCheck size={30} /><h1>当前账号没有管理权限</h1><p>请切换管理员账号。</p><button className="btn btn-primary" disabled={loggingOut} onClick={() => void logout()}>返回管理登录</button></div>;
   const activePage = navigation.find(item => item.end ? location.pathname === "/" : location.pathname.startsWith(item.to));
   const activeLabel = activePage?.label || "管理账号";
   const PageIcon = activePage?.icon || ShieldCheck;
@@ -77,7 +77,7 @@ export default function AdminApp() {
         <Link className="management-brand" to="/"><span><GraduationCap size={34} /></span><div>知序 <small>Admin</small><p>学习系统管理空间</p></div></Link>
         <p className="management-nav-caption">空间管理</p>
         <nav aria-label="管理空间导航">{navigation.map(({ to, label, icon: Icon, end }) => <NavLink key={to} to={to} end={end}><Icon size={19} /><span>{label}</span></NavLink>)}</nav>
-        <div className="management-sidebar-bottom"><a className="management-space-switch" href="/learn/"><span>进入学习空间<small>使用独立的学习登录</small></span><ArrowUpRight size={17} /></a><p><ShieldCheck size={14} /> 独立管理会话</p></div>
+        <div className="management-sidebar-bottom"><a className="management-space-switch" href="/learn/"><span>进入学习空间</span><ArrowUpRight size={17} /></a></div>
       </aside>
       <div className="management-body">
         <header className="management-header">

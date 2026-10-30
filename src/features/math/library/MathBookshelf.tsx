@@ -272,7 +272,7 @@ export default function MathBookshelf({
             <p>
               {all.length ? "可切换标签、调整关键词或浏览其他科目。" : tab === "shelf"
                 ? "从书籍库加入常用教辅或试卷，开始安排学习。"
-                : tab === "recent" ? "学习后，这里会显示真实阅读进度。" : "平台暂未返回资料，可稍后刷新。"}
+                : tab === "recent" ? "学习后，这里会显示真实阅读进度。" : "暂无可用资料，可稍后刷新。"}
             </p>
             {all.length ? <button className="btn btn-secondary" onClick={() => { setKind("全部"); setTag(""); setSearch(""); }}>清除筛选</button> : tab !== "library" && (
               <button

@@ -26,7 +26,7 @@ export function createStudySync({ transport, readCache, writeCache, onChange }) 
     if (stopped) return;
     status = { state, pending: pending.length, ...(message ? { message } : {}) };
     try { writeCache({ data, pending }); } catch {
-      status = { ...status, state: "error", message: "浏览器缓存不可用，请保持页面打开并重试同步。" };
+      status = { ...status, state: "error", message: "当前设备暂时无法保存离线记录，请保持页面打开并确认同步完成。" };
     }
     onChange(data, status);
   };
@@ -64,7 +64,7 @@ export function createStudySync({ transport, readCache, writeCache, onChange }) 
       notify("synced");
     } catch (error) {
       revision = undefined;
-      notify("error", error.message || "同步失败，待同步的更改已保存在此浏览器。");
+      notify("error", error.message || "同步未完成，请保持页面打开，稍后重试。");
     }
   }
   function sync(refresh = false) {

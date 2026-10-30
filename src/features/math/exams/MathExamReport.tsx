@@ -142,7 +142,7 @@ export function MathReportDownloads({ sources }: { sources: any[] }) {
           ))}
         </div>
       ) : (
-        <p className="mer-muted">当前试卷未返回下载地址。</p>
+        <p className="mer-muted">当前暂无可下载资料。</p>
       )}
       {error && <p className="mer-error">{error}</p>}
     </section>
@@ -457,7 +457,7 @@ export default function MathExamReport({
       )}
       {result.errors.map((error, index) => (
         <p className="mer-error" key={index}>
-          部分报告暂未返回：{error.message}
+          部分报告暂时无法加载：{error.message}
         </p>
       ))}
       <NumericCards
@@ -633,7 +633,7 @@ export default function MathExamReport({
       {tasks.length > 0 && (
         <section className="mer-section">
           <h3>错题后的巩固计划</h3>
-          <p className="mer-muted">按原平台推荐内容与预计学习时长分组。</p>
+          <p className="mer-muted">按推荐内容与预计学习时长分组。</p>
           {tasks.map((group, index) => (
             <div className="mer-task-group" key={index}>
               <div className="mer-heading">

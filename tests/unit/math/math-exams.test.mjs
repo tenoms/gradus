@@ -483,7 +483,7 @@ test("weekly creation rejects entitlement text returned inside a successful tran
   await assert.rejects(adapter.mathExamApi.createWeekly({ ID: 4, name: "新练习" }), /权限次数不够/);
   assert.equal(call[0], "/api/ks_paper/RelPaper3");
   globalThis.__mathExamPost = async () => ({ code: 0, SuccessResponse: true, data: {} });
-  await assert.rejects(adapter.mathExamApi.createWeekly({ ID: 4 }), /没有返回可作答的试卷编号/);
+  await assert.rejects(adapter.mathExamApi.createWeekly({ ID: 4 }), /试卷暂时无法生成/);
   const created = { code: 0, SuccessResponse: true, data: { PaperID: 123 } };
   globalThis.__mathExamPost = async () => created;
   assert.equal(await adapter.mathExamApi.createWeekly({ ID: 4 }), created);

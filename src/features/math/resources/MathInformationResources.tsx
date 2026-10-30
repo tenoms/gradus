@@ -54,7 +54,7 @@ function Status({
   return loading ? (
     <div className="math-state">
       <LoaderCircle className="spin" size={23} />
-      <p>正在读取平台内容…</p>
+      <p>正在加载资料…</p>
     </div>
   ) : error ? (
     <div className="math-state math-error">

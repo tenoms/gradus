@@ -224,7 +224,7 @@ export default function MathVideoFeedback({
                 BusNumber: score,
                 Content: text.trim(),
               });
-              setNotice("你的评价已保存到当前 Web 学习账号");
+              setNotice("你的评价已保存");
               setEditing(false);
               refresh();
             } catch (e: any) {

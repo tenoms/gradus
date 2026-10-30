@@ -10,7 +10,7 @@ export default function PasswordSettings() {
   const [error, setError] = useState("");
   return <section className="panel settings-panel"><h2>登录安全</h2><p className="muted">更改密码后，其他设备需要重新登录。</p><form className="password-settings-form" onSubmit={async e => {
     e.preventDefault(); setBusy(true); setError(""); setNotice("");
-    try { await api("/api/auth/password", { method: "POST", body: JSON.stringify({ currentPassword, password }) }); setCurrent(""); setPassword(""); setNotice("密码已更新，其他设备的登录已失效。"); }
+    try { await api("/api/auth/password", { method: "POST", body: JSON.stringify({ currentPassword, password }) }); setCurrent(""); setPassword(""); setNotice("密码已更新，其他设备需重新登录。"); }
     catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }}>

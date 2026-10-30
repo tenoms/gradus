@@ -51,7 +51,7 @@ async function uploadIndexImage(file: File) {
   const data = mathData(result);
   const url = data?.src || data?.Path || data?.url;
   if (!/^https?:\/\//i.test(url))
-    throw new Error("平台没有返回可用的题目图片地址");
+    throw new Error("题目图片上传未完成，请重试保存。");
   return String(url);
 }
 export default function MathPhotoSearch({

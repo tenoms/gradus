@@ -44,7 +44,7 @@ export default function AppearanceSettings() {
     {settings.notice && <div className="appearance-message is-success" role="status"><Check size={18} /><p>{settings.notice}</p></div>}
     {settings.loading && !settings.draft ? <section className="panel appearance-loading" role="status"><LoaderCircle size={25} className="spin" /><p>正在读取空间主题…</p></section> : settings.draft && <>
       <section className="panel appearance-global-mode" aria-labelledby="appearance-global-mode-title">
-        <header><span className="appearance-platform-symbol"><Monitor size={23} /></span><div><h3 id="appearance-global-mode-title">统一明暗模式</h3><p>管理端、数学与 408 共用同一明暗设置。学习者可在本机选择自己的偏好。</p></div></header>
+        <header><span className="appearance-platform-symbol"><Monitor size={23} /></span><div><h3 id="appearance-global-mode-title">统一明暗模式</h3><p>为管理端和两科学习空间设置默认外观。</p></div></header>
         <fieldset className="appearance-mode-field" disabled={busy}><legend className="sr-only">明暗模式</legend><div className="appearance-mode-options">{appearanceModes.map(mode => {
           const ModeIcon = modeIcons[mode.value];
           return <label className={`appearance-mode ${settings.draft!.mode === mode.value ? "is-selected" : ""}`} key={mode.value}><input type="radio" name="appearance-mode" aria-label={`明暗模式：${mode.label}`} checked={settings.draft!.mode === mode.value} onChange={() => settings.setMode(mode.value as ThemeMode)} /><ModeIcon size={17} /><span>{mode.label}</span>{settings.draft!.mode === mode.value && <Check size={14} />}</label>;
@@ -60,7 +60,7 @@ export default function AppearanceSettings() {
         </section>;
       })}</div>
       <div className="appearance-save-bar" aria-busy={settings.pending}><div><div className="appearance-save-status"><strong><span className={settings.dirty ? "is-dirty" : ""} />{settings.pending ? "正在保存主题…" : settings.dirty ? "更改尚未保存" : "主题设置已同步"}</strong><button type="button" className="icon-button admin-inline-refresh" aria-label="重新读取设置" title="重新读取最新的空间主题设置" aria-busy={settings.loading} disabled={busy || settings.dirty} onClick={settings.reload}><RefreshCw size={14} className={settings.loading ? "spin" : ""} /></button></div><p>{settings.dirty ? "保存后应用到对应的学习空间。" : savedTime(settings.saved?.updatedAt)}</p></div><div className="appearance-save-actions"><button type="button" className="btn btn-secondary" disabled={busy} onClick={settings.restoreDefaults}><RotateCcw size={15} />恢复推荐设置</button><button type="button" className="btn btn-secondary" disabled={busy || !settings.dirty} onClick={settings.discard}>放弃更改</button><button type="button" className="btn btn-primary" disabled={busy || !settings.dirty || settings.refreshRequired} onClick={() => void settings.save()}>{settings.pending ? <LoaderCircle size={16} className="spin" /> : <Save size={16} />}保存主题</button></div></div>
-      <div className="appearance-footer"><p>这里是学习空间的默认主题。两科配色独立、明暗模式统一，学习者的本机偏好不会修改管理设置。</p></div>
+
     </>}
   </div>;
 }

@@ -74,14 +74,14 @@ export default function MathQuestionInsights({
       {loading ? (
         <p className="mqi-loading">
           <LoaderCircle className="spin" size={15} />
-          正在读取原平台统计…
+          正在加载题型统计…
         </p>
       ) : (
         <>
           {error && <p className="math-error-text" role="alert">{error}<button className="math-text-button" onClick={() => setVersion(value => value + 1)}>重新读取</button></p>}
           {crowd && crowd.done > 0 && (
             <p className="math-muted">
-              平台已练 {crowd.done} 次 · 正确 {crowd.right} 次 · 收藏{" "}
+              大家已练 {crowd.done} 次 · 正确 {crowd.right} 次 · 收藏{" "}
               {crowd.favorite} 次 · 正确率{" "}
               {Math.round((crowd.right / crowd.done) * 100)}%
             </p>
@@ -143,14 +143,14 @@ export default function MathQuestionInsights({
                       <dd>{r.maxYear || "—"}</dd>
                     </div>
                     <div>
-                      <dt>平台预测概率</dt>
+                      <dt>预测考查概率</dt>
                       <dd>
                         {r.Probability != null ? `${r.Probability}%` : "—"}
                       </dd>
                     </div>
                   </dl>
                   <p className="math-muted">
-                    预测概率沿用原平台统计，仅供安排复习时参考。
+                    预测概率仅供安排复习时参考。
                   </p>
                   <details>
                     <summary>查看历年分值</summary>
@@ -166,7 +166,7 @@ export default function MathQuestionInsights({
               ))}
             </div>
           ) : (
-            <p className="math-muted">原平台暂无这道题型的历年考查统计。</p>
+            <p className="math-muted">暂无这道题型的历年考查统计。</p>
           )}
         </>
       )}

@@ -600,7 +600,7 @@ export default function MathNotebook({
                 }, "笔记内容已保存")
               }
             >
-              {busy ? "正在同步…" : "保存到平台"}
+              {busy ? "正在同步…" : "保存"}
             </button>
           </section>
         </div>
@@ -720,7 +720,7 @@ export default function MathNotebook({
         )}
         {exports.length > 0 && (
           <div className="mn-export">
-            <h3>平台 PDF 导出</h3>
+            <h3>导出 PDF</h3>
             <p>
               按所选记录生成下载链接，记录较多时会拆成多个文件。
             </p>

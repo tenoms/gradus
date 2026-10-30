@@ -45,8 +45,8 @@ export function createTokenLifecycle({service,now=Date.now}){
         catch(error){if(!renewableError(error))throw error;}
       }
       if(!state){state=await service.loginPlatform(name,account,yyb);counts.logins++;}
-      if(!state?.connected||!state?.token)throw failure('来源未返回有效的学习令牌',502);
-      if(current&&!freshLogin&&subject(name,current)&&subject(name,state)&&subject(name,current)!==subject(name,state))throw failure('来源续期返回了不同的学习身份，请重新确认账号',409);
+      if(!state?.connected||!state?.token)throw failure('学习服务暂不可用，请稍后重试',502);
+      if(current&&!freshLogin&&subject(name,current)&&subject(name,state)&&subject(name,current)!==subject(name,state))throw failure('学习账号已变更，请重新确认账号',409);
       state={...state,auth:state.auth||tokenMetadata(name,{token:state.token},now())};
       slot.state=structuredClone(state);return state;
     })();

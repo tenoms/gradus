@@ -606,7 +606,7 @@ export default function MathCourseRecommendations({
               <div>
                 <h3>获取更多专题练习</h3>
                 <p>
-                  从已返回的考点中选择专题，继续追加练习。
+                  选择考点专题，继续追加练习。
                 </p>
               </div>
               <button

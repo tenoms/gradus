@@ -187,7 +187,7 @@ export default function ComputerCourses() {
   async function play(item: R) {
     const directUrl = safeLink(item.videoUrl || item.playUrl);
     if (!String(item.mediaId || "").trim() && !directUrl) {
-      setError("平台未返回此课时的播放地址或媒体编号。");
+      setError("此课时暂时无法播放，请稍后重试。");
       return;
     }
     setLoading(true);
@@ -209,7 +209,7 @@ export default function ComputerCourses() {
           ? data[0]?.url
           : data?.mediaList?.[0]?.playURL || data?.url || data?.playUrl,
       );
-      if (!url) throw new Error("平台暂未返回可用播放地址，请稍后重试。");
+      if (!url) throw new Error("视频暂时无法播放，请稍后重试。");
       setVideo(url);
       lastSave.current = Number(item.watchHistoryTime || 0);
       studySeconds.current = 0;

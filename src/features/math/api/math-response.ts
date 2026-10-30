@@ -28,8 +28,8 @@ export function mathResponseError(response: any): string | undefined {
     stack
   ) {
     return stack || message.length > 240
-      ? "数学平台暂时无法读取这项内容，请稍后重试。"
-      : message || "数学平台暂时无法完成请求，请稍后重试。";
+      ? "这项内容暂时无法加载，请稍后重试。"
+      : message || "暂时无法完成操作，请稍后重试。";
   }
 }
 export function mathResponseData(response: any): any {

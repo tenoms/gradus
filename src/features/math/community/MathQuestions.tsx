@@ -60,7 +60,7 @@ function useData(key: string, load: () => Promise<any>) {
         if (active) setData(r);
       })
       .catch((e) => {
-        if (active) setError(e.message || "数学平台暂时无法读取答疑");
+        if (active) setError(e.message || "答疑暂时无法加载，请稍后重试。");
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -175,7 +175,7 @@ export async function uploadMathAttachment(file: File) {
     result?.src ||
     (typeof data === "string" ? data : "");
   if (!/^https?:\/\//i.test(path))
-    throw new Error("平台未返回可用的附件地址，请重新上传");
+    throw new Error("附件暂时无法使用，请重新上传。");
   return String(path);
 }
 export function AttachmentInput({
@@ -896,7 +896,7 @@ function QuestionOrder({
         );
       }
       setAction("");
-      setNotice("语音解答已保存到当前 Web 学习账号");
+      setNotice("语音解答已保存");
       refresh();
     } finally {
       setBusy(false);
@@ -919,7 +919,7 @@ function QuestionOrder({
       </button>
       <div className="math-qa-heading">
         <div>
-          <span className="eyebrow">QUESTION #{qid}</span>
+          <span className="eyebrow">QUESTION & ANSWER</span>
           <h2>{info.Name || info.BookName || "数学学习答疑"}</h2>
           <p>
             第 {info.QuestionPage || "—"} 页 ·{" "}

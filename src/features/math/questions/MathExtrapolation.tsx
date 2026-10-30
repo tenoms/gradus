@@ -78,7 +78,7 @@ export default function MathExtrapolation({
         },
       );
       setState(State);
-      setNotice("举一反三学习结果已保存到当前 Web 学习账号");
+      setNotice("举一反三学习结果已保存");
       recordStudy({
         platform: "math",
         type: "extrapolation",

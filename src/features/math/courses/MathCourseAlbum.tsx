@@ -392,7 +392,7 @@ export default function MathCourseAlbum({
                 </section>
               ))}
               {!reading.data?.rows?.length && !reading.data?.errors?.content && (
-                <p className="mc-status">本章暂未返回学习内容。</p>
+                <p className="mc-status">本章暂无学习内容。</p>
               )}
             </>
           )}

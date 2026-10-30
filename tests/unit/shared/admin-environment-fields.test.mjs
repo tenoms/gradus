@@ -74,10 +74,10 @@ test('platform fields controlled by the environment are identified and disabled 
   assert.equal(elements(tree, element => element.type === 'input' && element.props.value === saved.config.computer.baseUrl)[0].props.disabled, false);
   prepareIntegration(saved);
   const html = renderToStaticMarkup(React.createElement(IntegrationSettings));
-  assert.match(html, /\.env 控制/);
+  assert.match(html, /系统预设/);
   assert.match(html, /id="integration-computer\.oauthClientSecret"[^>]*disabled=""/);
   assert.match(html, /aria-label="清空OAuth 客户端密钥"[^>]*disabled=""/);
-  assert.match(html, /\.env 控制的项目请在服务器修改并重启/);
+  assert.match(html, /系统预设项目暂不支持修改/);
 });
 
 test('platform saves never send environment-controlled secrets or clear requests even if stale edits exist', async () => {
@@ -97,7 +97,7 @@ test('platform secrets remain editable when no environment override is present',
   prepareIntegration(configuration([]));
   const html = renderToStaticMarkup(React.createElement(IntegrationSettings));
   assert.doesNotMatch(html, /id="integration-computer\.oauthClientSecret"[^>]*disabled/);
-  assert.doesNotMatch(html, /\.env 控制/);
+  assert.doesNotMatch(html, /系统预设/);
   assert.match(html, /输入新值会替换原值/);
 });
 
@@ -153,7 +153,7 @@ test('the default YYB source locks only environment-owned fields and omits their
   await new Promise(resolve => setImmediate(resolve));
   assert.deepEqual(fixture.calls[0].body, { name: '来源新名称', baseUrl: source.baseUrl, enabled: false, revision: source.revision });
   prepareService(source, 'default', draft);
-  assert.match(renderToStaticMarkup(React.createElement(YybServices, { onChanged: async () => {} })), /默认服务中标记/);
+  assert.match(renderToStaticMarkup(React.createElement(YybServices, { onChanged: async () => {} })), /标记“系统预设”的项目暂不支持在此修改/);
 });
 
 test('new YYB sources retain independently editable addresses and credentials', async () => {

@@ -35,8 +35,8 @@ test("课程榜单保存返回编号后立即可撤赞，无编号不显示成�
   const added = courseRankingVoteResult({ id: 10, GiveState: null, GiveCount: 0 }, 25);
   assert.deepEqual(added, { id: 10, GiveState: 25, GiveCount: 1 });
   assert.deepEqual(courseRankingVoteResult(added, true), { id: 10, GiveState: null, GiveCount: 0 });
-  assert.throws(() => courseRankingVoteResult({ id: 10 }, null), /编号/);
-  assert.throws(() => courseRankingVoteResult({ id: 10 }, true), /编号/);
+  assert.throws(() => courseRankingVoteResult({ id: 10 }, null), /尚未确认点赞成功，请刷新榜单后核对。/);
+  assert.throws(() => courseRankingVoteResult({ id: 10 }, true), /尚未确认点赞成功，请刷新榜单后核对。/);
 });
 test("课程普通与精批全榜使用各自原记录编号合约", () => {
   assert.deepEqual(courseRankingRequest(context), {

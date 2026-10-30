@@ -23,13 +23,13 @@ export function createLearningRouter({service,identities,connections,auth,accoun
     if(settings.mode!=='custom')return res.json({accounts:[],automatic:true});
     let accounts;
     try{accounts=await service.yybRequest('/accounts',undefined,undefined,userYybOverride(settings));}
-    catch(error){if(error.status===401)throw new ApiError('自有资源来源认证失败，请检查来源设置',502);throw error;}
-    if(!Array.isArray(accounts))throw new ApiError('YYB 来源账号目录格式不正确',502);
+    catch(error){if(error.status===401)throw new ApiError('账号连接失败，请检查连接设置',502);throw error;}
+    if(!Array.isArray(accounts))throw new ApiError('无法加载账号列表，请稍后重试',502);
     res.json({accounts:accounts.map(cleanAccount),automatic:!settings.ref});
   });
   router.get('/auth/avatar/:ref',authenticated,async(req,res)=>{
     const settings=await identities.yybSettings(req.studySession.user.id);
-    if(settings.mode!=='custom')throw new ApiError('此来源头像不可用',404);
+    if(settings.mode!=='custom')throw new ApiError('头像暂不可用',404);
     const response=await fetch(`${settings.baseUrl}/accounts/avatar?ref=${encodeURIComponent(req.params.ref)}`,{headers:settings.apiKey?{Authorization:`Bearer ${settings.apiKey}`}:{},signal:AbortSignal.timeout(runtimeConfig.upstream.avatarTimeoutMs)});
     if(!response.ok||!response.headers.get('content-type')?.startsWith('image/'))throw new ApiError('头像暂不可用',404);
     res.type(response.headers.get('content-type')).send(Buffer.from(await response.arrayBuffer()));
@@ -68,8 +68,8 @@ export function createLearningRouter({service,identities,connections,auth,accoun
   router.post('/platform/math/photo',authenticated,express.raw({type:'multipart/form-data',limit:runtimeConfig.http.uploadBodyLimit}),async(req,res)=>{
     if(!Buffer.isBuffer(req.body)||!req.body.length)throw new ApiError('请选择要搜索的题目图片',400);
     const config=service.getConfig().math;
-    if(!config.enabled)throw new ApiError('数学资源来源已停用',503);
-    if(!config.ocrUrl||!config.ocrUsername||!config.ocrPassword)throw new ApiError('请在管理空间配置数学 OCR 地址和凭据',503);
+    if(!config.enabled)throw new ApiError('数学学习平台已停用，请联系管理员',503);
+    if(!config.ocrUrl||!config.ocrUsername||!config.ocrPassword)throw new ApiError('拍照搜题暂不可用，请联系管理员',503);
     let form;
     try{form=await new Request('http://localhost',{method:'POST',headers:{'content-type':req.get('content-type')},body:req.body}).formData();}
     catch{throw new ApiError('图片上传格式不正确',400);}
@@ -77,7 +77,7 @@ export function createLearningRouter({service,identities,connections,auth,accoun
     if(!image||typeof image==='string')throw new ApiError('请选择要搜索的题目图片',400);
     const payload=new FormData();payload.set('image',image);payload.set('username',config.ocrUsername);payload.set('password',config.ocrPassword);
     try{res.json(publicPlatformResponse(await service.requestJson(config.ocrUrl,{method:'POST',body:payload})));}
-    catch(error){if(error.status===401)throw new ApiError('图片识别来源认证失败，请联系管理员检查设置',502);throw error;}
+    catch(error){if(error.status===401)throw new ApiError('拍照搜题暂不可用，请联系管理员',502);throw error;}
   });
   router.post('/platform/:platform/upload',authenticated,express.raw({type:'multipart/form-data',limit:runtimeConfig.http.uploadBodyLimit}),async(req,res)=>{
     const name=req.params.platform,allowed={computer:['/api/user/v1/attachment/upload/','/api/exam/wx/searchExercise/photo','/api/exam/wx/searchExercise/text/similarity'],math:['/api/sys_attachment/SearchUploadImg','/api/sys_attachment/LayuiUpImg','/api/sys_attachment/UpFile']},requestPath=req.query.path;
@@ -90,7 +90,7 @@ export function createLearningRouter({service,identities,connections,auth,accoun
       return service.requestJson(`${service.getConfig()[name].baseUrl}${requestPath}${query.size?`?${query}`:''}`,{method:'POST',headers:{Authorization:bearer(source.platformState.token),...(name==='computer'?{'Tenant-Code':requestPath==='/api/exam/wx/searchExercise/text/similarity'?'2':String(service.getConfig().computer.tenantCode)}:{DesEncryptModel:'PKCS7'}),'content-type':req.get('content-type')},body:req.body});
     };
     let result;
-    try{result=await send();}catch(error){if(error.status!==401)throw error;try{result=await send(true);}catch{throw new ApiError('资源来源暂时不可用，请稍后重试',502);}}
+    try{result=await send();}catch(error){if(error.status!==401)throw error;try{result=await send(true);}catch{throw new ApiError('上传暂时无法完成，请稍后重试',502);}}
     res.json(publicPlatformResponse(result));
   });
   router.post('/platform/:platform',authenticated,async(req,res)=>{
@@ -101,7 +101,7 @@ export function createLearningRouter({service,identities,connections,auth,accoun
     const args={platform:name,session:req.studySession,config:service.getConfig(),request:input};
     const readSource=async request=>{
       try{return await resourceSync.requestSource({session:req.studySession,name,path:request.path,input:request});}
-      catch(error){if(error.status===401)throw new ApiError('资源来源暂时不可用，请稍后重试',502);throw error;}
+      catch(error){if(error.status===401)throw new ApiError('学习内容暂时无法加载，请稍后重试',502);throw error;}
     };
     const invokeResource=()=>resourceSync.read({...args,load:async()=>stripSharedPersonalState(await readSource(input))});
     const result=await privatePlatform.handle({userId:req.studySession.user.id,name,input,platform,invoke:invokeResource,displayName:req.studySession.user.displayName,resourceSync,session:req.studySession,config:service.getConfig(),readSource:async request=>{

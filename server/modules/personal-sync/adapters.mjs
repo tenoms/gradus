@@ -7,7 +7,7 @@ const noteTypes={favorites:'收藏',mistakes:'错题',notes:'笔记'};
 const defaultMajor='701769479767592960';
 const hash=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const array=value=>Array.isArray(value)?value:[];
-const dataOf=response=>{let value=response?.data??response?.Data??[];if(typeof value==='string'){try{value=JSON.parse(value);}catch{throw new ApiError('个人来源返回的数据格式不正确',502);}}return value;};
+const dataOf=response=>{let value=response?.data??response?.Data??[];if(typeof value==='string'){try{value=JSON.parse(value);}catch{throw new ApiError('暂时无法读取小程序记录，请稍后重试',502);}}return value;};
 const privateFields=/^(?:pwd|password|access_token|refresh_token|token|authorization|session_key|sessionkey|tel|telephone|phone|phonenumber|mobile|email|unionid)$/i;
 export function sanitizePersonalData(value){
   const clean=publicPlatformResponse(value);
@@ -21,7 +21,7 @@ function checked(response,{platform,path}={}){
   const emptyNullablePage=value?.list===null&&Number(value.total)===0&&Number(value.pages)===0;
   const knownEmpty=platform==='computer'&&(emptyPage&&String(code)==='4104'&&path==='/api/exam/wx/practice/examinationRecord'||(emptyPage||emptyNullablePage)&&String(code)==='4114'&&['/api/exam/wx/personal/collectExerciseList','/api/exam/wx/personal/incorrectExerciseList'].includes(path));
   if(knownEmpty)return response;
-  if(response?.SuccessResponse===false||response?.success===false||code!==undefined&&!['0','200'].includes(String(code)))throw new ApiError(`个人来源读取未成功${code===undefined?'':`（业务码 ${code}）`}`,String(code)==='401'?401:502);
+  if(response?.SuccessResponse===false||response?.success===false||code!==undefined&&!['0','200'].includes(String(code)))throw new ApiError('暂时无法读取小程序记录，请稍后重试',String(code)==='401'?401:502);
   return response;
 }
 function rowsOf(response){
@@ -37,7 +37,7 @@ function identity(row,collection,table=0){
   return `${collection}:${table}:derived:${hash(row)}`;
 }
 function record(row,collection,scope,table=0,key){return {collection,scope,sourceRecordId:key||identity(row,collection,table),data:sanitizePersonalData(row),sourceUpdatedAt:row.UpdateTime||row.updateTime||row.updateDate||row.updatedAt||null};}
-const needed=fields=>({status:'needs_context',message:`此类记录需要先指定${fields.join('、')}，可在对应学习页面按需更新`,requiredContext:fields,records:[],hasMore:false,nextPage:null});
+const needed=fields=>({status:'needs_context',message:'请先打开对应的题目、书籍或章节，再更新学习记录',requiredContext:fields,records:[],hasMore:false,nextPage:null});
 const unsupported=message=>({status:'unsupported',message,records:[],hasMore:false,nextPage:null});
 export function normalizePersonalRequest(input={}){
   const platform=input.platform,scope=input.scope;
@@ -52,21 +52,21 @@ export function normalizePersonalRequest(input={}){
   return {platform,scope,context,page,pageSize};
 }
 export function personalReadCapability({platform,scope,context}){
-  if(platform==='computer'&&scope==='bookshelf')return unsupported('计算机小程序没有已确认的同类书架导入接口');
+  if(platform==='computer'&&scope==='bookshelf')return unsupported('暂不支持导入计算机书架');
   if(scope==='answers'&&!context[platform==='math'?'QuestionID':'examRecordId'])return needed([platform==='math'?'QuestionID':'examRecordId']);
   return null;
 }
 export async function readPersonalPage(service,{platform,scope,context={},page=1,pageSize=20,state}){
   const limitation=personalReadCapability({platform,scope,context});if(limitation)return limitation;
   const configured=service.getConfig(),subject=platform==='math'?String(state.stuId||state.user?.StuID||''):String(state.user?.userId||'');
-  if(!subject)throw new ApiError('个人来源未返回真实学习身份，无法导入',502);
+  if(!subject)throw new ApiError('无法确认小程序账号，请重新关联后导入',502);
   const math=async(command,parameters)=>checked(await service.mathRequest('/api/Master/AutoModel',{method:'POST',data:{command,data:JSON.stringify({...parameters,StuID:subject,System_Station_ID:configured.math.stationId})},query:{}},state));
   const computer=async(path,query)=>checked(await service.computerRequest(path,{method:'GET',query,data:{}},state),{platform:'computer',path});
   const result=(records,hasMore=false,extra={})=>({status:'ready',records,hasMore,nextPage:hasMore?page+1:null,...extra});
   if(platform==='math'){
     if(scope==='bookshelf'){
       const row=rowsOf(await math('GetUserInfoByStuID',{}))[0];
-      if(!row)throw new ApiError('个人来源未返回可确认的书架资料',502);
+      if(!row)throw new ApiError('暂时无法读取小程序书架，请稍后重试',502);
       return result([record({EBookIDs:row.EBookIDs||'',PaperIDs:row.PaperIDs||'',AlbumIDs:row.AlbumIDs||''},'profile',scope,0,'bookshelf')]);
     }
     if(noteTypes[scope]){
@@ -125,5 +125,5 @@ export async function readPersonalPage(service,{platform,scope,context={},page=1
     const start=(page-1)*pageSize;
     return result(rows.slice(start,start+pageSize).map((row,index)=>record(row,'progress',scope,0,row.id||row.chapterId?`progress:${base.majorId}:${base.examCategory}:${row.id||row.chapterId}`:`progress:${base.majorId}:${base.examCategory}:${start+index}`)),rows.length>start+pageSize,{range:base,sourceTotal:rows.length});
   }
-  return unsupported('此类个人记录尚未确认可靠的源读取接口');
+  return unsupported('暂不支持导入此类记录');
 }

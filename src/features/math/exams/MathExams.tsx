@@ -620,7 +620,7 @@ function PaperRunner({
         <p className="math-exam-muted">
           {teacherMark
             ? "本场考试由教师阅卷，请提交完整作答。"
-            : "客观题按答案评分，主观题对照解析自评后保存得分。作答草稿保存在当前浏览器，保存答案后同步至平台。"}
+            : "客观题按答案评分，主观题对照解析自评后保存得分。草稿仅保留在当前浏览器，点击保存答案后可跨设备查看。"}
         </p>
         <AsyncStatus loading={loading} error={error} />
         <button
@@ -1394,7 +1394,7 @@ function WeeklyCreator({
       const result = mathData(response);
       if (!result?.PaperID)
         throw new Error(
-          typeof result === "string" ? result : "上游没有返回试卷编号。",
+          typeof result === "string" ? result : "试卷暂时无法生成，请稍后重试。",
         );
       onCreated(result.PaperID);
     } catch (e: any) {

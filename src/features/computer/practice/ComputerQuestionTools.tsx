@@ -132,7 +132,7 @@ export function ComputerInterviewRecorder({
       if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder)
         throw new Error("当前浏览器不支持录音，可上传已有录音文件。");
       const format = computerRecordingFormat((type) => MediaRecorder.isTypeSupported(type));
-      if (!format) throw new Error("当前浏览器无法录制平台支持的音频，请上传已有的 MP3 或 MP4 录音。");
+      if (!format) throw new Error("当前浏览器无法录制可用音频，请上传已有的 MP3 或 MP4 录音。");
       const source = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.current = source;
       const active = new MediaRecorder(source, { mimeType: format.mimeType });
@@ -173,7 +173,7 @@ export function ComputerInterviewRecorder({
       const upload = await prepareComputerAudioFile(file),
         data = await computerUpload(upload),
         audioUrl = safeLink(data.previewUrl || data.url);
-      if (!audioUrl) throw new Error("平台未返回可播放的录音地址，请改用 MP3 或 MP4 录音文件。");
+      if (!audioUrl) throw new Error("录音暂时无法播放，请改用 MP3 或 MP4 录音文件。");
       setUrl(audioUrl);
       onAnswer(computerVoiceAnswer(audioUrl, duration));
     } catch (e: any) {

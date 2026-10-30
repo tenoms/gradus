@@ -496,7 +496,7 @@ function ModulePractice({
         payload,
       );
       const id = row.AnswerID || Number(mathData(response));
-      if (!id) throw new Error("平台未确认本题训练记录，请重试");
+      if (!id) throw new Error("尚未确认本题记录已保存，请刷新后核对。");
       const result = {
         AnswerID: id,
         Answer: isCorrect ? 1 : 2,

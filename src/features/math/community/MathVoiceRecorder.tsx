@@ -131,7 +131,7 @@ export default function MathVoiceRecorder({
         const data = mathData(result);
         url = data?.Path || data?.src || data?.Url;
         if (!/^https?:\/\//i.test(url))
-          throw new Error("平台未返回可播放的语音地址");
+          throw new Error("录音暂时无法播放，请重新上传。");
         setUploaded(url);
       }
       await onSend(url);

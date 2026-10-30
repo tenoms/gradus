@@ -150,7 +150,13 @@ test("editing a stale resource keeps the draft until the operator reloads the la
   assert.equal(f.button("保存资源内容").props.disabled, true);
   assert.equal(f.find(node => node.type === "textarea").props.value, '{"books":[]}');
   f.click("重新读取最新资源"); await f.flush();
-  assert.match(textOf(f.tree), /版本 4/); assert.equal(reads, 2);
+  assert.equal(reads, 2);
+  f.click("编辑内容");
+  assert.equal(f.find(node => node.type === "textarea").props.value, resourceData.pretty(detail.response));
+  f.find(node => node.type === "textarea").props.onChange({ target: { value: '{"books":[]}' } }); f.render();
+  assert.equal(f.button("保存资源内容").props.disabled, false);
+  f.click("保存资源内容"); await f.flush();
+  assert.deepEqual(JSON.parse(f.calls.at(-1).input.body), { revision: 4, response: { books: [] } });
 });
 
 test("resource content accepts objects and arrays but rejects scalar or malformed JSON", () => {

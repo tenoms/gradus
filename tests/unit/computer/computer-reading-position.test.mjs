@@ -190,7 +190,7 @@ test("a failed cloud save keeps the visited question and reports the unsaved pos
   const view = session({ save: async () => { throw new Error("offline"); } });
   await view.settle(); view.button("下一题").onClick(); await view.settle();
   assert.equal(view.stem(), "Question 2");
-  assert.match(view.notice(), /云端续学位置尚未同步.*offline/);
+  assert.match(view.notice(), /题目已切换，续学位置暂未保存：offline/);
   assert.equal(view.button("下一题").disabled, false);
   assert.equal(JSON.parse(view.cache.get(cacheKey())).current, 1);
   view.unmount();

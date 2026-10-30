@@ -44,6 +44,6 @@ export default function ComputerKnowledgeTags({ question, majorId }: { question:
   return <section className="computer-knowledge" aria-label="题目知识点">
     <h4>知识点</h4>
     {tags.length > 0 && <ul className="computer-knowledge-tags">{tags.map(tag => <li key={tag.id}>{tag.name}</li>)}</ul>}
-    {needsCatalog && (!current || current.loading) ? <p className="computer-knowledge-note" role="status">正在读取知识点名称…</p> : current?.error ? <p className="computer-knowledge-note" role="status">知识点名称暂时无法读取。<button type="button" onClick={() => setVersion(value => value + 1)}><RefreshCw size={12} />重试</button></p> : missing > 0 && <p className="computer-knowledge-note">{tags.length ? "部分细分知识点暂未提供名称。" : "原平台暂未提供这些知识点的名称。"}</p>}
+    {needsCatalog && (!current || current.loading) ? <p className="computer-knowledge-note" role="status">正在读取知识点名称…</p> : current?.error ? <p className="computer-knowledge-note" role="status">知识点名称暂时无法读取。<button type="button" onClick={() => setVersion(value => value + 1)}><RefreshCw size={12} />重试</button></p> : missing > 0 && <p className="computer-knowledge-note">{tags.length ? "部分细分知识点暂未提供名称。" : "这些知识点暂未提供名称。"}</p>}
   </section>;
 }

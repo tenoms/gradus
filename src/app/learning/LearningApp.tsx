@@ -304,7 +304,7 @@ export default function LearningApp() {
               <span>个人中心</span>
             </NavLink>
             <div className="sidebar-footer">
-              知序学习空间 <span>v2.0</span>
+              知序学习空间
             </div>
           </div>
         </aside>

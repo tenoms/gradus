@@ -177,7 +177,7 @@ export default function ComputerSpecialPractice({
           <>
             <h3>错误率Top20挑战</h3>
             <p className="computer-dim">
-              读取原平台的高频错题练习，集中复习容易出错的考点。
+              集中复习高频错题，巩固容易出错的考点。
             </p>
             <button
               className="btn btn-primary"

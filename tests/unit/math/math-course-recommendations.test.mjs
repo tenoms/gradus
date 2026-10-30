@@ -185,7 +185,7 @@ test("completion is a separate whole-paper record and append keeps source ordina
     ).ProductID,
     undefined,
   );
-  assert.throws(() => model.recommendationAppend(context, {}, 6), /关联/);
+  assert.throws(() => model.recommendationAppend(context, {}, 6), /暂时无法追加题目，请重新打开测评后重试。/);
   assert.throws(
     () => model.recommendationAppend(context, { RelatedID: 55 }, ""),
     /专题/,

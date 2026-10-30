@@ -50,7 +50,7 @@ test("submission success reads the actual matching cloud report when the write o
 test("report reads never re-submit answers and preserve failures instead of fabricating report data", async () => {
   const seen = [];
   globalThis.__computerLearningRequest = async (path) => { seen.push(path); return { list: [{ id: "unrelated", examinationId: "other-paper" }] }; };
-  await assert.rejects(adapter.computerLearningApi.submittedReport({ examinationId: "new-paper", majorId: "major", examType: 4 }), /尚未返回/);
+  await assert.rejects(adapter.computerLearningApi.submittedReport({ examinationId: "new-paper", majorId: "major", examType: 4 }), /本次报告暂时无法加载，请稍后重试。/);
   assert.deepEqual(seen, ["/api/exam/wx/practice/examinationRecord"]);
   globalThis.__computerLearningRequest = async (path) => { assert.equal(path, "/api/exam/wx/practice/examinationRecord/detail"); throw new Error("platform unavailable"); };
   await assert.rejects(adapter.computerLearningApi.submittedReport({ recordId: "known", examinationId: "new-paper", majorId: "major", examType: 4 }), /platform unavailable/);
@@ -325,7 +325,7 @@ test("record reset stays within explicitly selected upstream records and voice a
 test('mistake mutations reject an unconfirmed false result and cloud continuation uses the original one-based index',async()=>{
   const calls=[];
   globalThis.__computerLearningRequest=async(...args)=>{calls.push(args);return false;};
-  await assert.rejects(adapter.computerLearningApi.markMistake({exerciseId:'new-q'},'m','chapter',1,true),/未完成错题移除/);
+  await assert.rejects(adapter.computerLearningApi.markMistake({exerciseId:'new-q'},'m','chapter',1,true),/尚未确认错题已移除，请刷新记录后核对。/);
   assert.equal(calls[0][1].flag,2);
   globalThis.__computerLearningRequest=async(...args)=>{calls.push(args);return true;};
   await adapter.computerLearningApi.markMistake({exerciseId:'new-q'},'m','chapter',1);

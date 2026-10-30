@@ -36,7 +36,7 @@ export function ComputerExamReport({
     setBusy(true);
     setError("");
     try {
-      if (!report.exam.id) throw new Error("当前报告没有有效的记录编号");
+      if (!report.exam.id) throw new Error("暂时无法重新批阅，请刷新报告后重试。");
       await computerLearningApi.retryScore(String(report.exam.id));
       setNotice("已重新提交批阅，请稍后刷新查看结果。");
       onRefresh?.();

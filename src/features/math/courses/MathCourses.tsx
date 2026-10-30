@@ -124,7 +124,7 @@ function Status({
       <div className="empty-state">
         <BookOpen size={30} />
         <h3>当前账号暂无相关内容</h3>
-        <p>课程与学习记录同步到当前学习账号。</p>
+        <p>可以试试其他课程分类。</p>
       </div>
     );
   return null;
@@ -461,7 +461,7 @@ function TaskList({
     setOpenError("");
     if ([3, 4, 5, 6, 9].includes(Number(task.BusType))) {
       if (!(task.BusID || task.PaperID)) {
-        setOpenError("请先完成前置测评，平台生成练习后即可进入。");
+        setOpenError("请先完成前置测评，再进入配套练习。");
         return;
       }
       setPaper(task);
@@ -1374,7 +1374,7 @@ function LeakReport({
           {Number(task._c_paper_student?.Score) >= 0
             ? `本次得分 ${task._c_paper_student.Score} 分。`
             : ""}
-          训练完成状态随当前学习账号保存。
+          训练进度会自动保存。
         </p>
         <button className="btn btn-secondary" onClick={onAnswers}>
           查看作答与老师批阅

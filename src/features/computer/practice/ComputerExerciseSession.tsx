@@ -346,7 +346,7 @@ export default function ExerciseSession({
               sectionId: launch.sectionId,
             });
         const next = extractExercises(data);
-        if (!next[0]) throw new Error("平台尚未返回这道题，请稍后重试。");
+        if (!next[0]) throw new Error("这道题暂时无法加载，请稍后重试。");
         setSkipped((ids) => [...new Set([...ids, ...computerSkippedIds(data)])]);
         if(data.examRecordId)progressRecord.current=String(data.examRecordId);
         setQuestions((q) => {
@@ -360,7 +360,7 @@ export default function ExerciseSession({
         setShowSheet(false);
       if(!isReadOnly&&!launch.redo&&progressRecord.current) {
         try {await computerLearningApi.saveSheetIndex(progressRecord.current,index+1);}
-        catch(error:any){setNotice(`题目已切换，云端续学位置尚未同步：${error.message}`);}
+        catch(error:any){setNotice(`题目已切换，续学位置暂未保存：${error.message}`);}
       }
     } catch (e: any) {
       setError(e.message);
@@ -413,7 +413,7 @@ export default function ExerciseSession({
     try {
       const uploaded = await computerUpload(file),
         url = uploaded.previewUrl || uploaded.url;
-      if (!url) throw new Error("上传成功，但上游没有返回图片地址。");
+      if (!url) throw new Error("图片暂时无法使用，请重新上传。");
       const result = await request(
         "/api/exam/wx/practice/ai/score",
         {},
@@ -549,7 +549,7 @@ export default function ExerciseSession({
         />
       )}
       {finished && !finalReport && (
-        <div className="computer-notice"><p>试卷已提交。报告需要从学习平台读取。</p><button className="btn btn-secondary" disabled={loading} onClick={() => void refreshSubmittedReport()}><RefreshCw size={15} />重试读取报告</button></div>
+        <div className="computer-notice"><p>试卷已提交，报告暂时无法加载。</p><button className="btn btn-secondary" disabled={loading} onClick={() => void refreshSubmittedReport()}><RefreshCw size={15} />重试读取报告</button></div>
       )}
       <div className={`computer-question-columns ${hasSubmitted ? "with-analysis" : ""}`}>
       <div className="computer-question-answer">

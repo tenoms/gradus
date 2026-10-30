@@ -216,7 +216,7 @@ export default function MathScoreRank({ stuid }: { stuid: string }) {
       setNotice(
         complete
           ? "初试成绩已提交，排名已刷新。"
-          : "成绩草稿已保存到数学账号。",
+          : "成绩草稿已保存。",
       );
       ranks.reload();
       if (complete) setView("rank");
