@@ -150,8 +150,55 @@
 .cc-courses .computer-lesson-list .computer-lesson {
   border: 0;
 }
-.cc-courses .computer-player > .computer-toolbar {
-  margin-top: 16px;
+.cc-player-media {
+  display: grid;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 520px;
+  margin: 12px 0;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--media-bg);
+}
+.cc-player-media > .learning-video {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+.cc-player-media .learning-video video {
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  object-fit: contain;
+}
+.cc-player-media .learning-video .error-banner {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  margin: 0;
+}
+.cc-player-placeholder {
+  height: 100%;
+  min-height: 0;
+  padding: 20px;
+}
+.cc-player-placeholder,
+.cc-player-placeholder p {
+  color: var(--on-media);
+}
+.cc-player-feedback {
+  min-height: 44px;
+}
+.cc-player-feedback > .error-banner,
+.cc-player-feedback > .computer-notice {
+  margin: 0;
+  padding: 10px 12px;
+}
+.cc-player-toolbar {
+  min-height: 20px;
+  margin-top: 8px;
 }
 @media (max-width: 600px) {
   .cc-course-title {
@@ -177,8 +224,5 @@
   .cc-review-images img {
     max-width: 100px;
     height: 95px;
-  }
-  .cc-courses .computer-player > .computer-toolbar {
-    gap: 9px;
   }
 }

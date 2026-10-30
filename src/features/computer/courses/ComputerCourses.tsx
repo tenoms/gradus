@@ -298,7 +298,6 @@ export default function ComputerCourses() {
   }
   return (
     <div className="cc-courses">
-      <Status loading={loading} error={error} />
       {!course ? (
         <>
           <WorkspaceBar label="408 课程导航与搜索" navigation={
@@ -428,8 +427,8 @@ export default function ComputerCourses() {
           <div className="computer-course-layout">
             <div className="panel computer-player">
               <h3>{label(lesson || course)}</h3>
-              {video ? (
-                <>
+              <div className="cc-player-media" aria-busy={loading}>
+                {video ? (
                   <LearningVideo
                     ref={videoRef}
                     key={`${lesson?.id}:${video}`}
@@ -467,28 +466,26 @@ export default function ComputerCourses() {
                     onEnded={(e) => { trackPlayback(false); void saveProgress(e.currentTarget, true); }}
                     onError={() => { trackPlayback(false); setError("视频暂时无法加载，请重新选择课时后重试。"); }}
                   />
-                  <div className="computer-toolbar">
-                    <a
-                      className="computer-text-link"
-                      href={video}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      打开视频地址
-                    </a>
+                ) : (
+                  <div className="empty-state cc-player-placeholder" role={loading ? "status" : undefined}>
+                    {loading ? <LoaderCircle className="spin" size={33} /> : <Play size={33} />}
+                    <p>{loading ? "正在加载课时视频…" : "从课时目录选择内容，继续你的学习。"}</p>
                   </div>
-                </>
-              ) : (
-                <div className="empty-state">
-                  <Play size={33} />
-                  <p>从课时目录选择内容，继续你的学习。</p>
-                </div>
-              )}
-              {notice && (
-                <p className="computer-notice" role="status">
-                  {notice}
-                </p>
-              )}
+                )}
+              </div>
+              <div className="cc-player-feedback">
+                <Status error={error} />
+                {!error && notice && (
+                  <p className="computer-notice" role="status">{notice}</p>
+                )}
+              </div>
+              <div className="computer-toolbar cc-player-toolbar">
+                {video && (
+                  <a className="computer-text-link" href={video} target="_blank" rel="noreferrer">
+                    打开视频地址
+                  </a>
+                )}
+              </div>
               <WorkspaceTabs
                 label="课程详情栏目"
                 className="cc-details-tabs"

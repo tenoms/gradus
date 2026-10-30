@@ -18,10 +18,10 @@ const mediaUrl = "https://media.example.test/shared.mp4";
 const makeMedia = () => ({ currentTime: 0, duration: 200, paused: false, seeking: false, readyState: 4 });
 const nodes = tree => !tree || typeof tree !== "object" ? [] : [tree, ...(tree.props?.children || []).flat(Infinity).flatMap(nodes)];
 
-function player({ initialPosition = 0, failures = 0 } = {}) {
+function player({ initialPosition = 0, failures = 0, loadSecond } = {}) {
   const course = { id: "package", name: "408课程", courseRelated: "a,b", courses: [{ id: "a", name: "分课A" }, { id: "b", name: "分课B" }] };
   const first = { id: "first", lessonName: "第一课", videoUrl: mediaUrl, watchHistoryTime: initialPosition };
-  const second = { id: "second", lessonName: "第二课", videoUrl: mediaUrl, watchHistoryTime: 4 };
+  const second = { id: "second", lessonName: "第二课", videoUrl: loadSecond ? undefined : mediaUrl, mediaId: "second-media", watchHistoryTime: 4 };
   const states = { 2: course, 3: "a", 4: { ...first, _studyCourseId: "a" }, 8: mediaUrl };
   const refs = [], effects = [], writes = [], activities = [];
   const listeners = { document: new Map(), window: new Map() };
@@ -35,7 +35,7 @@ function player({ initialPosition = 0, failures = 0 } = {}) {
     ...courseModel,
     React: { Fragment: "Fragment" },
     Date: class extends Date { static now() { return clock; } },
-    document, window: surface("window"),
+    document, window: { ...surface("window"), scrollTo() { assert.fail("selecting a lesson must preserve scroll position"); } },
     element: (type, props, ...children) => ({ type, props: { ...props, children } }),
     useState(initial) {
       const index = stateCursor++;
@@ -64,6 +64,10 @@ function player({ initialPosition = 0, failures = 0 } = {}) {
     safeLink: value => /^https?:\/\//.test(String(value || "")) ? String(value) : undefined,
     recordActivity: activity => activities.push(activity),
     request: async (route, query, method, data) => {
+      if (route === "/api/exam/wx/course/get_play_info/v2" && loadSecond) {
+        assert.equal(query.mediaId, "second-media");
+        return loadSecond();
+      }
       assert.equal(route, "/api/exam/wx/lessonHistory/add/", "direct video URLs need no upstream request");
       assert.equal(method, "POST");
       writes.push(structuredClone(data));
@@ -260,4 +264,31 @@ test("a failed pause save remains pending for the pagehide retry at the same pos
   assert.equal(view.writes.length, 2, "the failed position must not be treated as already saved");
   assert.equal(view.writes[1].watchHistoryTime, 8);
   assert.equal(view.writes[1].time, 8);
+});
+
+
+test("lesson loading and failures stay in the reserved player area instead of the page top", async () => {
+  let rejectLoad;
+  const pending = new Promise((resolve, reject) => { rejectLoad = reject; });
+  const view = player({ loadSecond: () => pending });
+  const mediaArea = () => view.find(node => node.props.className === "cc-player-media");
+  assert.ok(nodes(mediaArea()).some(node => node.type === "LearningVideo"));
+  view.find(node => node.props?.["aria-label"] === "选择分课程").props.onChange({ target: { value: "b" } });
+  view.render();
+  view.find(node => node.type === "button" && node.props.className?.startsWith("computer-lesson ")).props.onClick();
+  await settle();
+  view.render();
+  const loading = mediaArea();
+  assert.ok(loading, "clearing the previous video keeps its reserved media container");
+  assert.equal(loading.props["aria-busy"], true);
+  assert.ok(nodes(loading).some(node => node.props?.role === "status" && node.props.className?.includes("cc-player-placeholder")));
+  const page = view.find(node => node.props.className === "cc-courses");
+  assert.equal(page.props.children.flat(Infinity).some(node => node?.type === "Status"), false, "lesson feedback is not inserted above the course");
+  rejectLoad(new Error("播放地址读取失败"));
+  await settle();
+  view.render();
+  assert.equal(mediaArea().props["aria-busy"], false);
+  assert.ok(nodes(mediaArea()).some(node => node.props.className?.includes("cc-player-placeholder")), "failure preserves the same player space");
+  const feedback = view.find(node => node.props.className === "cc-player-feedback");
+  assert.equal(nodes(feedback).find(node => node.type === "Status").props.error, "播放地址读取失败");
 });
