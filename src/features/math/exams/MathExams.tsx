@@ -177,9 +177,11 @@ function safeUrl(value: any) {
 function PaperRunner({
   context,
   onClose,
+  backLabel,
 }: {
   context: MathPaperContext;
   onClose: () => void;
+  backLabel?: string;
 }) {
   const { session } = useSession();
   const [followup, setFollowup] = useState<MathPaperContext | null>(null),
@@ -562,7 +564,7 @@ function PaperRunner({
       <div className="panel">
         <button className="math-exam-back" onClick={onClose}>
           <ArrowLeft size={16} />
-          返回测评列表
+          {backLabel || "返回测评列表"}
         </button>
         <AsyncStatus
           loading={loaded.loading}
@@ -576,7 +578,7 @@ function PaperRunner({
       <div className="panel">
         <button className="math-exam-back" onClick={onClose}>
           <ArrowLeft size={16} />
-          返回测评列表
+          {backLabel || "返回测评列表"}
         </button>
         <AsyncStatus empty />
       </div>
@@ -586,7 +588,7 @@ function PaperRunner({
       <div className="panel math-exam-preview">
         <button className="math-exam-back" onClick={onClose}>
           <ArrowLeft size={16} />
-          返回测评列表
+          {backLabel || "返回测评列表"}
         </button>
         <span className="math-exam-badge">
           {context.kind === "dry"
@@ -638,7 +640,7 @@ function PaperRunner({
       <div className="math-exam-runner-top">
         <button className="math-exam-back" onClick={onClose}>
           <ArrowLeft size={16} />
-          返回
+          {backLabel || "返回"}
         </button>
         <strong>{examName(meta)}</strong>
         <span className="math-exam-timer">
@@ -952,6 +954,7 @@ export function MathCoursePaper({
   isAbility = false,
   isTeacher = false,
   onClose,
+  backLabel,
 }: {
   stuid: string;
   PaperID: string | number;
@@ -961,6 +964,7 @@ export function MathCoursePaper({
   isAbility?: boolean;
   isTeacher?: boolean;
   onClose: () => void;
+  backLabel?: string;
 }) {
   const family = useAsync(
     () =>
@@ -990,7 +994,7 @@ export function MathCoursePaper({
       <>
         <button className="math-exam-back" onClick={onClose}>
           <ArrowLeft size={16} />
-          返回能力测评
+          {backLabel || "返回能力测评"}
         </button>
         <AsyncStatus
           loading={family.loading}
@@ -1012,6 +1016,7 @@ export function MathCoursePaper({
         isTeacher: isAbility ? !!family.data : isTeacher,
       }}
       onClose={onClose}
+      backLabel={backLabel}
     />
   );
 }

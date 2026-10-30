@@ -55,6 +55,8 @@ import MathCourseRecommendations from "./MathCourseRecommendations";
 import MathCourseAlbum from "./MathCourseAlbum";
 import MathQuestionReader from "../questions/MathQuestionReader";
 import MathPacketCatalog from "./MathPacketCatalog";
+import MathPacketAssignments from "./MathPacketAssignments";
+import { loadPacketAssignments } from "./math-packet-assignments";
 import "./math-courses.css";
 
 type Context = {
@@ -978,7 +980,7 @@ function Packet({
     `assign-${product.ID}-${packet.ID}-${tab}`,
     () =>
       ["assign", "study"].includes(tab)
-        ? courseApi.assignments(stuid, packet.ID, product.ID)
+        ? loadPacketAssignments(stuid, packet.ID, product.ID)
         : tab === "exams"
           ? courseApi.exams(stuid, packet.ID, product.ID)
           : Promise.resolve({ data: [] }),
@@ -1148,18 +1150,28 @@ function Packet({
           />}
         </div>
       ) : (
-        <div className="panel">
+        <div className={tab === "assign" ? undefined : "panel"}>
           <Status
             loading={assignment.loading}
             error={assignment.error}
             empty={
+              tab !== "assign" &&
               !assignment.loading &&
               !assignment.error &&
               !mathRows(assignment.data).length
             }
             reload={assignment.reload}
           />
-          {tab === "study" ? (
+          {tab === "assign" ? (
+            <>
+              <Status loading={tree.loading} error={tree.error} reload={tree.reload} />
+              {!assignment.error && !tree.error && <MathPacketAssignments
+                tasks={mathRows(assignment.data)} treeRows={mathRows(tree.data)}
+                packetID={packet.ID} productID={product.ID} stuid={stuid}
+                loading={assignment.loading || tree.loading} onReload={assignment.reload}
+              />}
+            </>
+          ) : tab === "study" ? (
             <AssignmentSummary
               tasks={mathRows(assignment.data)}
               context={{

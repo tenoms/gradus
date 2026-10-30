@@ -414,7 +414,7 @@ export const mathExamApi = {
           room: {},
         };
       }
-      const [meta, questions, finished] = await Promise.all([
+      const [meta, questions, records] = await Promise.all([
         mathGet("/api/c_paper/GetListByAll", { ID: context.PaperID }),
         mathGet("/api/c_paper_question/GetListByPaper2", {
           ...common,
@@ -428,16 +428,20 @@ export const mathExamApi = {
           ProductID: context.ProductID,
           BusType: 3,
           BusID: context.PaperID,
-          BusRelationID: -1,
-          IsFinished: 1,
         }),
       ]);
+      const saved = table(records);
+      const summary = saved.find((row) =>
+        row.BusRelationID != null && row.BusRelationID !== "" &&
+        Number(row.BusRelationID) === 0 && Number(row.IsFinished) === 1);
       return {
         meta: table(meta)[0] || {},
-        questions: table(questions),
-        paperlog: table(finished).length
-          ? { IsSubmit: 1, IsLookScore: 1, ...table(finished)[0] }
-          : {},
+        questions: table(questions).map((row) => ({
+          ...row,
+          _c_course_users_record: saved.find((record) =>
+            Number(record.BusRelationID) > 0 && String(record.BusRelationID) === questionKey(row)) || null,
+        })),
+        paperlog: summary ? { ...summary, IsSubmit: 1, IsLookScore: 1 } : {},
         teacherMark: false,
         room: {},
       };

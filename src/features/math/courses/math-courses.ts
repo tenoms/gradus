@@ -153,6 +153,7 @@ export function courseLabel(item: MathRow) {
     item.ProductName ||
       item.Title ||
       item.Name ||
+      item._book_highscorealbum?.Title ||
       item.Context ||
       item.Data?.Name ||
       item.Data?.Context ||

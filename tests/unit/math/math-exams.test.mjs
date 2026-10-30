@@ -222,6 +222,73 @@ test("paper loader isolates teacher course data from ordinary course progress", 
     false,
   );
 });
+test("ordinary course loading keeps partial question records and unfinished summaries unsubmitted", async () => {
+  const context = { kind: "course", stuid: "s", PaperID: 12, CourseID: 13, CalendarID: 14, ProductID: 15 };
+  const cases = [
+    [{ ID: 1, BusRelationID: 11, IsFinished: 1 }],
+    [{ ID: 2, BusRelationID: 0, IsFinished: 0 }],
+    [{ ID: 3, BusRelationID: 11, IsFinished: 1 }, { ID: 4, BusRelationID: "0", IsFinished: 0 }],
+    [{ ID: 5, IsFinished: 1 }, { ID: 6, BusRelationID: null, IsFinished: 1 }, { ID: 7, BusRelationID: "", IsFinished: 1 }],
+  ];
+  for (const records of cases) {
+    globalThis.__mathExamGet = async (path, query) => {
+      if (path === "/api/c_course_users_record/GetListByAll") {
+        assert.deepEqual(query, {
+          StuID: "s", CourseID: 13, CalendarID: 14, ProductID: 15, BusType: 3, BusID: 12,
+        }, "read the entire scoped paper record set to restore individual answers");
+        return { data: records };
+      }
+      return { data: [] };
+    };
+    const result = await adapter.mathExamApi.loadPaper(context);
+    assert.deepEqual(result.paperlog, {});
+  }
+});
+test("ordinary course loading restores local question answers and record identities and clears unmatched shared records", async () => {
+  const context = { kind: "course", stuid: "s", PaperID: 12, CourseID: 13, CalendarID: 14, ProductID: 15 };
+  const questions = [
+    { ID: 301, QuestionID: 11, _c_course_users_record: { ID: 999, Answer: "shared answer" } },
+    { ID: 22, _c_course_users_record: { ID: 998, Answer: "shared answer" } },
+    { ID: 33, _c_course_users_record: { ID: 997, Answer: "shared answer" } },
+    { ID: 0, _c_course_users_record: { ID: 996, Answer: "shared answer" } },
+  ];
+  const records = [
+    { ID: 101, BusRelationID: "11", IsFinished: 0, Answer: "101,103", BusValue: 8 },
+    { ID: 102, BusRelationID: 22, IsFinished: 1, Answer: "saved working", BusValue: 0 },
+    { ID: 103, BusRelationID: 0, IsFinished: 0, BusValue: 0 },
+    { ID: 104, BusRelationID: 301, IsFinished: 1, Answer: "another question" },
+  ];
+  const before = structuredClone({ questions, records });
+  globalThis.__mathExamGet = async (path) => ({
+    data: path === "/api/c_course_users_record/GetListByAll" ? records
+      : path === "/api/c_paper_question/GetListByPaper2" ? questions : [],
+  });
+  const result = await adapter.mathExamApi.loadPaper(context);
+  assert.deepEqual(result.paperlog, {});
+  assert.equal(adapter.existingRecord(context, result.questions[0]).ID, 101);
+  assert.equal(adapter.recordAnswer(context, adapter.existingRecord(context, result.questions[0])), "101,103");
+  assert.equal(adapter.existingRecord(context, result.questions[1]).ID, 102);
+  assert.equal(adapter.recordAnswer(context, adapter.existingRecord(context, result.questions[1])), "saved working");
+  assert.equal(result.questions[2]._c_course_users_record, null);
+  assert.equal(result.questions[3]._c_course_users_record, null, "summary zero is never a question answer");
+  assert.deepEqual({ questions, records }, before);
+});
+test("ordinary course loading restores only the completed summary identity and preserves a zero score", async () => {
+  const context = { kind: "course", stuid: "s", PaperID: 12, CourseID: 13, CalendarID: 14, ProductID: 15 };
+  const summary = {
+    ID: 44, StuID: "s", BusID: 12, BusType: 3, CourseID: 13, CalendarID: 14, ProductID: 15,
+    BusRelationID: "0", IsFinished: "1", BusValue: 0, AddTime: "2026-10-30 10:00:00",
+  };
+  globalThis.__mathExamGet = async (path) => ({
+    data: path === "/api/c_course_users_record/GetListByAll"
+      ? [{ ID: 1, BusRelationID: 11, IsFinished: 1, BusValue: 8 }, { ID: 2, BusRelationID: 0, IsFinished: 0 }, summary]
+      : [],
+  });
+  const result = await adapter.mathExamApi.loadPaper(context);
+  assert.deepEqual(result.paperlog, { ...summary, IsSubmit: 1, IsLookScore: 1 });
+  assert.equal(result.paperlog.BusValue, 0);
+  assert.equal(result.paperlog.ID, 44);
+});
 test("course completion writes total without an unlock and ability completion skips recommendation creation", async () => {
   const calls = [];
   globalThis.__mathExamPost = async (path, data) => {

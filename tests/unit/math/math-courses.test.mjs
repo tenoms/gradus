@@ -259,6 +259,10 @@ const courseSource = await readFile(
 const courseAdapter = await import(
   `data:text/javascript;base64,${Buffer.from("const {mathCommand,mathGet,mathPost}=globalThis.__courseFixture;" + courseOutput).toString("base64")}`
 );
+test("course tasks display the actual album title when generic paper and data fields are empty", () => {
+  assert.equal(courseAdapter.courseLabel({ Data: null, _Paper: null, _book_highscorealbum: { Title: "【模块1】极限的定义与性质" } }), "【模块1】极限的定义与性质");
+  assert.equal(courseAdapter.courseLabel({ Title: "日程标题", _book_highscorealbum: { Title: "专辑标题" } }), "日程标题");
+});
 test("resume and history queries keep their original scopes", async () => {
   const calls = [];
   globalThis.__courseCommand = async (...args) => {
