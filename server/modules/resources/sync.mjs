@@ -3,6 +3,7 @@ import { ApiError } from '../../infrastructure/api-error.mjs';
 import { stripSharedPersonalState } from '../../integrations/shared-account-policy.mjs';
 import { publicPlatformResponse, injectMathUser } from '../../integrations/platform-policy.mjs';
 import { sourceForSession,resourceManifest,resourceRows,inferResourceRequest,resourceIdentity,resourceKey,publicResourceResponse } from './catalog.mjs';
+import { cleanMathPractice, contentRequest, normalizeMathPractice } from './content.mjs';
 
 function succeeded(response) {
   const code=response?.code??response?.Code,message=String(response?.Message||response?.msg||response?.Msg||'');
@@ -46,7 +47,9 @@ export function createResourceSync({store,service,configuration,accountPool}) {
     const identity=resourceIdentity(platform,sourceSession(session,platform),config,request);
     if(identity.scope!=='public')return {state:'bypass',identity};
     try {
-      const resource=await store.lookup(identity.source.id,platform,identity.request);
+      const content=await store.resolveContent?.({sourceId:identity.source.id,platform,request:identity.request});
+      if(content?.missing)return {state:'miss',identity,missingContent:true};
+      const resource=content || await store.lookup(identity.source.id,platform,identity.request);
       return {state:!resource?'miss':resource.expired?'stale':'hit',identity,resource};
     } catch {recordError();return {state:'miss',identity};}
   }
@@ -75,7 +78,8 @@ export function createResourceSync({store,service,configuration,accountPool}) {
   }
   async function read(args) {
     const config=args.config||configNow(),identity=resourceIdentity(args.platform,sourceSession(args.session,args.platform),config,args.request);
-    const key=`response:${identity.source.id}:${resourceKey(identity.request)}`;
+    const content=identity.scope==='public'?contentRequest(args.platform,identity.request):null;
+    const key=content?`content:${identity.source.id}:${content.variant}:${content.id}`:`response:${identity.source.id}:${resourceKey(identity.request)}`;
     const fetch=async previous=>{
       const response=await args.load();
       if(identity.scope==='public'&&!succeeded(response))throw new ApiError('资源暂时无法更新，请稍后重试',502);
@@ -159,6 +163,14 @@ export function createResourceSync({store,service,configuration,accountPool}) {
           const firstData=first?.data??first?.Data;
           if(!succeeded(first)||!firstData?.examId)throw new ApiError('当前试卷暂时无法加载，请稍后重试',502);
           response=await requestSource({session,name:platform,path:'/api/exam/wx/practice/examExercise',input:{method:'GET',query:{examId:firstData.examId},data:{}},source});
+          // The whole-paper response can omit the authoritative membership returned above.
+          const body=response?.data??response?.Data;
+          if(body&&typeof body==='object'&&!Array.isArray(body)) {
+            const field='Data' in response?'Data':'data';
+            response={...response,[field]:{...body,examId:body.examId||firstData.examId,
+              exerciseTotalNumber:body.exerciseTotalNumber??firstData.exerciseTotalNumber,
+              examExerciseIdList:Array.isArray(body.examExerciseIdList)&&body.examExerciseIdList.length?body.examExerciseIdList:firstData.examExerciseIdList}};
+          }
         }
         if(!succeeded(response))throw new ApiError('题目暂时无法加载，请稍后重试',502);
         const parsed=result(response,cacheState);
@@ -173,10 +185,35 @@ export function createResourceSync({store,service,configuration,accountPool}) {
         if(latest.state==='stale')refresh(key,()=>fetch('stale'));
         return result(latest.resource.response,latest.state,true);
       }
-      if(latest.state==='miss'&&fallbackResponse&&!(await store.getSettings()).enabled)return result(fallbackResponse,'miss');
+      if(latest.state==='miss'&&!latest.missingContent&&fallbackResponse&&!(await store.getSettings()).enabled)return result(fallbackResponse,'miss');
       return fetch(latest.state);
     };
     return identity.scope==='public'?inRead(key,load):load();
   }
-  return {status,updateSettings,capture,peek,lookup,read,requestSource,ensureQuestions,waitForIdle,findEntities:options=>store.findEntities(options),list:options=>store.list(options)};
+  function practiceIdentity({platform,session,config=configNow(),request}) {
+    if(platform!=='math')return null;
+    const normalized=normalizeMathPractice(request);
+    if(!normalized)return null;
+    const {source}=resourceIdentity(platform,sourceSession(session,platform),config,{path:'/api/question_list/GetQuestionByQuestionNew',method:'GET',query:{ID:0},data:{}});
+    return {source,request:normalized};
+  }
+  async function localPractice(args) {
+    const identity=practiceIdentity(args);
+    if(!identity)return null;
+    try {
+      const group=await store.localPractice?.({sourceId:identity.source.id,platform:args.platform,request:identity.request});
+      return group?.complete?group:null;
+    } catch {recordError();return null;}
+  }
+  async function capturePractice(args) {
+    try {
+      const identity=practiceIdentity(args);
+      if(!identity||!(await store.getSettings()).enabled||!succeeded(args.response))return {captured:false};
+      const clean=cleanMathPractice(args.response);
+      const resource=await store.save(identity.source,{request:identity.request,kind:'math.practice',scope:'public',context:{}},clean,{scope:'public'});
+      lastCapturedAt=new Date().toISOString();lastError='';
+      return {captured:true,resource};
+    } catch {recordError();return {captured:false,error:lastError};}
+  }
+  return {status,updateSettings,capture,capturePractice,localPractice,peek,lookup,read,requestSource,ensureQuestions,waitForIdle,findEntities:options=>store.findEntities(options),list:options=>store.list(options)};
 }

@@ -7,6 +7,7 @@ import { resourceKey, resourceRows, resourceMedia, resourceScope, publicResource
 import { resourcePresentation, resourcePresentationSql, resourceTypeLabels, resourceTypeLabel } from './presentation.mjs';
 import { presentResourceSources } from './source-presentation.mjs';
 import { readRuntimeConfig } from '../../infrastructure/runtime-config.mjs';
+import { createResourceContentStore } from './content-store.mjs';
 
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const iso = value => value instanceof Date ? value.toISOString() : value;
@@ -41,6 +42,7 @@ export async function createResourceStore(database, { publicRefreshAfterDays } =
   await database.query(`CREATE TABLE IF NOT EXISTS ${settings} (id integer PRIMARY KEY CHECK(id=1), enabled boolean NOT NULL DEFAULT false, refresh_after_days integer NOT NULL DEFAULT ${publicRefreshAfterDays} CHECK(refresh_after_days BETWEEN 1 AND 3650), revision integer NOT NULL DEFAULT 0, updated_at timestamptz NOT NULL DEFAULT now())`);
   await database.query(`ALTER TABLE ${settings} ADD COLUMN IF NOT EXISTS refresh_after_days integer NOT NULL DEFAULT ${publicRefreshAfterDays} CHECK(refresh_after_days BETWEEN 1 AND 3650)`);
   await database.query(`INSERT INTO ${settings}(id,refresh_after_days) VALUES(1,$1) ON CONFLICT DO NOTHING`,[publicRefreshAfterDays]);
+  const content = await createResourceContentStore(database);
   async function rememberSource(source) {
     if (!source.id || (source.scope!=='public'&&!source.accountRef) || !['math','computer'].includes(source.platform)) throw new ApiError('同步来源缺少账号或平台身份', 400);
     await database.query(`INSERT INTO ${sources}(id,platform,account_ref,metadata) VALUES($1,$2,$3,$4) ON CONFLICT(id) DO UPDATE SET last_seen_at=now()`, [source.id, source.platform, source.accountRef, JSON.stringify(source)]);
@@ -90,6 +92,7 @@ export async function createResourceStore(database, { publicRefreshAfterDays } =
     await tx.query(`DELETE FROM ${media} WHERE source_id=$1 AND platform=$2 AND request_key=$3`,[source.id,source.platform,key]);
     const urls=resourceMedia(clean);
     if(urls.length)await tx.query(`INSERT INTO ${media}(source_id,platform,request_key,url) SELECT $1,$2,$3,unnest($4::text[]) ON CONFLICT DO NOTHING`,[source.id,source.platform,key,urls]);
+    await content.observe({source,task,response:clean,key},tx);
   }
   function titleFor(task,response) { return resourcePresentation({kind:task.kind,platform:task.kind?.split('.')[0],request:task.request,context:task.context,response}).title; }
   async function save(source,task,response,options={}) {
@@ -100,7 +103,7 @@ export async function createResourceStore(database, { publicRefreshAfterDays } =
     const expiresAt=options.expiresAt===undefined?await defaultExpiry(scope):expires(options.expiresAt);
     return database.transaction(async tx=>{
       const result=await tx.query(`INSERT INTO ${resources}(source_id,platform,request_key,scope,kind,request,response,content_hash,expires_at,title,context) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT(source_id,platform,request_key) DO UPDATE SET scope=excluded.scope,kind=excluded.kind,request=excluded.request,response=excluded.response,content_hash=excluded.content_hash,synced_at=now(),expires_at=excluded.expires_at,title=excluded.title,context=excluded.context,revision=${resources}.revision+CASE WHEN ${resources}.content_hash<>excluded.content_hash THEN 1 ELSE 0 END,changed_at=CASE WHEN ${resources}.content_hash<>excluded.content_hash THEN now() ELSE ${resources}.changed_at END RETURNING *`,[source.id,source.platform,key,scope,task.kind||task.request.path,JSON.stringify(task.request),JSON.stringify(clean),contentHash,expiresAt,titleFor(task,clean),JSON.stringify(task.context||{})]);
-      await derived(tx,source,task,clean,key);
+      await derived(tx,{...source,scope},task,clean,key);
       return {...summary(result.rows[0]),contentHash};
     });
   }
@@ -126,9 +129,9 @@ export async function createResourceStore(database, { publicRefreshAfterDays } =
     if(!input?.response||typeof input.response!=='object')throw new ApiError('资源内容需要JSON对象或数组',400);
     return database.transaction(async tx=>{
       const row=await rowFor(input,true);checkRevision(input,row);
-      const clean=row.scope==='public'?publicResourceResponse(input.response):publicPlatformResponse(input.response),task={request:row.request,context:row.context,kind:row.kind};
+      const clean=row.scope==='public'?publicResourceResponse(input.response):publicPlatformResponse(input.response),task={request:row.request,context:row.context,kind:row.kind,scope:row.scope};
       await tx.query(`UPDATE ${resources} SET response=$4,content_hash=$5,title=$6,revision=revision+1,synced_at=now(),changed_at=now(),expires_at=$7 WHERE source_id=$1 AND platform=$2 AND request_key=$3`,[...identity(input),JSON.stringify(clean),hash(clean),titleFor(task,clean),await defaultExpiry(row.scope)]);
-      await derived(tx,{id:row.source_id,platform:row.platform},task,clean,row.request_key);
+      await derived(tx,{id:row.source_id,platform:row.platform,scope:row.scope},task,clean,row.request_key);
       return detail(input);
     });
   }
@@ -203,5 +206,6 @@ export async function createResourceStore(database, { publicRefreshAfterDays } =
     const result=await database.query(`SELECT r.*,(SELECT count(*)::integer FROM ${media} m WHERE m.source_id=r.source_id AND m.platform=r.platform AND m.request_key=r.request_key) AS media_count,(SELECT count(*)::integer FROM ${entities} e WHERE e.source_id=r.source_id AND e.platform=r.platform AND e.request_key=r.request_key) AS entity_count FROM ${displayed} r${where} ORDER BY ${orders[sort]},r.platform,r.source_id,r.request_key LIMIT $${args.length+1} OFFSET $${args.length+2}`,[...args,pageSize,(page-1)*pageSize]);
     return {resources:result.rows.map(summary),pagination:{page,pageSize,total,totalPages},summary:{...count,mediaReferences:mediaCount.rows[0].count},facets:{kinds:kinds.rows.map(row=>({...row,label:row.value.startsWith('computer.')||row.value.startsWith('math.')?`${row.value.startsWith('computer.')?'计算机 408':'考研数学'} · ${resourceTypeLabels[row.value]||resourceTypeLabel({kind:row.value,platform:row.value.split('.')[0],request:{path:''}})}`:'其他学习资料'})),sources:presentResourceSources(sourceCounts.rows)}};
   }
-  return { getSettings, updateSettings, rememberSource, save, lookup, findEntities, status, list,detail,update,invalidate,remove,batch };
+  async function resolveContent(args) { return await content.resolve(args) || await content.questions({...args,includeIncomplete:true}); }
+  return { getSettings, updateSettings, rememberSource, save, lookup, resolveContent, localPractice:args=>content.questions(args), findEntities, status, list,detail,update,invalidate,remove,batch };
 }

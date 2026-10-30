@@ -91,7 +91,7 @@ export function resourceManifest() {
   return Object.fromEntries(['math','computer'].map(platform => [platform, {
     mode: 'learning',
     strategy: '已有公共内容长期本地可读；随学习请求补齐缺失内容，超过复核期限时尝试后台更新',
-    categories: platform === 'math' ? ['资料与目录','题目、解析与附件','专辑与模型','课程与课时','测评与院校'] : ['章节与试卷','当前题目与解析','课程与媒体信息','院校与资料'],
+    categories: platform === 'math' ? ['资料与目录','题目、解析与附件','完整练习题组','专辑与模型','课程与课时','测评与院校'] : ['章节与试卷','题目、解析与题组清单','课程与媒体信息','院校与资料'],
     boundary: '分页、下一题、解析与关联资源仅在用户实际访问时同步。媒体保存已返回的引用。Web个人记录独立保存。',
   }]));
 }

@@ -182,7 +182,7 @@ test('empty successful computer single-question and generic paper responses keep
     const before=(await app.app.locals.resourceStore.list({platform:'computer',scope:'public'})).resources;
     for(const failure of ['null','empty-array']) {
       await stale(app,'computer');f.setFailure(failure);
-      assert.equal((await read(app,second,'computer',detail)).data.exerciseStems,'单题正文1');
+      assert.equal((await read(app,second,'computer',detail)).data.exerciseStems,'整卷题干1','the single-question entry reuses the newer full-paper body');
       assert.equal((await read(app,second,'computer',paper)).data.exercises[0].exerciseStems,'整卷题干1');await idle(app);
       for(const row of before) {
         const saved=await app.app.locals.resourceStore.detail(selector(row));

@@ -15,6 +15,7 @@
     "verify:repo": "node scripts/checks/repository.mjs",
     "verify:data-architecture": "node --experimental-strip-types scripts/live/data-architecture.mjs",
     "verify:resource-local-first": "node --experimental-strip-types scripts/live/resource-local-first.mjs",
+    "verify:resource-reuse": "node --experimental-strip-types scripts/live/resource-reuse.mjs",
     "verify:personal-sync": "node --experimental-strip-types scripts/live/personal-sync.mjs",
     "verify:system-yyb": "node --experimental-strip-types scripts/live/system-yyb.mjs",
     "verify:tokens": "node --experimental-strip-types scripts/live/token-lifecycle.mjs",

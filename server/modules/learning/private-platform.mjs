@@ -229,28 +229,42 @@ export async function createPrivatePlatformStore({ database, resourceStore, pers
     }
     return success('computer',[]);
   }
-  async function math(userId,input,platform,sourceId,readSource,config) {
+  async function math(userId,input,platform,sourceId,readSource,config,{resourceSync,session}={}) {
     const p=mathParameters(input), path=input.path, command=input.data?.command || '', collection=collectionFor(path), action=path.split('/').at(-1);
     if (['GetUserInfoByStuID','GetUserInfoByWxID_pt','GetSysUserClientInfo'].includes(command)) return success('math',[[await profile(userId,'math',platform.user || {})]]);
     if (/\/sys_users\/(?:Inner_sys_users|UpdateUserNickName)$/.test(path)) { await put(userId,'math','profile','profile',p); return success('math',platform.user?.ID || 1); }
     if (collection==='choice_question_exercise' && /^RelPaper/.test(action)) {
-      if(!readSource) throw new ApiError('题目暂时无法加载，请稍后重试',503);
-      const sourceInput={...input,data:{...input.data,StuID:platform.stuId || platform.user?.StuID,System_Station_ID:config?.math?.stationId || 1}};
-      const created=await readSource(sourceInput),value=unwrap(created);
-      if (created?.SuccessResponse===false) throw new ApiError(created.Message || '练习暂时无法开始，请稍后重试',502);
-      const sourcePracticeId=value?.ID || value?.[0]?.ID || value?.[0]?.[0]?.ID || (typeof value==='number'?value:null);
-      if (!sourcePracticeId) throw new ApiError('练习暂时无法开始，请稍后重试',502);
-      const response=await readSource({path:'/api/choice_question_exercise/GetPaper',method:'GET',data:{},query:{ID:sourcePracticeId,StuID:platform.stuId || platform.user?.StuID}});
-      if (response?.SuccessResponse===false) throw new ApiError(response.Message || '题目加载失败，请稍后重试',502);
-      const rows=unwrap(response);
-      const questions=(Array.isArray(rows?.[0])?rows[0]:Array.isArray(rows)?rows:[]).map(stripSharedPersonalState).map(row=>({...row,sourceExerciseLogId:row.ID}));
-      if (!questions.length) throw new ApiError('本次练习暂无题目，请稍后重试',409);
+      const groupArgs={platform:'math',session,config,request:input};
+      const localGroup=await resourceSync?.localPractice?.(groupArgs);
+      let selected=localGroup?.questions,sourcePracticeId;
+      if(!selected?.length) {
+        if(!readSource) throw new ApiError('题目暂时无法加载，请稍后重试',503);
+        const sourceInput={...input,data:{...input.data,StuID:platform.stuId || platform.user?.StuID,System_Station_ID:config?.math?.stationId || 1}};
+        const created=await readSource(sourceInput),value=unwrap(created);
+        if (created?.SuccessResponse===false) throw new ApiError(created.Message || '练习暂时无法开始，请稍后重试',502);
+        sourcePracticeId=value?.ID || value?.[0]?.ID || value?.[0]?.[0]?.ID || (typeof value==='number'?value:null);
+        if (!sourcePracticeId) throw new ApiError('练习暂时无法开始，请稍后重试',502);
+        const response=await readSource({path:'/api/choice_question_exercise/GetPaper',method:'GET',data:{},query:{ID:sourcePracticeId,StuID:platform.stuId || platform.user?.StuID}});
+        if (response?.SuccessResponse===false) throw new ApiError(response.Message || '题目加载失败，请稍后重试',502);
+        const rows=unwrap(response);
+        selected=Array.isArray(rows?.[0])?rows[0]:Array.isArray(rows)?rows:[];
+        if (!selected.length) throw new ApiError('本次练习暂无题目，请稍后重试',409);
+        await resourceSync?.capturePractice?.({...groupArgs,response});
+      }
+      const questions=selected.map(selectedRow=>{
+        const row=localGroup?.questions?.length&&!selectedRow._question_list?{QuestionID:selectedRow.QuestionID ?? selectedRow.ID,_question_list:selectedRow}:selectedRow;
+        const questionId=row?.QuestionID ?? row?.questionID ?? row?._question_list?.QuestionID ?? row?._question_list?.ID;
+        if(!['string','number'].includes(typeof questionId)||!String(questionId).trim())throw new ApiError('题组缺少题目标识，请稍后重试',502);
+        const {ID,ExerciseID,sourceExerciseLogId,...content}=stripSharedPersonalState(row);
+        return {...content,QuestionID:questionId};
+      });
+      const selectionMode=localGroup?.questions?.length?'local-group-replay':'source-selection';
       const practiceKey=randomUUID();
-      const record=await put(userId,'math',collection,practiceKey,{...p,IsFinish:0,_key:practiceKey,sourceId,...(sourcePracticeId?{sourcePracticeId}:{})});
+      const record=await put(userId,'math',collection,practiceKey,{...p,IsFinish:0,_key:practiceKey,sourceId,selectionMode,...(sourcePracticeId?{sourcePracticeId}:{})});
       const ids=[];
       for (const item of questions) { const answerKey=randomUUID();const answer=await put(userId,'math','choice_question_exercise_log',answerKey,{...item,_key:answerKey,QuestionID:item.QuestionID || item.ID,ExerciseID:record.ID,MyAnswer:'',State:0}); ids.push(answer.ID); }
       await put(userId,'math',collection,practiceKey,{...record,QuestionIDs:ids});
-      return success('math',{ID:record.ID});
+      return success('math',{ID:record.ID,selectionMode});
     }
     if (collection==='choice_question_exercise' && action==='GetPaper') {
       const record=(await list(userId,'math',collection)).find(row=>String(row.ID)===String(p.ID));
@@ -326,12 +340,12 @@ export async function createPrivatePlatformStore({ database, resourceStore, pers
     const sourceId=resourceIdentity(name,session,config,{path:name==='math'?'/api/question_list/GetQuestionByQuestionNew':'/api/exam/wx/searchExercise/info/resource-domain',method:'GET',data:{},query:{}}).source.id;
     const operation=sharedOperation(name,input);
     if (operation!=='resource') {
-      const result=await database.transaction(()=>name==='computer'?computer(userId,input,platform,sourceId,{session,config}):math(userId,input,platform,sourceId,readSource,config));
+      const result=await database.transaction(()=>name==='computer'?computer(userId,input,platform,sourceId,{session,config}):math(userId,input,platform,sourceId,readSource,config,{resourceSync,session}));
       return result;
     }
     if (name==='computer' && /\/practice\/(?:exerciseList|random\/exercise)$/.test(input.path)) {
       const params={...input.query,...input.data},filters={};
-      for (const field of ['majorId','chapterId','examGroupId','examinationId','examType','examCategory','sectionId']) if (params[field]!==undefined && params[field]!=='') filters[field]=String(params[field]);
+      for (const field of ['majorId','chapterId','examGroupId','examinationId','examType','examCategory','examExerciseType','sectionId']) if (params[field]!==undefined && params[field]!=='') filters[field]=String(params[field]);
       const random=input.path.endsWith('/random/exercise'),launchKey=JSON.stringify({filters,random});
       let exam=(await list(userId,name,'exams')).find(row=>row.launchKey===launchKey && !row.submitted);
       const number=Number(params.number || 0);
