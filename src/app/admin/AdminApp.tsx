@@ -74,7 +74,7 @@ export default function AdminApp() {
       <a className="skip-link" href="#management-content">跳到管理内容</a>
       {mobileOpen && <button className="management-backdrop" aria-label="收起管理导航" onClick={() => setMobileOpen(false)} />}
       <aside id="management-sidebar" className={`management-sidebar ${mobileOpen ? "is-open" : ""}`} inert={compact && !mobileOpen}>
-        <Link className="management-brand" to="/"><span><GraduationCap size={32} /></span><div>知序 <small>Admin</small><p>学习系统管理空间</p></div></Link>
+        <Link className="management-brand" to="/"><span><GraduationCap size={34} /></span><div>知序 <small>Admin</small><p>学习系统管理空间</p></div></Link>
         <p className="management-nav-caption">空间管理</p>
         <nav aria-label="管理空间导航">{navigation.map(({ to, label, icon: Icon, end }) => <NavLink key={to} to={to} end={end}><Icon size={19} /><span>{label}</span></NavLink>)}</nav>
         <div className="management-sidebar-bottom"><a className="management-space-switch" href="/learn/"><span>进入学习空间<small>使用独立的学习登录</small></span><ArrowUpRight size={17} /></a><p><ShieldCheck size={14} /> 独立管理会话</p></div>
