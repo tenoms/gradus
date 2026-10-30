@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { runInNewContext } from "node:vm";
 import ts from "typescript";
 globalThis.__computingFixture = {
   mathData: (r) => r?.data ?? r?.Data ?? r,
@@ -185,4 +186,29 @@ test("catalog allocation uses Model endpoint and retry keeps catalogue-specific 
   assert.equal(seen[0], "/api/c_paper_users_record/RetryPaper");
   assert.equal(seen[1].BusID, 10);
   assert.equal(seen[1].PaperID, 20);
+});
+
+test("computing hint URLs and provider IDs use the shared video recovery player with resolve provenance", async () => {
+  const source = await readFile(new URL("../../../src/features/math/practice/MathComputing.tsx", import.meta.url), "utf8");
+  const ast = ts.createSourceFile("MathComputing.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let callback;
+  function visit(node) {
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "map" && node.expression.expression.getText(ast) === "steps") callback = node.arguments[0];
+    ts.forEachChild(node, visit);
+  }
+  visit(ast); assert.ok(callback);
+  const output = ts.transpileModule(`const render = ${callback.getText(ast)};`, { compilerOptions: { target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.React, jsxFactory: "jsx" } }).outputText;
+  const render = runInNewContext(`${output}\nrender;`, {
+    jsx: (type, props, ...children) => ({ type, props: props || {}, children }),
+    MathQuestionVideo: "MathQuestionVideo", RichContent: "RichContent", question: { QuestionID: 30 }, loading: false, hint() {},
+  });
+  const nodes = node => Array.isArray(node) ? node.flatMap(nodes) : node && typeof node === "object" ? [node, ...nodes(node.children)] : [];
+  for (const step of [{ ID: 80, Files: "https://media.example/hint.m3u8" }, { ID: 81, Files: "hint-vid" }, { Files: "https://media.example/unique-hint.mp4" }]) {
+    const tree = render(step, 0), player = nodes(tree).find(node => node.type === "MathQuestionVideo");
+    assert.ok(player, "direct links and VIDs both use the shared cache/recovery component");
+    assert.equal(player.props.row.PolyvVID, step.Files);
+    assert.equal(player.props.row.ID, undefined, "resolve-step IDs never become question-file feedback IDs");
+    assert.equal(JSON.stringify(player.props.origin), JSON.stringify({ kind: "resolve", questionId: 30, ...(step.ID ? { itemId: step.ID } : {}) }));
+    assert.equal(nodes(tree).some(node => node.type === "a"), false);
+  }
 });

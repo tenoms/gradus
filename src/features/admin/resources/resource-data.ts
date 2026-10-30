@@ -21,7 +21,7 @@ export const scopeNames: Record<ResourceScope, string> = { public: "公共资源
 export const platformName = (value: string) => value === "math" ? "考研数学" : "计算机 408";
 export const message = (error: unknown) => error instanceof Error ? error.message : "操作失败，请重试";
 const resourceKindNames: Record<string, string> = {
-  "math.books": "教辅书籍", "math.catalog": "教辅章节", "math.albums": "专题课程", "math.packets": "课程资料包", "math.questions": "题目", "math.question": "题目", "math.papers": "练习试卷",
+  "math.media": "数学视频", "math.books": "教辅书籍", "math.catalog": "教辅章节", "math.albums": "专题课程", "math.packets": "课程资料包", "math.questions": "题目", "math.question": "题目", "math.papers": "练习试卷",
   "computer.chapters": "章节目录", "computer.question": "题目", "computer.chapter_questions": "章节题目", "computer.media": "课程视频", "computer.exams": "练习试卷",
 };
 export const typeName = (kind: string, label?: string) => label || resourceKindNames[kind] || "学习资源";
@@ -41,7 +41,8 @@ export const dateTime = (value?: string | null) => {
   return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false });
 };
 export const expired = (resource: ResourceItem) => resource.expired === true || !resource.expiresAt || Date.parse(resource.expiresAt) <= Date.now();
-export const validityName = (resource: ResourceItem) => resource.kind === "computer.media" ? "失效时更新" : resource.scope !== "public" ? "实时更新" : expired(resource) ? "待复核" : "暂不需复核";
+export const isPlaybackResource = ({ kind }: Pick<ResourceItem, "kind">) => kind === "computer.media" || kind === "math.media";
+export const validityName = (resource: ResourceItem) => isPlaybackResource(resource) ? "失效时更新" : resource.scope !== "public" ? "实时更新" : expired(resource) ? "待复核" : "暂不需复核";
 export const pretty = (value: unknown) => JSON.stringify(value, null, 2) ?? "null";
 export function parseResource(value: string) {
   let response: unknown;

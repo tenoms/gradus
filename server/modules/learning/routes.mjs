@@ -5,7 +5,6 @@ import { publicPlatformResponse,validatePlatformRequest,injectMathUser,cleanAcco
 import { stripSharedPersonalState } from "../../integrations/shared-account-policy.mjs";
 import { publicYybSettings,userYybOverride } from "../accounts/user-yyb.mjs";
 import { readRuntimeConfig } from "../../infrastructure/runtime-config.mjs";
-import { resolveMathVideo } from "../../integrations/math-video.mjs";
 
 /** Web sessions own learning; a source account is acquired only for a cache miss or explicit upload. */
 export function createLearningRouter({service,identities,connections,auth,accountPool,privatePlatform,accountProfile,resourceSync,personalSync,runtimeConfig=readRuntimeConfig()}) {
@@ -63,7 +62,7 @@ export function createLearningRouter({service,identities,connections,auth,accoun
   });
   router.post('/platform/math/video',authenticated,async(req,res)=>{
     if(!service.getConfig().math.enabled)throw new ApiError('数学学习平台已停用，请联系管理员',503);
-    res.json(await resolveMathVideo(req.body,{requestJson:service.requestJson}));
+    res.json(await resourceSync.mathPlayback({session:req.studySession,input:req.body}));
   });
   router.post('/platform/math/photo',authenticated,express.raw({type:'multipart/form-data',limit:runtimeConfig.http.uploadBodyLimit}),async(req,res)=>{
     if(!Buffer.isBuffer(req.body)||!req.body.length)throw new ApiError('请选择要搜索的题目图片',400);

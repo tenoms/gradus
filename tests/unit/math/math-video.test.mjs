@@ -10,7 +10,7 @@ test("video descriptions omit provider metadata while preserving lesson explanat
   assert.equal(mathVideoDescription('{"答案":48}'), '{"答案":48}');
 });
 
-test("math playback prefers returned media links even when the record also has a provider VID", () => {
+test("math source extraction preserves returned media links alongside provider VIDs", () => {
   assert.deepEqual(mathVideoSource({ PolyvVID: "provider-vid", VideoUrl: "https://media.example/stream?token=opaque" }), {
     url: "https://media.example/stream?token=opaque", vid: "provider-vid",
   });
@@ -40,8 +40,8 @@ const output = ts.transpileModule(source, {
 globalThis.__mathVideoFixture = { api: () => { throw new Error("unexpected provider request"); }, mathVideoRequest, mathVideoSource };
 const { loadMathVideo } = await import(`data:text/javascript;base64,${Buffer.from("const {mathVideoRequest,mathVideoSource}=globalThis.__mathVideoFixture; const api=(...args)=>globalThis.__mathVideoFixture.api(...args);" + output).toString("base64")}`);
 
-test("direct math playback avoids the provider resolver and VID playback uses the session-scoped API", async () => {
-  assert.deepEqual(await loadMathVideo({ PolyvVID: "vid", VideoUrl: "https://media.example/lesson.mp4" }), { url: "https://media.example/lesson.mp4" });
+test("unidentified direct math playback stays local while VID playback uses the session-scoped cache", async () => {
+  assert.deepEqual(await loadMathVideo({ VideoUrl: "https://media.example/lesson.mp4" }), { url: "https://media.example/lesson.mp4" });
   const calls = [];
   globalThis.__mathVideoFixture.api = async (...args) => {
     calls.push(args);
@@ -52,4 +52,22 @@ test("direct math playback avoids the provider resolver and VID playback uses th
   assert.deepEqual(calls, [["/api/platform/math/video", { method: "POST", body: JSON.stringify({ vid: "vid", playsafe: "given-token" }) }]]);
   await assert.rejects(loadMathVideo({ FileUrl: "https://media.example/handout.pdf" }), /此视频暂时无法播放，请稍后重试。/);
   assert.equal(calls.length, 1);
+});
+
+test("math videos with both a URL and VID consult the backend cache, forwarding origin and explicit refresh", async () => {
+  const calls = [];
+  globalThis.__mathVideoFixture.api = async (...args) => { calls.push(args); return { url: "https://media.example/cached.m3u8" }; };
+  const row = { PolyvVID: "original-vid", VideoUrl: "https://media.example/old.m3u8", PlaySafe: "given-token" };
+  const origin = { kind: "analysis", questionId: 8, itemId: 9 };
+  assert.equal((await loadMathVideo(row, { origin })).url, "https://media.example/cached.m3u8");
+  await loadMathVideo(row, { origin, refresh: true });
+  assert.deepEqual(JSON.parse(calls[0][1].body), { vid: "original-vid", playsafe: "given-token", url: row.VideoUrl, origin });
+  assert.deepEqual(JSON.parse(calls[1][1].body), { vid: "original-vid", playsafe: "given-token", url: row.VideoUrl, origin, refresh: true });
+  const courseOrigin = { kind: "course", calendarId: 1, productId: 2, itemId: 3 };
+  await loadMathVideo({ VideoUrl: row.VideoUrl }, { origin: courseOrigin });
+  assert.deepEqual(JSON.parse(calls[2][1].body), { vid: "", url: row.VideoUrl, origin: courseOrigin });
+  await loadMathVideo({}, { origin: { kind: "product", productId: 2 }, refresh: true });
+  assert.deepEqual(JSON.parse(calls[3][1].body), { vid: "", origin: { kind: "product", productId: 2 }, refresh: true });
+  await loadMathVideo({ PolyvVID: row.VideoUrl }, { origin: { kind: "resolve", questionId: 8 }, refresh: true });
+  assert.deepEqual(JSON.parse(calls[4][1].body), { vid: "", url: row.VideoUrl, origin: { kind: "resolve", questionId: 8 }, refresh: true });
 });

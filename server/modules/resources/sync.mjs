@@ -5,6 +5,7 @@ import { publicPlatformResponse, injectMathUser } from '../../integrations/platf
 import { sourceForSession,resourceManifest,resourceRows,inferResourceRequest,resourceIdentity,resourceKey,publicResourceResponse } from './catalog.mjs';
 import { cleanMathPractice, contentRequest, normalizeMathPractice } from './content.mjs';
 import { isCoursePlaybackRequest, playbackUrl } from './playback.mjs';
+import { readMathPlayback } from './math-playback.mjs';
 
 function succeeded(response) {
   const code=response?.code??response?.Code,message=String(response?.Message||response?.msg||response?.Msg||'');
@@ -223,5 +224,10 @@ export function createResourceSync({store,service,configuration,accountPool}) {
       return {captured:true,resource};
     } catch {recordError();return {captured:false,error:lastError};}
   }
-  return {status,updateSettings,capture,capturePractice,localPractice,peek,lookup,read,requestSource,ensureQuestions,waitForIdle,findEntities:options=>store.findEntities(options),list:options=>store.list(options)};
+  const mathPlayback=({session,input})=>readMathPlayback({session,input,config:configNow(),store,requestJson:service.requestJson,onSaveError:recordError,
+    lookupSource:request=>lookup({platform:'math',session,request}),
+    readSource:request=>requestSource({session,name:'math',path:request.path,input:request}),
+    captureSource:(request,response)=>capture({platform:'math',session,request,response}),
+  });
+  return {status,updateSettings,capture,capturePractice,localPractice,peek,lookup,read,mathPlayback,requestSource,ensureQuestions,waitForIdle,findEntities:options=>store.findEntities(options),list:options=>store.list(options)};
 }

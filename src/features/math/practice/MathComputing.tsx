@@ -467,23 +467,10 @@ function ComputingPaper({
                   <div className="computing-step" key={step.ID || i}>
                     <strong>提示 {i + 1}</strong>
                     <RichContent content={step.Content} />
-                    {step.Files &&
-                      (safeUrl(step.Files) ? (
-                        <a
-                          href={safeUrl(step.Files)}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          查看提示视频
-                        </a>
-                      ) : (
-                        <MathQuestionVideo
-                          row={{
-                            PolyvVID: step.Files,
-                            Title: `提示 ${i + 1} 视频`,
-                          }}
-                        />
-                      ))}
+                    {step.Files && <MathQuestionVideo
+                      row={{ PolyvVID: step.Files, Title: `提示 ${i + 1} 视频` }}
+                      origin={{ kind: "resolve", questionId: question.QuestionID, ...(step.ID ? { itemId: step.ID } : {}) }}
+                    />}
                     <div className="computing-toolbar">
                       <span className="computing-muted">
                         这一步对你有帮助吗？

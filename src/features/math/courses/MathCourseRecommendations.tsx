@@ -14,9 +14,10 @@ import {
   RefreshCw,
 } from "lucide-react";
 import RichContent from "../../../shared/content/RichContent";
-import LearningVideo from "../../../shared/media/LearningVideo";
+import MathVideoPlayer from "../media/MathVideoPlayer";
+import { mathVideoSource } from "../media/math-video-source.mjs";
+import MathVideoFeedback from "./MathVideoFeedback";
 import MathQuestionReader from "../questions/MathQuestionReader";
-import MathQuestionVideo from "../questions/MathQuestionVideo";
 import { mathRows } from "../api/math";
 import { recordStudy } from "../../learning/state/store";
 import { reportFileLinks } from "../exams/report-model.mjs";
@@ -79,15 +80,6 @@ function questionName(question: R, index: number) {
     `第 ${question.QuestionSort || question.Sort || index + 1} 题`
   );
 }
-function safeUrl(value: any) {
-  try {
-    const url = new URL(String(value));
-    return ["http:", "https:"].includes(url.protocol) ? url.href : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 function SpecialVideos({
   LinkSort,
   onClose,
@@ -118,8 +110,9 @@ function SpecialVideos({
       valid = false;
     };
   }, [LinkSort]);
-  const video = rows[active],
-    url = video?.VideoUrl;
+  const video = rows[active];
+  const source = video ? { ...video, PolyvVID: video.PolyvVID || video.VideoUrl } : {};
+  const { url, vid } = mathVideoSource(source);
   return (
     <section className="panel mcr-video">
       <button className="mcr-back" onClick={onClose}>
@@ -145,42 +138,31 @@ function SpecialVideos({
               </button>
             ))}
           </div>
-          {safeUrl(url) ? (
-            <LearningVideo
-              key={active}
-              src={safeUrl(url)!}
-              controls
-              study={{
-                key: `math-recommended-video:${LinkSort}:${video.ID || active}`,
-                platform: "math",
-                title: video.Name || video.PlovyName || "推荐专题视频",
-                path: "/study/courses",
-              }}
-              onTimeUpdate={(e) => {
-                if (
-                  e.currentTarget.currentTime > 0 &&
-                  !watched.current.has(active)
-                ) {
-                  watched.current.add(active);
-                  recordStudy({
-                    platform: "math",
-                    type: "video",
-                    title: video.Name || "推荐专题视频",
-                    path: "/study/courses",
-                  });
-                }
-              }}
-            />
-          ) : (
-            <MathQuestionVideo
-              key={active}
-              row={{
-                ...video,
-                PolyvVID: url,
-                Title: video.Name || video.PlovyName || "播放专题视频",
-              }}
-            />
-          )}
+          <MathVideoPlayer
+            key={active}
+            row={{ ...source, Title: video.Name || video.PlovyName || "播放专题视频" }}
+            origin={{ kind: "special", specialId: LinkSort, itemId: video.ID }}
+            controls
+            playsInline
+            study={{
+              key: `math-recommended-video:${LinkSort}:${video.ID || active}`,
+              platform: "math",
+              title: video.Name || video.PlovyName || "推荐专题视频",
+              path: "/study/courses",
+            }}
+            onTimeUpdate={(e) => {
+              if (e.currentTarget.currentTime > 0 && !watched.current.has(active)) {
+                watched.current.add(active);
+                recordStudy({
+                  platform: "math",
+                  type: "video",
+                  title: video.Name || "推荐专题视频",
+                  path: "/study/courses",
+                });
+              }
+            }}
+          />
+          {!url && vid && <MathVideoFeedback vid={vid} videoId={video.VideoID || video.videoID || 0} questionId={video.QuestionID} fileId={video.ID} />}
         </>
       )}
     </section>

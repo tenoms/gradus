@@ -244,47 +244,58 @@ test("public review status never describes content as unavailable and private re
   assert.equal(resourceData.validityName({ ...row, expiresAt: null }), "待复核");
   assert.equal(resourceData.validityName(row), "暂不需复核");
   for (const scope of ["account", "volatile"]) assert.equal(resourceData.validityName({ ...row, scope, expiresAt: null }), "实时更新");
-  for (const expired of [true, false]) assert.equal(resourceData.validityName({ ...row, platform: "computer", kind: "computer.media", scope: "volatile", expiresAt: null, expired }), "失效时更新");
+  for (const kind of ["computer.media", "math.media"]) for (const scope of ["public", "volatile"]) for (const expired of [true, false]) {
+    assert.equal(resourceData.validityName({ ...row, platform: kind.split(".")[0], kind, scope, expiresAt: null, expired }), "失效时更新");
+  }
+  assert.equal(resourceData.typeName("math.media"), "数学视频");
 });
 
-test("course media directory rows describe stored URLs while other realtime rows retain their update policy", async () => {
-  const media = { ...row, platform: "computer", title: "408 课程视频", kind: "computer.media", scope: "volatile", expiresAt: null, expired: true };
-  const realtime = { ...media, key: "b".repeat(64), title: "实时练习", kind: "computer.question" };
-  const f = controller("ResourceManager", {}, async () => ({ ...page, resources: [media, realtime] }));
+test("math and computer media rows describe stored URLs while other realtime rows retain their update policy", async () => {
+  const mediaRows = [
+    { ...row, platform: "computer", title: "408 课程视频", kind: "computer.media", scope: "volatile", expiresAt: null, expired: true },
+    { ...row, key: "c".repeat(64), title: "数学题解视频", kind: "math.media", scope: "volatile", expiresAt: null, expired: true },
+  ];
+  const realtime = { ...mediaRows[0], key: "b".repeat(64), title: "实时练习", kind: "computer.question" };
+  const f = controller("ResourceManager", {}, async () => ({ ...page, resources: [...mediaRows, realtime] }));
   await f.flush();
-  const mediaRow = f.find(node => node.type === "tr" && nodes(node).some(child => child.type === "button" && textOf(child) === media.title));
+  for (const media of mediaRows) {
+    const mediaRow = f.find(node => node.type === "tr" && nodes(node).some(child => child.type === "button" && textOf(child) === media.title));
+    assert.match(textOf(mediaRow), /失效时更新/);
+    assert.match(textOf(mediaRow), /优先使用已存地址/);
+    assert.equal(nodes(mediaRow).some(node => node.props.className === "resource-date" && textOf(node) === "实时更新"), false);
+  }
   const realtimeRow = f.find(node => node.type === "tr" && nodes(node).some(child => child.type === "button" && textOf(child) === realtime.title));
-  assert.match(textOf(mediaRow), /失效时更新/);
-  assert.match(textOf(mediaRow), /优先使用已存地址/);
-  assert.equal(nodes(mediaRow).some(node => node.props.className === "resource-date" && textOf(node) === "实时更新"), false);
   assert.match(textOf(realtimeRow), /实时更新/);
   assert.doesNotMatch(textOf(realtimeRow), /失效时更新|优先使用已存地址/);
 });
 
 test("resource detail update methods and save notices match each playback policy", async () => {
-  for (const kind of ["computer.media", "computer.question"]) {
-    const response = { ...detail, platform: "computer", scope: "volatile", kind, expiresAt: null, response: { data: { url: "https://media.example/saved.m3u8" } } };
+  for (const kind of ["computer.media", "math.media", "computer.question"]) {
+    const playback = ["computer.media", "math.media"].includes(kind);
+    const response = { ...detail, platform: kind.split(".")[0], scope: "volatile", kind, expiresAt: null, response: { data: { url: "https://media.example/saved.m3u8" } } };
     const messages = [];
     const f = controller("ResourceDialog", { item: response, onClose() {}, onChanged: text => messages.push(text) }, async (_path, input) => input ? { ...response, revision: 4, response: JSON.parse(input.body).response } : response);
     await f.flush();
     const method = f.find(node => node.type === "div" && node.children.some(child => child?.type === "dt" && textOf(child) === "更新方式"));
-    assert.equal(textOf(method), kind === "computer.media" ? "更新方式优先使用已存地址，失效时更新" : "更新方式实时更新");
+    assert.equal(textOf(method), playback ? "更新方式优先使用已存地址，失效时更新" : "更新方式实时更新");
     f.click("编辑内容");
     f.find(node => node.type === "textarea").props.onChange({ target: { value: '{"data":{"url":"https://media.example/edited.m3u8"}}' } });
     f.render(); f.click("保存资源内容"); await f.flush();
     assert.equal(messages.length, 1);
-    assert.equal(messages[0], kind === "computer.media" ? "资源内容已保存，播放时优先使用已存地址，失效时更新。" : "资源内容已保存，后续访问时仍会实时更新。");
+    assert.equal(messages[0], playback ? "资源内容已保存，播放时优先使用已存地址，失效时更新。" : "资源内容已保存，后续访问时仍会实时更新。");
     assert.ok(textOf(f.tree).includes(messages[0]));
   }
 });
 
-test("batch update notices preserve the stored course URL policy without changing other resource descriptions", async () => {
-  const media = { ...row, platform: "computer", scope: "volatile", kind: "computer.media" };
-  const { fixture: f, events } = batchFixture(async () => ({ count: 1 }), { action: "invalidate", resources: [media] });
-  assert.match(textOf(f.tree), /课程视频优先使用已存地址，失效时更新/);
-  f.click("确认标记需更新"); await f.flush();
-  assert.match(events.messages[0], /课程视频继续优先使用已存地址，失效时更新/);
+test("batch update notices preserve stored math and computer URLs without changing other resource descriptions", async () => {
+  for (const kind of ["computer.media", "math.media"]) {
+    const media = { ...row, platform: kind.split(".")[0], scope: "volatile", kind };
+    const { fixture: f, events } = batchFixture(async () => ({ count: 1 }), { action: "invalidate", resources: [media] });
+    assert.match(textOf(f.tree), /视频优先使用已存地址，失效时更新/);
+    f.click("确认标记需更新"); await f.flush();
+    assert.match(events.messages[0], /视频继续优先使用已存地址，失效时更新/);
+  }
   const other = batchFixture(async () => ({ count: 1 }), { action: "invalidate" });
   assert.match(textOf(other.fixture.tree), /账号相关及短效响应继续实时读取/);
-  assert.doesNotMatch(textOf(other.fixture.tree), /课程视频优先使用已存地址/);
+  assert.doesNotMatch(textOf(other.fixture.tree), /视频优先使用已存地址/);
 });

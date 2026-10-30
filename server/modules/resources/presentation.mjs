@@ -2,7 +2,7 @@ export const resourceTypeLabels = {
   'math.books':'数学教辅', 'math.catalog':'教辅章节', 'math.albums':'专题专辑', 'math.packets':'课程资料包',
   'math.questions':'专题题目', 'math.question':'数学题目', 'math.analysis':'题目解析', 'math.files':'题目附件', 'math.practice':'练习题组',
   'math.album.catalog':'专辑目录', 'math.album.items':'专辑内容', 'math.products':'课程目录', 'math.product':'课程详情',
-  'math.course.chapters':'课程章节', 'math.articles':'学习文章', 'math.exams':'模拟测评', 'math.papers':'试卷',
+  'math.course.chapters':'课程章节', 'math.articles':'学习文章', 'math.exams':'模拟测评', 'math.papers':'试卷', 'math.media':'数学视频',
   'math.schools':'招生院校', 'math.colleges':'招生学院', 'math.majors':'招生专业', 'math.directions':'研究方向', 'math.studytypes':'学习方式',
   'computer.chapters':'知识章节', 'computer.groups':'章节题组', 'computer.exams':'练习试卷', 'computer.courses':'课程目录',
   'computer.course':'课程详情', 'computer.lessons':'课程课时', 'computer.schools':'招生院校', 'computer.activities':'学习活动',

@@ -195,7 +195,7 @@ function QuestionPreview({ row, onBack }: { row: Row; onBack: () => void }) {
         <section key={a.ID || i}>
           <h4>{a.Title || a.BusType || "解析"}</h4>
           <MathAnalysisContent content={a.Context || a.Content} />
-          {String(a.BusType).includes("视频") && <MathQuestionVideo row={a} />}
+          {String(a.BusType).includes("视频") && <MathQuestionVideo row={a} origin={{ kind: "analysis", questionId: row.QuestionID || row.ID, ...(a.ID ? { itemId: a.ID } : {}) }} />}
           <MathReportDownloads sources={[a]} />
         </section>
       ))}
@@ -240,7 +240,7 @@ function RecommendedAlbum({ row, onBack }: { row: Row; onBack: () => void }) {
         {item._question_files
           ?.filter((f: Row) => f.BusType === "视频解析")
           .map((f: Row, j: number) => (
-            <MathQuestionVideo key={f.ID || j} row={f} />
+            <MathQuestionVideo key={f.ID || j} row={f} origin={f.QuestionID || item.QuestionID ? { kind: "analysis", questionId: f.QuestionID || item.QuestionID, ...(f.ID ? { itemId: f.ID } : {}) } : undefined} />
           ))}
         {reportFileLinks(item).length > 0 && (
           <MathReportDownloads sources={[item]} />

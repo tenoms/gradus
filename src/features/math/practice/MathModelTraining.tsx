@@ -789,7 +789,7 @@ function ModuleQuestion({
                         a.Context || a.Content || a._question_code?.Content
                       }
                     />
-                    {a.BusType === "视频解析" && <MathQuestionVideo row={a} />}
+                    {a.BusType === "视频解析" && <MathQuestionVideo row={a} origin={{ kind: "analysis", questionId: row.QuestionID, ...(a.ID ? { itemId: a.ID } : {}) }} />}
                   </section>
                 ))}
                 {q.AnswerTxt && !analysis.length && (

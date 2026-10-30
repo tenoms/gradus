@@ -731,7 +731,7 @@ function MediaFile({ row }: { row: MathRow }) {
   const { url } = media;
   if (media.kind === "video" || media.kind === "polyv") return <section className="math-explanation-video" aria-label="视频解析">
     <h4>{row.Title || row.Name || "视频解析"}</h4>
-    <MathQuestionVideo row={row} />
+    <MathQuestionVideo row={row} origin={row.QuestionID ? { kind: "analysis", questionId: row.QuestionID, ...(row.ID ? { itemId: row.ID } : {}) } : undefined} />
   </section>;
   if (!url) return null;
   if (media.kind === "image")

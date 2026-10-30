@@ -43,6 +43,7 @@ node --experimental-strip-types --test tests/unit/shared/account-profile.test.mj
 | --- | --- |
 | `npm run verify:directories` | 目录加载、复用、并发与失效 |
 | `npm run verify:computer-courses` | 真实课程地址复用、失效后取流更新与媒体可访问性 |
+| `npm run verify:math-videos` | 真实数学视频地址保存、跨用户复用、失效刷新与播放清单 |
 | `npm run verify:tokens` | 两科认证复用、续期与恢复 |
 | `npm run verify:system-yyb` | 多服务账号合并、切换与注册 |
 | `npm run verify:personal-sync` | 本人账号关联、预览与单向记录导入 |

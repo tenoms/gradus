@@ -523,6 +523,7 @@ function AlbumContent({
               <MathQuestionVideo
                 key={f.ID || j}
                 row={{ ...f, PolyvVID: f.PlayVid || f.BusValue }}
+                origin={f.QuestionID || r.QuestionID ? { kind: "analysis", questionId: f.QuestionID || r.QuestionID, ...(f.ID ? { itemId: f.ID } : {}) } : undefined}
               />
             ))}
           {fileLinks(r).map((url, j) => (

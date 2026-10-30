@@ -45,9 +45,7 @@ import {
   courseQuestionRecord,
 } from "./course-model.mjs";
 import { MathCoursePaper } from "../exams/MathExams";
-import LearningVideo from "../../../shared/media/LearningVideo";
-import { loadMathVideo } from "../media/math-video";
-import type { MathVideo } from "../media/math-video";
+import MathVideoPlayer from "../media/MathVideoPlayer";
 import { mathVideoSource } from "../media/math-video-source.mjs";
 import MathQuestionVideo from "../questions/MathQuestionVideo";
 import MathModelTraining from "../practice/MathModelTraining";
@@ -193,7 +191,7 @@ function NativeVodPlayer({
     duration = useRef(durationSeconds(data.Duration)),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
-    [video, setVideo] = useState<MathVideo>();
+    [recordsReady, setRecordsReady] = useState(false);
   const callback = useRef(onSaved);
   callback.current = onSaved;
   async function save(force = false) {
@@ -239,16 +237,12 @@ function NativeVodPlayer({
   }
   useEffect(() => {
     let active = true;
-    Promise.all([
-      courseApi.records({ ...context, BusType: 2, BusID: task.BusID }),
-      loadMathVideo(data),
-    ]).then(([result, source]) => {
+    courseApi.records({ ...context, BusType: 2, BusID: task.BusID }).then(result => {
       if (!active) return;
       record.current = mathRows(result)[0] || {};
       latest.current = Number(record.current.BusValue || 0);
       lastSaved.current = latest.current;
-      duration.current = Number(source.duration) || duration.current;
-      setVideo(source);
+      setRecordsReady(true);
     }).catch((e: any) => {
       if (active) setError(e.message);
     });
@@ -260,10 +254,10 @@ function NativeVodPlayer({
   return (
     <div className="mc-vod">
       <h3>{courseLabel(data)}</h3>
-      {video && <LearningVideo
+      {recordsReady && <MathVideoPlayer
         ref={videoRef}
-        src={video.url}
-        poster={video.poster}
+        row={data}
+        origin={{ kind: "course", calendarId: context.CalendarID, productId: context.ProductID, itemId: task.BusID }}
         controls
         playsInline
         preload="metadata"
@@ -300,7 +294,7 @@ function NativeVodPlayer({
           void save(true);
         }}
       />}
-      {!video && !error && (
+      {!recordsReady && !error && (
         <div className="mc-status" role="status">
           <LoaderCircle className="spin" size={16} />
           正在加载视频…
@@ -309,7 +303,7 @@ function NativeVodPlayer({
       {error && (
         <div className="mc-status mc-error" role="alert">
           {error}
-          <button className="btn btn-secondary" onClick={video ? () => void save(true) : onRetry}>
+          <button className="btn btn-secondary" onClick={recordsReady ? () => void save(true) : onRetry}>
             重试
           </button>
         </div>
@@ -318,7 +312,7 @@ function NativeVodPlayer({
       <button
         className="btn btn-secondary"
         onClick={() => void save(true)}
-        disabled={!video || saving.current}
+        disabled={!recordsReady || saving.current}
       >
         保存播放进度
       </button>
@@ -1751,6 +1745,7 @@ function Product({
         />
         {product.Json && (
           <MathQuestionVideo
+            origin={{ kind: "product", productId: product.ID }}
             row={{
               PolyvVID: product.Json,
               Title: "观看课程介绍",

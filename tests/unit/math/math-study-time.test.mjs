@@ -140,18 +140,18 @@ test("course playback records one business activity on actual playing independen
   let state = 0;
   const scope = {
     element: (type, props, ...children) => ({ type, props: { ...props, children } }),
-    useState: initial => [state++ === 2 ? { url: "https://media.example.test/lesson.mp4" } : initial, () => {}],
+    useState: initial => [state++ === 2 ? true : initial, () => {}],
     useRef: current => ({ current }),
     useEffect() {},
     mathVideoSource: () => ({ vid: "course-video" }),
     durationSeconds: () => 100,
     courseLabel: row => row.Title,
     recordActivity: activity => activities.push(activity),
-    LearningVideo: "LearningVideo", Files: "Files", MathVideoFeedback: "MathVideoFeedback", LoaderCircle: "LoaderCircle",
+    MathVideoPlayer: "MathVideoPlayer", Files: "Files", MathVideoFeedback: "MathVideoFeedback", LoaderCircle: "LoaderCircle",
   };
   const player = runInNewContext(`${executable}\nNativeVodPlayer;`, scope);
   const tree = player({ task: { BusID: 9, Data: { Title: "课程课时" } }, context: { StuID: "web-student", CourseID: 5, CalendarID: 6 }, onSaved() {}, onRetry() {} });
-  const video = tree.props.children.find(node => node?.type === "LearningVideo");
+  const video = tree.props.children.find(node => node?.type === "MathVideoPlayer");
   assert.equal(activities.length, 0, "loading a lesson does not claim it was watched");
   video.props.onPlaying();
   video.props.onPlaying();
