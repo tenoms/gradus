@@ -7,7 +7,6 @@ import {
   Check,
   ChevronRight,
   Flag,
-  Heart,
   LoaderCircle,
   Play,
   X,
@@ -35,7 +34,6 @@ import {
   mergeMathQuestion,
 } from "../exams/math-grading";
 import { useSession } from "../../../shared/auth/session";
-import { mathContentLikeDelete } from "../questions/math-content-marks";
 import { recordStudy } from "../../learning/state/store";
 import { useStudyTimer } from "../../learning/time/use-study-timer";
 import {
@@ -838,49 +836,26 @@ function ModuleMarks({
   questionId: string | number;
 }) {
   const remote = useData(`module-marks-${fileId}`, () =>
-    Promise.all([
-      mathCommand("GetQuestionFilesGiveAuto", {
-        QuestionID: questionId,
-        IsValid: 1,
-        StuID: stuid,
-        BusID: fileId,
-        BusType: "小模块",
-        t: Date.now(),
-      }),
-      mathGet("/api/sys_give/GetListBypage", {
-        BusType: 1,
-        StuID: stuid,
-        Type: 4,
-        BusID: questionId,
-        BaseType: "小模块",
-        BusValue: fileId,
-        t: Date.now(),
-        page: 1,
-        limit: 10,
-      }),
-    ]),
+    mathGet("/api/sys_give/GetListBypage", {
+      BusType: 1,
+      StuID: stuid,
+      Type: 4,
+      BusID: questionId,
+      BaseType: "小模块",
+      BusValue: fileId,
+      t: Date.now(),
+      page: 1,
+      limit: 10,
+    }),
   );
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
-  const like = remote.data ? mathRows(remote.data[0])[0] : undefined;
-  const marked = remote.data ? mathRows(remote.data[1])[0] : undefined;
-  const toggle = async (type: "like" | "flag") => {
+  const marked = mathRows(remote.data)[0];
+  const toggle = async () => {
     setBusy(true);
     setNotice("");
     try {
-      if (type === "like") {
-        if (like)
-          await mathPost("/api/question_files_give/Del_question_files_give",
-            mathContentLikeDelete(stuid, like.ID, fileId));
-        else
-          await mathPost("/api/question_files_give/Inner_question_files_give", {
-            StuID: stuid,
-            BusID: fileId,
-            QuestionID: questionId,
-            BusType: "小模块",
-            IsValid: 1,
-          });
-      } else if (marked)
+      if (marked)
         await mathPost("/api/sys_give/Del_sys_give", { ID: marked.ID });
       else
         await mathPost("/api/sys_give/Inner_sys_give", {
@@ -903,15 +878,7 @@ function ModuleMarks({
       <button
         className="btn btn-secondary"
         disabled={busy || remote.loading}
-        onClick={() => toggle("like")}
-      >
-        <Heart size={16} fill={like ? "currentColor" : "none"} />
-        {like ? "已点赞" : "点赞这个模块"}
-      </button>
-      <button
-        className="btn btn-secondary"
-        disabled={busy || remote.loading}
-        onClick={() => toggle("flag")}
+        onClick={toggle}
       >
         <Flag size={16} fill={marked ? "currentColor" : "none"} />
         {marked ? "已标为重点" : "标为重点"}

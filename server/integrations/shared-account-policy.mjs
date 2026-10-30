@@ -4,10 +4,10 @@ export function mathParameters(input) {
   try { return typeof input.data.data === 'string' ? JSON.parse(input.data.data) : input.data.data || {}; }
   catch { return {}; }
 }
-const computerWrites = /\/(?:submitExam|submit\/sheet\/index|random\/answer\/submit|examination\/exercise\/reset|personal\/(?:collectExercise|incorrectExercise|addExerciseNote|exerciseRedo|addMajorCustom|deleteMajor)|user\/(?:updateUserInfo|modelInfo\/update|addTargetSchool)|lessonHistory\/add\/|banner\/click\/save|actSign\/content\/(?:submit|delete|likes|cancel\/likes|comment\/add))(?:\/|$)/i;
+const computerWrites = /\/(?:submitExam|submit\/sheet\/index|random\/answer\/submit|examination\/exercise\/reset|personal\/(?:collectExercise|incorrectExercise|addExerciseNote|exerciseRedo|addMajorCustom|deleteMajor)|user\/(?:updateUserInfo|modelInfo\/update|addTargetSchool)|lessonHistory\/add\/|banner\/click\/save|actSign\/content\/(?:submit|delete))(?:\/|$)/i;
 const computerPrivateReads = /\/(?:personal\/(?!OtherExamExercise)|practice\/(?:answerRecord|exerciseRecord|examinationRecord|basic\/progress\/stat)|user\/(?:detail|targetSchool)|actSign\/task\/undo\/list)(?:\/|$)/i;
 const mathPrivateCommands = /(?:GetUser(?:Info|Last|Log|Record|CourseQrcode|Comment|ReplyComment|QuestionOrder|Problem|QA|Capacity|Integral|Extrapolation|Frist)|GetSysUser(?:Book|QuestionBook|Record|Behavior|Client)|GetRelQuestionLog|GetQuestionLogInfo|GetCatalogHistory|GetBookList(?:SysUser|CountAndLook)|Get(?:My|AnswerUser|AnswerTeacher|NewAnswerTeacher|TeacherWait|TeacherProblem|TeacherQuestion)|Get(?:ExamStatistics|ExamUser|UserExam|MajorComputing(?:LastLog|UserError)|PaperPastPerformance|PaperRecordCounts|ProductLastTimeLog|CourseProductRecordCounts|CoursePacketLastStudy|SysGiveAuto)|getUserQA)/i;
-const mathPrivatePaths = /\/api\/(?:rel_question_log|sys_user_(?:book_catalog|book_question|record)|choice_question_exercise(?:_log)?|sys_users_(?:info|function_allocation|dryrun_(?:paperlog|questionlog))|sys_msg_push|sys_integral_log|book_highscorealbum_studylog|quesiton_extrapolation_log|question_(?:files_give|order_comments|order_log|orders|capacity_log)|c_(?:course_product_log|course_users(?:_progress|_record)?|paper_users_record|paper_student(?:_record|_recommend)?)|ks_user_(?:paper|record))\//i;
+const mathPrivatePaths = /\/api\/(?:rel_question_log|sys_user_(?:book_catalog|book_question|record)|choice_question_exercise(?:_log)?|sys_users_(?:info|function_allocation|dryrun_(?:paperlog|questionlog))|sys_msg_push|sys_integral_log|book_highscorealbum_studylog|quesiton_extrapolation_log|question_(?:order_comments|order_log|orders|capacity_log)|c_(?:course_product_log|course_users(?:_progress|_record)?|paper_users_record|paper_student(?:_record|_recommend)?)|ks_user_(?:paper|record))\//i;
 export function sharedOperation(name, input) {
   if (name === 'computer') {
     if (computerWrites.test(input.path)) return 'write';
@@ -19,6 +19,10 @@ export function sharedOperation(name, input) {
     if (['GetBookListCountAndLookCount_New','GetBookListCountAndLookCount'].includes(input.data.command)) return 'resource';
     if (['GeKstUserPaperInfo','GetKsPaperQuestionAndksUserRecordListNew','GetDryAppliInfoStuID'].includes(input.data.command)) return 'private';
     return mathPrivateCommands.test(input.data.command) ? 'private' : 'resource';
+  }
+  if (input.path === '/api/sys_give/GetListBypage') {
+    const parameters = mathParameters(input);
+    if (Number(parameters.BusType) === 1 && [4, 5].includes(Number(parameters.Type))) return 'private';
   }
   const action = input.path.split('/').at(-1);
   if (/^(?:Inner|Del|Dels|Update|Rel|Reset|Submit|add$|give$|consume$|Activation|Act|Bind|Experience|Unlock|Set|Read$)/i.test(action)) return 'write';

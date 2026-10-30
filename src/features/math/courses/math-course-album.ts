@@ -51,7 +51,7 @@ export const courseAlbumApi = {
     CatalogID: string | number,
     context: CourseAlbumContext,
   ) {
-    const [content, log, likes] = await Promise.allSettled([
+    const [content, log] = await Promise.allSettled([
       mathApi.albumItems(CatalogID),
       mathGet("/api/book_highscorealbum_studylog/GetListByPage", {
         AlbumID,
@@ -64,20 +64,13 @@ export const courseAlbumApi = {
         limit: 1,
         SortDesc: "AddTime Desc",
       }),
-      mathCommand("GetHighscorealbumGive", {
-        CatalogID,
-        AlbumID,
-        StuID: context.stuid,
-      }),
     ]);
     return {
       rows: mathRows(completed(content)),
       log: mathRows(completed(log))[0] || {},
-      likes: mathRows(completed(likes))[0] || {},
       errors: {
         content: readError(content, "章节正文"),
         log: readError(log, "章节阅读记录"),
-        likes: readError(likes, "点赞记录"),
       },
     };
   },
@@ -118,24 +111,4 @@ export const courseAlbumApi = {
       "/api/book_highscorealbum_studylog/Inner_book_highscorealbum_studylog",
       courseAlbumLog(context, AlbumID, CatalogID, BusID, previous),
     ),
-  like: (
-    context: CourseAlbumContext,
-    AlbumID: any,
-    CatalogID: any,
-    previous: MathRow,
-  ) =>
-    previous.MyLogID
-      ? mathPost(
-          "/api/book_highscorealbum_studylog/Del_book_highscorealbum_studylog",
-          { ID: previous.MyLogID },
-        )
-      : mathPost(
-          "/api/book_highscorealbum_studylog/Inner_book_highscorealbum_studylog",
-          {
-            Type: "点赞",
-            CatalogID,
-            AlbumID,
-            StuID: context.stuid,
-          },
-        ),
 };

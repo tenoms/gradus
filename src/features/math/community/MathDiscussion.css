@@ -70,22 +70,6 @@
   color: var(--text-secondary);
   margin-bottom: 8px;
 }
-.md-actions {
-  display: flex;
-  gap: 21px;
-  margin-top: 13px;
-}
-.md-actions button {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  color: var(--text-secondary);
-  padding: 0;
-}
-.md-actions button.liked {
-  color: var(--accent);
-}
 .md-images {
   display: flex;
   gap: 8px;
@@ -149,28 +133,6 @@
   font-size: 11px;
   padding: 7px 12px;
   min-height: 30px;
-}
-.md-composer {
-  border-top: 1px solid var(--accent-border);
-  padding-top: 23px;
-  margin-top: 15px;
-}
-.md-composer .mqa-attachment-input {
-  margin-bottom: 15px;
-}
-.md-composer > .btn {
-  margin-top: 15px;
-}
-.md-reply-target {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 11px;
-  color: var(--text-secondary);
-  background: var(--accent-soft);
-  padding: 8px 12px;
-  margin-bottom: 15px;
-  border-radius: 6px;
 }
 .md-thread-node {
   border-bottom: 1px solid var(--accent-border);
@@ -273,9 +235,6 @@
   .md-images img {
     max-width: 100px;
     max-height: 100px;
-  }
-  .md-actions {
-    gap: 16px;
   }
   .md-inbox-item .rich-content {
     font-size: 11px;

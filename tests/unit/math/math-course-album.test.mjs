@@ -113,13 +113,13 @@ test("course album loads catalogue by AlbumID and chapter cache by CatalogID, re
   assert.equal(calls.find((c) => c[0] === "get")[2].ProductID, 12);
 });
 
-test("course album preserves returned catalogues and chapter text when progress or likes fail", async () => {
+test("course album preserves returned catalogues and chapter text when progress fails", async () => {
   globalThis.__albumCatalog = async () => ({ data: [{ ID: 21, Title: "返回目录" }] });
   globalThis.__albumItems = async () => ({ data: [{ ID: 22, ContentList: [{ Content: "返回正文" }] }] });
   globalThis.__albumGet = async () => { throw new Error("progress unavailable"); };
   globalThis.__albumCommand = async command => {
     if (command === "GetAlbumInfo") return { data: [{ Title: "返回专辑" }] };
-    throw new Error("likes unavailable");
+    throw new Error("unexpected album command");
   };
   const context = { stuid: "s", ProductID: 12, CourseID: 10, CalendarID: 11 };
   const overview = await adapter.courseAlbumApi.load(20, context);
@@ -129,17 +129,14 @@ test("course album preserves returned catalogues and chapter text when progress 
   const chapter = await adapter.courseAlbumApi.chapter(20, 21, context);
   assert.equal(chapter.rows[0].ContentList[0].Content, "返回正文");
   assert.match(chapter.errors.log, /progress unavailable/);
-  assert.match(chapter.errors.likes, /likes unavailable/);
   assert.equal(chapter.errors.content, undefined);
 });
 
-test("course album keeps successful auxiliary responses and reports a real content failure", async () => {
+test("course album keeps successful reading logs and reports a real content failure", async () => {
   globalThis.__albumItems = async () => { throw new Error("content unavailable"); };
   globalThis.__albumGet = async () => ({ data: [{ ID: 31, BusID: 32 }] });
-  globalThis.__albumCommand = async () => ({ data: [{ Counts: 4 }] });
   const chapter = await adapter.courseAlbumApi.chapter(20, 21, { stuid: "s", ProductID: 12, CourseID: 10, CalendarID: 11 });
   assert.deepEqual(chapter.rows, []);
   assert.equal(chapter.log.ID, 31);
-  assert.equal(chapter.likes.Counts, 4);
   assert.match(chapter.errors.content, /content unavailable/);
 });

@@ -264,8 +264,6 @@ export const mathApi = {
     }),
   discussionReplies: (QuestionID: number | string, PID: number | string) =>
     mathCommand("GetDiscussListByPID", { QuestionID, PID }),
-  addComment: (data: MathRow) =>
-    mathPost("/api/sys_comment/Add", { ...data }),
   messages: (StuID: string) =>
     mathGet("/api/sys_msg_push/GetListByPagev2", {
       StuID,

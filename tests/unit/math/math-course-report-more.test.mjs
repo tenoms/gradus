@@ -4,9 +4,6 @@ import {
   courseDistribution,
   courseQuestionAccuracy,
   courseRankingRequest,
-  courseRankingVote,
-  courseRankingVoteResult,
-  reconcileCourseRanking,
   latestCourseExamParams,
   latestCourseScore,
 } from "../../../src/features/math/courses/course-report-more-model.mjs";
@@ -17,27 +14,6 @@ const context = {
   PaperID: 3,
   ProductID: 4,
 };
-test("课程榜单用本人实际点赞记录纠正缓存的空状态，保留其他人的计数", () => {
-  assert.deepEqual(reconcileCourseRanking([
-    { id: 10, GiveState: null, GiveCount: 2 },
-    { id: 11, GiveState: null, GiveCount: 3 },
-  ], [{ ID: 25, BusID: 10 }]), [
-    { id: 10, GiveState: 25, GiveCount: 3 },
-    { id: 11, GiveState: null, GiveCount: 3 },
-  ]);
-});
-test("课程榜单撤赞后刷新去掉缓存的本人旧赞", () => {
-  assert.deepEqual(reconcileCourseRanking([
-    { id: 10, GiveState: 25, GiveCount: 1 },
-  ], []), [{ id: 10, GiveState: null, GiveCount: 0 }]);
-});
-test("课程榜单保存返回编号后立即可撤赞，无编号不显示成功", () => {
-  const added = courseRankingVoteResult({ id: 10, GiveState: null, GiveCount: 0 }, 25);
-  assert.deepEqual(added, { id: 10, GiveState: 25, GiveCount: 1 });
-  assert.deepEqual(courseRankingVoteResult(added, true), { id: 10, GiveState: null, GiveCount: 0 });
-  assert.throws(() => courseRankingVoteResult({ id: 10 }, null), /尚未确认点赞成功，请刷新榜单后核对。/);
-  assert.throws(() => courseRankingVoteResult({ id: 10 }, true), /尚未确认点赞成功，请刷新榜单后核对。/);
-});
 test("课程普通与精批全榜使用各自原记录编号合约", () => {
   assert.deepEqual(courseRankingRequest(context), {
     command: "GetPaperScoreByList",
@@ -52,22 +28,6 @@ test("课程普通与精批全榜使用各自原记录编号合约", () => {
       PaperID: 3,
       ProductID: 4,
     },
-  });
-});
-test("课程榜单点赞指向记录row.id，撤赞只删除本人已有GiveState", () => {
-  assert.deepEqual(courseRankingVote("fixture", { id: 91 }), {
-    path: "/api/sys_give/Inner_sys_give",
-    data: {
-      BusType: 3,
-      BusID: 91,
-      Content: 1,
-      StuID: "fixture",
-      Type: 1,
-    },
-  });
-  assert.deepEqual(courseRankingVote("fixture", { id: 91, GiveState: 92 }), {
-    path: "/api/sys_give/Del_sys_give",
-    data: { ID: 92 },
   });
 });
 test("最近模拟成绩保留原Use年份与课程上下文，不混用当前年份", () => {

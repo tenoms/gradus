@@ -19,23 +19,14 @@ export async function loadDiscussionPage({
   page = 1,
   limit = 20,
 }) {
-  const [list, likes] = await Promise.all([
-    get("/api/sys_comment/GetUser", {
-      ID: qid,
-      limit,
-      page,
-      SortDesc: order === "hot" ? "" : "1",
-      StuID: page === 1 && order === "hot" ? stuid : "",
-    }),
-    command("GetUserCommentGiveList_lt", {
-      StuID: stuid,
-      PID: qid,
-      Type: "题目讨论区",
-      t: Date.now(),
-    }),
-  ]);
-  // GetUser can retain pre-mutation counters even when its timestamp changes.
-  // The original detail procedure returns the current count and deletion state.
+  const list = await get("/api/sys_comment/GetUser", {
+    ID: qid,
+    limit,
+    page,
+    SortDesc: order === "hot" ? "" : "1",
+    StuID: page === 1 && order === "hot" ? stuid : "",
+  });
+  // Cached lists can retain old reply counts and comments deleted at the source.
   const fresh = await Promise.all(
     rows(list).map(async (row) => {
       const current = rows(
@@ -44,11 +35,10 @@ export async function loadDiscussionPage({
       return current
         ? {
             ...row,
-            Give: current.Give ?? row.Give,
             Count: current.Count ?? row.Count,
           }
         : null;
     }),
   );
-  return [{ data: fresh.filter(Boolean) }, likes];
+  return { data: fresh.filter(Boolean) };
 }

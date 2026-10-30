@@ -18,46 +18,6 @@ export function courseRankingRequest(context) {
         params: { ...shared, BusID: context.PaperID },
       };
 }
-export function courseRankingVote(stuid, row) {
-  if (row.GiveState)
-    return { path: "/api/sys_give/Del_sys_give", data: { ID: row.GiveState } };
-  return {
-    path: "/api/sys_give/Inner_sys_give",
-    data: {
-      BusType: 3,
-      BusID: row.id,
-      Content: 1,
-      StuID: stuid,
-      Type: 1,
-    },
-  };
-}
-export function reconcileCourseRanking(rows, ownReactions) {
-  const byRecord = new Map(ownReactions.map((row) => [String(row.BusID), row]));
-  return rows.map((row) => {
-    const reaction = byRecord.get(String(row.id));
-    const previous = Number(row.GiveState) > 0 ? 1 : 0;
-    const current = reaction ? 1 : 0;
-    return {
-      ...row,
-      GiveState: reaction?.ID ?? null,
-      GiveCount: Math.max(0, (Number(row.GiveCount) || 0) + current - previous),
-    };
-  });
-}
-export function courseRankingVoteResult(row, result) {
-  if (Number(row.GiveState) > 0)
-    return {
-      ...row,
-      GiveState: null,
-      GiveCount: Math.max(0, (Number(row.GiveCount) || 0) - 1),
-    };
-  const id = typeof result === "number" || typeof result === "string"
-    ? Number(result) : NaN;
-  if (!(id > 0))
-    throw new Error("尚未确认点赞成功，请刷新榜单后核对。");
-  return { ...row, GiveState: id, GiveCount: (Number(row.GiveCount) || 0) + 1 };
-}
 export function latestCourseExamParams(context, meta, withProduct = false) {
   return {
     StuID: context.stuid,

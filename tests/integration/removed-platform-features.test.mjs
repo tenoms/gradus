@@ -37,7 +37,7 @@ test("shared math records reject suggestions, corrections and correction votes",
       }), { status: 403 });
 });
 
-test("shared math queries reject corrections and retain content marks and ratings", () => {
+test("shared math queries reject corrections and retain content marks and existing ratings", () => {
   for (const command of ["GetSysGiveAuto", "GetSysGiveAutoLimit"])
     for (const parameters of [{ Type: 3, BusType: "6" }, { Type: "3", BusType: 1 }, { Type: 3, BusType: 8 }, { Type: 1, BusType: "9" }])
       for (const data of [parameters, JSON.stringify(parameters)])
@@ -49,10 +49,48 @@ test("shared math queries reject corrections and retain content marks and rating
       path: "/api/Master/AutoModel", method: "POST",
       data: { command: "GetSysGiveAuto", data: JSON.stringify(parameters) },
     }));
-    assert.doesNotThrow(() => validatePlatformRequest("math", {
-      path: "/api/sys_give/Inner_sys_give", method: "POST", data: parameters,
-    }));
+    if (parameters.BusType === 1)
+      assert.doesNotThrow(() => validatePlatformRequest("math", {
+        path: "/api/sys_give/Inner_sys_give", method: "POST", data: parameters,
+      }));
   }
+});
+
+test("like and comment publishing endpoints are removed while comment readers stay enabled", () => {
+  for (const path of [
+    "/api/sys_comment/Add", "/api/sys_comment/Del", "/api/sys_comment/give",
+    "/api/question_files_give/Inner_question_files_give", "/api/question_files_give/Del_question_files_give", "/api/question_files_give/GetListByAll",
+    "/api/book_highscorealbum_studylog/Del_book_highscorealbum_studylog",
+  ])
+    assert.throws(() => validatePlatformRequest("math", { path, method: "POST" }), { status: 403 });
+  for (const path of [
+    "/api/user/wx/actSign/content/likes/10", "/api/user/wx/actSign/content/cancel/likes/10", "/api/user/wx/actSign/content/comment/add",
+  ])
+    assert.throws(() => validatePlatformRequest("computer", { path, method: "POST" }), { status: 403 });
+  for (const command of ["GetHighscorealbumGive", "GetQuestionFilesGiveAuto", "GetUserCommentGiveList_lt"])
+    assert.throws(() => validatePlatformRequest("math", {
+      path: "/api/Master/AutoModel", method: "POST", data: { command, data: "{}" },
+    }), { status: 403 });
+  for (const command of ["GetCommentInfoByID_lt", "GetCommentLevelList_lt", "GetUserReplyCommentList_lt"])
+    assert.doesNotThrow(() => validatePlatformRequest("math", {
+      path: "/api/Master/AutoModel", method: "POST", data: { command, data: "{}" },
+    }));
+  assert.doesNotThrow(() => validatePlatformRequest("math", { path: "/api/sys_comment/GetUser" }));
+  for (const path of ["/api/exam/wx/course/comment/list", "/api/user/wx/actSign/content/comment/list"])
+    assert.doesNotThrow(() => validatePlatformRequest("computer", { path }));
+});
+
+test("mixed study endpoints keep marks and reading progress without accepting ratings or album likes", () => {
+  for (const parameters of [{ BusType: 2, Type: 2 }, { BusType: "2", Type: "2" }, { BusType: 3, Type: 1 }, {}])
+    assert.throws(() => validatePlatformRequest("math", {
+      path: "/api/sys_give/Inner_sys_give", method: "POST", data: parameters,
+    }), { status: 403 });
+  assert.throws(() => validatePlatformRequest("math", {
+    path: "/api/book_highscorealbum_studylog/Inner_book_highscorealbum_studylog", method: "POST", data: { Type: "点赞", AlbumID: 8 },
+  }), { status: 403 });
+  assert.doesNotThrow(() => validatePlatformRequest("math", {
+    path: "/api/book_highscorealbum_studylog/Inner_book_highscorealbum_studylog", method: "POST", data: { Type: "章节", AlbumID: 8, CatalogID: 9 },
+  }));
 });
 
 test("dedicated question correction endpoints and history commands are no longer registered", () => {
@@ -67,7 +105,7 @@ test("dedicated question correction endpoints and history commands are no longer
   }), { status: 403 });
 });
 
-test("removed correction requests are rejected by the HTTP proxy before reaching either platform", async () => {
+test("removed feature writes are rejected by the HTTP proxy before reaching either platform", async () => {
   let forwarded = 0;
   const app = await startHttpApp({
     yybRequest: async () => [{ id: 7, nickname: "测试账号" }],
@@ -87,6 +125,15 @@ test("removed correction requests are rejected by the HTTP proxy before reaching
       ["math", { path: "/api/Master/AutoModel", method: "POST", data: { command: "GetQuestionErrorToQuestionID", data: "{}" } }],
       ["math", { path: "/api/Master/AutoModel", method: "POST", data: { command: "GetSysGiveAuto", data: JSON.stringify({ BusType: 1, Type: 3 }) } }],
       ["computer", { path: "/api/exam/wx/practice/addExerciseErrata/", method: "POST" }],
+      ["math", { path: "/api/sys_comment/Add", method: "POST", data: { Txt: "comment" } }],
+      ["math", { path: "/api/sys_comment/give", method: "POST", data: { ID: 10, Give: 1 } }],
+      ["math", { path: "/api/question_files_give/Inner_question_files_give", method: "POST", data: { BusID: 10 } }],
+      ["math", { path: "/api/sys_give/Inner_sys_give", method: "POST", data: { BusType: 2, Type: 2, Content: "rating" } }],
+      ["math", { path: "/api/sys_give/Inner_sys_give", method: "POST", data: { BusType: 3, Type: 1, BusID: 10 } }],
+      ["math", { path: "/api/book_highscorealbum_studylog/Inner_book_highscorealbum_studylog", method: "POST", data: { Type: "点赞", AlbumID: 10 } }],
+      ["computer", { path: "/api/user/wx/actSign/content/likes/10", method: "POST" }],
+      ["computer", { path: "/api/user/wx/actSign/content/cancel/likes/10", method: "POST" }],
+      ["computer", { path: "/api/user/wx/actSign/content/comment/add", method: "POST", data: { cid: 10, comment: "comment" } }],
     ]) {
       const response = await app.request(`/api/learning/platform/${platform}`, { auth, body });
       assert.equal(response.status, 403, body.path);

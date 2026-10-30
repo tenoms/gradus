@@ -56,7 +56,7 @@ test('two Web users share one upstream token while answers, reports, notes, coll
     const nextLaunch=await call(app,a,'computer',{path:'/api/exam/wx/practice/exerciseList',query:{majorId:'major',chapterId:'chapter'}});
     assert.notEqual(nextLaunch.data.data.examRecordId,reportId,'a submitted paper starts an independent next record');
     const unsupported=await call(app,a,'math',{path:'/api/sys_comment/Add',method:'POST',data:{Content:'comment'}});
-    assert.equal(unsupported.status,409);
+    assert.equal(unsupported.status,403);
   }finally{await app.close();}
 });
 

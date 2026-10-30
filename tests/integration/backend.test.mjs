@@ -260,27 +260,19 @@ test("an expired platform token refreshes once and updates the same browser sess
   );
 });
 
-test("comment reactions preserve the recipient author while other writes bind the actor", () => {
+test("personal writes bind the current actor and configured station", () => {
   const input = {
-    path: "/api/sys_comment/give",
+    path: "/api/rel_question_log/Inner_rel_question_log",
     method: "POST",
-    data: { ID: 12, Give: 1, StuID: "comment-author" },
+    data: { ID: 12, StuID: "requested-user" },
     query: {},
   };
   assert.equal(
     injectMathUser(input, { stuId: "current-user" }, 7).data.StuID,
-    "comment-author",
+    "current-user",
   );
   assert.equal(injectMathUser(input, { stuId: "current-user" }, 7).data.System_Station_ID, 7);
   assert.throws(() => injectMathUser(input, { stuId: "current-user" }), { status: 503 });
-  assert.equal(
-    injectMathUser(
-      { ...input, path: "/api/sys_comment/Add" },
-      { stuId: "current-user" },
-      7,
-    ).data.StuID,
-    "current-user",
-  );
 });
 
 test("known own profile writes update session display without entitlement checks", async () => {

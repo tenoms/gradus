@@ -1,32 +1,36 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { loadDiscussionPage } from "../../../src/features/math/community/discussion-data.mjs";
-test("discussion reads current zero likes instead of the stale GetUser counter", async () => {
+test("discussion reads comments and current reply counts without a separate personal engagement request", async () => {
   const calls = [];
+  let query;
   const result = await loadDiscussionPage({
     qid: 12,
     stuid: "fixture",
-    get: async () => ({ data: [{ ID: 3, Give: 1, Txt: "own fixture" }] }),
+    get: async (path, params) => {
+      assert.equal(path, "/api/sys_comment/GetUser");
+      query = params;
+      return { data: [{ ID: 3, Count: 1, Txt: "existing comment" }] };
+    },
     command: async (name, params) => {
       calls.push([name, params]);
-      return name === "GetCommentInfoByID_lt"
-        ? { data: [[{ ID: 3, Give: 0 }]] }
-        : { data: [[]] };
+      return { data: [[{ ID: 3, Count: 0 }]] };
     },
   });
-  assert.equal(result[0].data[0].Give, 0);
-  assert.equal(result[0].data[0].Txt, "own fixture");
-  assert.equal(calls[0][1].StuID, "fixture");
+  assert.equal(result.data[0].Count, 0);
+  assert.equal(result.data[0].Txt, "existing comment");
+  assert.deepEqual(query, { ID: 12, limit: 20, page: 1, SortDesc: "", StuID: "fixture" });
+  assert.deepEqual(calls.map((call) => call[0]), ["GetCommentInfoByID_lt"]);
   assert.ok(calls.every((call) => Number(call[1].t) > 0));
 });
-test("successfully deleted comments do not remain visible from a cached list", async () => {
+test("comments removed at the source do not remain visible from a cached list", async () => {
   const result = await loadDiscussionPage({
     qid: 12,
     stuid: "fixture",
-    get: async () => ({ data: [{ ID: 3, Give: 1 }] }),
+    get: async () => ({ data: [{ ID: 3 }] }),
     command: async () => ({ data: [[]] }),
   });
-  assert.deepEqual(result[0].data, []);
+  assert.deepEqual(result.data, []);
 });
 test("empty discussion list does not fabricate detail requests", async () => {
   const calls = [];
@@ -39,6 +43,20 @@ test("empty discussion list does not fabricate detail requests", async () => {
       return { data: [[]] };
     },
   });
-  assert.deepEqual(result[0].data, []);
-  assert.deepEqual(calls, ["GetUserCommentGiveList_lt"]);
+  assert.deepEqual(result.data, []);
+  assert.deepEqual(calls, []);
+});
+test("latest discussion browsing retains the requested page and limit", async () => {
+  let query;
+  const result = await loadDiscussionPage({
+    qid: 12,
+    stuid: "fixture",
+    order: "new",
+    page: 3,
+    limit: 10,
+    get: async (_path, params) => { query = params; return { data: [] }; },
+    command: async () => { assert.fail("an empty page has no comment details to read"); },
+  });
+  assert.deepEqual(query, { ID: 12, page: 3, limit: 10, SortDesc: "1", StuID: "" });
+  assert.deepEqual(result.data, []);
 });

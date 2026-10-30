@@ -1,15 +1,12 @@
 import { useEffect, useState } from "react";
-import { LoaderCircle, RefreshCw, ThumbsUp, Trophy } from "lucide-react";
-import { mathCommand, mathData, mathGet, mathPost, mathRows } from "../api/math";
+import { LoaderCircle, RefreshCw, Trophy } from "lucide-react";
+import { mathCommand, mathRows } from "../api/math";
 import type { MathRow } from "../api/math";
 import type { MathPaperContext } from "../exams/math-exams";
 import {
   courseDistribution,
   courseQuestionAccuracy,
   courseRankingRequest,
-  courseRankingVote,
-  courseRankingVoteResult,
-  reconcileCourseRanking,
   latestCourseExamParams,
   latestCourseScore,
 } from "./course-report-more-model.mjs";
@@ -38,8 +35,7 @@ export default function MathCourseReportMore({
     [distribution, setDistribution] = useState<MathRow>(),
     [index, setIndex] = useState(0),
     [accuracy, setAccuracy] = useState<MathRow>(),
-    [limit, setLimit] = useState(100),
-    [voting, setVoting] = useState<string>();
+    [limit, setLimit] = useState(100);
   const key = JSON.stringify(context),
     question = questions[index];
   useEffect(() => {
@@ -50,22 +46,8 @@ export default function MathCourseReportMore({
     const load = async () => {
       if (tab === "ranking") {
         const request = courseRankingRequest(context);
-        const ownReactions = async () => {
-          const reactions: MathRow[] = [];
-          for (let page = 1; ; page += 1) {
-            const result = await mathGet("/api/sys_give/GetListBypage", {
-              StuID: context.stuid, BusType: 3, Type: 1,
-              limit: 1000, page,
-            });
-            const batch = mathRows(result);
-            reactions.push(...batch);
-            if (batch.length < 1000) return reactions;
-          }
-        };
-        const [result, reactions] = await Promise.all([
-          mathCommand(request.command, request.params), ownReactions(),
-        ]);
-        if (active) setRows(reconcileCourseRanking(mathRows(result), reactions));
+        const result = await mathCommand(request.command, request.params);
+        if (active) setRows(mathRows(result));
       } else if (tab === "comparison") {
         const score = await mathCommand(
             "GetUserExamLastScore",
@@ -104,23 +86,6 @@ export default function MathCourseReportMore({
     bins = courseDistribution(distribution),
     max = Math.max(1, ...bins.map((row) => row.count)),
     rate = courseQuestionAccuracy(accuracy, Number(question?.Score || 0));
-  async function vote(row: MathRow) {
-    setVoting(String(row.id));
-    setError("");
-    try {
-      const request = courseRankingVote(context.stuid, row);
-      const result = await mathPost(request.path, request.data);
-      if (mathData(result) === false) throw new Error("点赞暂未保存，请刷新后重试。");
-      const updated = courseRankingVoteResult(row, mathData(result));
-      setRows((current) => current.map((item) =>
-        String(item.id) === String(row.id) ? updated : item,
-      ));
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setVoting(undefined);
-    }
-  }
   return (
     <details
       className="mer-section mcrm"
@@ -150,7 +115,7 @@ export default function MathCourseReportMore({
             <button
               className="icon-button"
               aria-label="刷新课程成绩对比"
-              disabled={loading || !!voting}
+              disabled={loading}
               onClick={() => setVersion((v) => v + 1)}
             >
               <RefreshCw size={15} />
@@ -202,20 +167,6 @@ export default function MathCourseReportMore({
                           )}
                         </span>
                         <strong>{row.BusValue ?? "—"} 分</strong>
-                        <button
-                          className={row.GiveState ? "liked" : ""}
-                          disabled={!!voting || !row.id}
-                          aria-label={`${row.GiveState ? "取消点赞" : "点赞"}${cleanName(row.Nickname)}`}
-                          aria-pressed={!!row.GiveState}
-                          onClick={() => void vote(row)}
-                        >
-                          {voting === String(row.id) ? (
-                            <LoaderCircle className="spin" size={14} />
-                          ) : (
-                            <ThumbsUp size={14} />
-                          )}{" "}
-                          {Number(row.GiveCount) || 0}
-                        </button>
                       </li>
                     ))}
                   </ol>

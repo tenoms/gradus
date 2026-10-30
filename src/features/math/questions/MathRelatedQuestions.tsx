@@ -10,7 +10,6 @@ import {
   ChevronRight,
   Filter,
   Flag,
-  Heart,
   LoaderCircle,
   RefreshCw,
   Search,

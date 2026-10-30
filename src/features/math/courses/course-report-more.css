@@ -52,20 +52,6 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.mcrm-ranking button {
-  border: 1px solid var(--accent-border);
-  border-radius: 9px;
-  padding: 7px 10px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  background: var(--surface);
-  color: var(--text-secondary);
-}
-.mcrm-ranking .liked {
-  color: var(--danger);
-  background: var(--danger-soft);
-}
 .mcrm-ranking strong {
   white-space: nowrap;
 }
@@ -138,9 +124,6 @@
   .mcrm-avatar {
     width: 27px;
     height: 27px;
-  }
-  .mcrm-ranking button {
-    padding: 6px;
   }
   .mcrm-tabs button {
     font-size: 12px;

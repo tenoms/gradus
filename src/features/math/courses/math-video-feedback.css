@@ -5,7 +5,6 @@
 }
 .mvf-heading,
 .mvf-marks,
-.mvf-stars,
 .mvf-comments article > div {
   display: flex;
   align-items: center;
@@ -20,21 +19,6 @@
 }
 .mvf-marks {
   margin: 14px 0;
-}
-.mvf-stars {
-  color: var(--warning);
-  margin: 16px 0;
-}
-.mvf-stars button {
-  border: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  padding: 3px;
-}
-.mvf-stars span {
-  font-size: 12px;
-  color: var(--muted);
 }
 .mvf-comments article {
   padding: 15px 0;
@@ -63,10 +47,4 @@
   align-items: center;
   color: var(--muted);
   font-size: 12px;
-}
-.math-video-feedback > form {
-  margin: 14px 0;
-  padding: 15px;
-  background: var(--surface-soft);
-  border-radius: 8px;
 }

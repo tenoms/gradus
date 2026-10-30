@@ -6,4 +6,4 @@ export function loadDiscussionPage(options: {
   order?: string;
   page?: number;
   limit?: number;
-}): Promise<any[]>;
+}): Promise<{ data: Record<string, any>[] }>;

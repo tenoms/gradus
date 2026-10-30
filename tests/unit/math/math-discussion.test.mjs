@@ -1,48 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
-  discussionGivePayload,
-  discussionReplyPayload,
-  discussionTree,
-} from "../../../src/features/math/community/discussion-model.mjs";
-test("discussion reply payload preserves original parent, reply and recipient semantics for each level", () => {
-  const input = {
-    qid: 99,
-    stuid: "author",
-    text: " 理解了 ",
-    files: ["https://example.com/image.png"],
-  };
-  assert.deepEqual(discussionReplyPayload(input), {
-    StuID: "author",
-    Txt: "理解了",
-    PID: 0,
-    Level: 1,
-    BusType: "题目讨论区",
-    BusID: 99,
-    Files: "https://example.com/image.png",
-    Quote: "",
-    ReplyID: 0,
-  });
-  const second = discussionReplyPayload({
-    ...input,
-    target: { ID: 10, Level: 1, StuID: "recipient" },
-  });
-  assert.equal(second.PID, 10);
-  assert.equal(second.Level, 2);
-  assert.equal(second.Quote, "recipient");
-  const third = discussionReplyPayload({
-    ...input,
-    target: { ID: 20, PID: 10, Level: 2 },
-  });
-  assert.equal(third.PID, 20);
-  assert.equal(third.Level, 3);
-  const nested = discussionReplyPayload({
-    ...input,
-    target: { ID: 30, PID: 20, Level: 3 },
-  });
-  assert.equal(nested.PID, 20);
-  assert.equal(nested.ReplyID, 30);
-});
+import { discussionTree } from "../../../src/features/math/community/discussion-model.mjs";
 test("flat source reply rows form the intended nested conversation without mutating upstream rows", () => {
   const rows = [
     { ID: 20, PID: 10 },
@@ -54,13 +12,14 @@ test("flat source reply rows form the intended nested conversation without mutat
   assert.equal(tree[0].children[0].ID, 30);
   assert.equal(rows[0].children, undefined);
 });
-test("liking identifies the recipient author while cancellation uses only the original comment ID", () => {
-  assert.deepEqual(
-    discussionGivePayload({ ID: 5, StuID: "recipient" }, false),
-    { ID: 5, Give: 1, StuID: "recipient" },
-  );
-  assert.deepEqual(discussionGivePayload({ ID: 5, StuID: "recipient" }, true), {
-    ID: 5,
-    Give: -1,
-  });
+test("existing reply recipients and orphan floors remain readable with mixed identifier types", () => {
+  const tree = discussionTree([
+    { ID: 20, PID: "10", Level: 2, Txt: "已有回复" },
+    { ID: "30", PID: "20", Level: 3, toUserNick: "学习者", Txt: "楼层中的回复" },
+    { ID: 40, PID: 999, Level: 3, Txt: "原父楼层不可用的回复" },
+  ], 10);
+  assert.deepEqual(tree.map((row) => row.ID), [20, 40]);
+  assert.equal(tree[0].children[0].toUserNick, "学习者");
+  assert.equal(tree[0].children[0].Txt, "楼层中的回复");
+  assert.equal(tree[1].Txt, "原父楼层不可用的回复");
 });

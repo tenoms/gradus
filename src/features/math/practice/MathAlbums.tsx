@@ -9,7 +9,6 @@ import {
   Check,
   ChevronRight,
   FileText,
-  Heart,
   LoaderCircle,
   Search,
 } from "lucide-react";
@@ -20,7 +19,6 @@ import MathModelTraining from "./MathModelTraining";
 import {
   mathApi,
   mathCommand,
-  mathData,
   mathGet,
   mathImage,
   mathPost,
@@ -123,7 +121,7 @@ export default function MathAlbums({
   stuid: string;
   onQuestion: (row: MathRow) => void;
 }) {
-  const { session, refresh } = useSession();
+  const { refresh } = useSession();
   const { stage } = useMathLearningPlan();
   const [stageFilter, setStageFilter] = useState("全部阶段");
   const [myOnly, setMyOnly] = useState(false);
@@ -165,16 +163,6 @@ export default function MathAlbums({
             Type: "章节",
           })
         : Promise.resolve({ data: [] }),
-  );
-  const likes = useAlbumData(`album-likes-${album?.ID}-${catalog?.ID}`, () =>
-    catalog
-      ? mathCommand("GetHighscorealbumGive", {
-          CatalogID: catalog.ID,
-          AlbumID: album?.ID,
-          StuID: stuid,
-          t: Date.now(),
-        })
-      : Promise.resolve({ data: [] }),
   );
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -262,33 +250,6 @@ export default function MathAlbums({
       setBusy(false);
     }
   };
-  const like = async () => {
-    if (!album || !catalog) return;
-    setBusy(true);
-    try {
-      const info = mathRows(likes.data)[0];
-      if (info?.MyLogID)
-        await mathPost(
-          "/api/book_highscorealbum_studylog/Del_book_highscorealbum_studylog",
-          { ID: info.MyLogID },
-        );
-      else
-        await mathPost(
-          "/api/book_highscorealbum_studylog/Inner_book_highscorealbum_studylog",
-          {
-            Type: "点赞",
-            CatalogID: catalog.ID,
-            AlbumID: album.ID,
-            StuID: stuid,
-          },
-        );
-      likes.reload();
-    } catch (e: any) {
-      setNotice(e.message);
-    } finally {
-      setBusy(false);
-    }
-  };
   const goQuestion = (row: MathRow) => {
     if (row.QuestionID) {
       void saveReading(row.ID);
@@ -297,7 +258,6 @@ export default function MathAlbums({
   };
   if (catalog && album) {
     const nodes = mathRows(items.data);
-    const likeInfo = mathRows(likes.data)[0] || {};
     return (
       <div className="math-workspace">
         <button
@@ -316,13 +276,6 @@ export default function MathAlbums({
             <h2>{mathTitle(catalog)}</h2>
             <p>{mathTitle(album)} · 图文、例题与视频一起学</p>
           </div>
-          <button className="btn btn-secondary" disabled={busy} onClick={like}>
-            <Heart
-              size={16}
-              fill={likeInfo.MyLogID ? "currentColor" : "none"}
-            />
-            {likeInfo.MyLogID ? "已赞" : "点赞"} {likeInfo.counts || 0}
-          </button>
         </div>
         <div className="panel math-album-reading">
           <Status

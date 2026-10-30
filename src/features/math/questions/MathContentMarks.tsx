@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { Flag, Heart } from "lucide-react";
+import { Flag } from "lucide-react";
 import { useSession } from "../../../shared/auth/session";
-import { mathCommand, mathGet, mathPost, mathRows } from "../api/math";
+import { mathGet, mathPost, mathRows } from "../api/math";
 import type { MathRow } from "../api/math";
-import { mathContentLikeDelete, mathContentMarkType } from "./math-content-marks";
+import { mathContentMarkType } from "./math-content-marks";
 export default function MathContentMarks({
   fileId,
   questionId,
@@ -16,8 +16,7 @@ export default function MathContentMarks({
   const { session } = useSession();
   const stuid = session.platforms.math?.user?.StuID || "";
   const markType = mathContentMarkType(baseType);
-  const [like, setLike] = useState<MathRow>(),
-    [marked, setMarked] = useState<MathRow>(),
+  const [marked, setMarked] = useState<MathRow>(),
     [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -27,32 +26,19 @@ export default function MathContentMarks({
     if (!stuid || !questionId || !fileId || !markType) return;
     setLoading(true);
     setError("");
-    Promise.all([
-      mathCommand("GetQuestionFilesGiveAuto", {
-        QuestionID: questionId,
-        IsValid: 1,
-        StuID: stuid,
-        BusID: fileId,
-        BusType: markType,
-        t: Date.now(),
-      }),
-      mathGet("/api/sys_give/GetListBypage", {
-        BusType: 1,
-        StuID: stuid,
-        Type: 4,
-        BusID: questionId,
-        BaseType: markType,
-        BusValue: fileId,
-        t: Date.now(),
-        page: 1,
-        limit: 10,
-      }),
-    ])
-      .then(([a, b]) => {
-        if (active) {
-          setLike(mathRows(a)[0]);
-          setMarked(mathRows(b)[0]);
-        }
+    mathGet("/api/sys_give/GetListBypage", {
+      BusType: 1,
+      StuID: stuid,
+      Type: 4,
+      BusID: questionId,
+      BaseType: markType,
+      BusValue: fileId,
+      t: Date.now(),
+      page: 1,
+      limit: 10,
+    })
+      .then((response) => {
+        if (active) setMarked(mathRows(response)[0]);
       })
       .catch((e) => {
         if (active) setError(e.message);
@@ -65,23 +51,11 @@ export default function MathContentMarks({
     };
   }, [stuid, fileId, questionId, markType, version]);
   if (!stuid || !questionId || !fileId || !markType) return null;
-  const toggle = async (type: "like" | "flag") => {
+  const toggle = async () => {
     setBusy(true);
     setError("");
     try {
-      if (type === "like") {
-        if (like)
-          await mathPost("/api/question_files_give/Del_question_files_give",
-            mathContentLikeDelete(stuid, like.ID, fileId));
-        else
-          await mathPost("/api/question_files_give/Inner_question_files_give", {
-            StuID: stuid,
-            BusID: fileId,
-            QuestionID: questionId,
-            BusType: markType,
-            IsValid: 1,
-          });
-      } else if (marked)
+      if (marked)
         await mathPost("/api/sys_give/Del_sys_give", { ID: marked.ID });
       else
         await mathPost("/api/sys_give/Inner_sys_give", {
@@ -104,15 +78,7 @@ export default function MathContentMarks({
       <button
         className="btn btn-secondary"
         disabled={busy || loading || !!error}
-        onClick={() => toggle("like")}
-      >
-        <Heart size={15} fill={like ? "currentColor" : "none"} />
-        {like ? "已点赞" : "点赞内容"}
-      </button>
-      <button
-        className="btn btn-secondary"
-        disabled={busy || loading || !!error}
-        onClick={() => toggle("flag")}
+        onClick={toggle}
       >
         <Flag size={15} fill={marked ? "currentColor" : "none"} />
         {marked ? "已标记重点" : "标记重点"}

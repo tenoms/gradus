@@ -2,12 +2,6 @@ export function courseRankingRequest(context: Record<string, any>): {
   command: string;
   params: Record<string, any>;
 };
-export function courseRankingVote(
-  stuid: string,
-  row: Record<string, any>,
-): { path: string; data: Record<string, any> };
-export function reconcileCourseRanking(rows:Record<string,any>[],ownReactions:Record<string,any>[]):Record<string,any>[];
-export function courseRankingVoteResult(row:Record<string,any>,result:any):Record<string,any>;
 export function latestCourseExamParams(
   context: Record<string, any>,
   meta: Record<string, any>,

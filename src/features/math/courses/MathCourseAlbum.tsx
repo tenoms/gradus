@@ -5,7 +5,6 @@ import {
   BookOpen,
   Check,
   ChevronRight,
-  Heart,
   LoaderCircle,
   RefreshCw,
 } from "lucide-react";
@@ -119,7 +118,7 @@ export default function MathCourseAlbum({
     () =>
       catalog
         ? api.chapter(AlbumID, catalog.ID, context)
-        : Promise.resolve({ rows: [], log: {}, likes: {} }),
+        : Promise.resolve({ rows: [], log: {} }),
   );
   const operations = useData(
     `course-album-work-${catalog?.ID || 0}-${contextKey}-${reading.data?.rows ? JSON.stringify(reading.data.rows.map((r: Row) => r.ID)) : ""}`,
@@ -164,19 +163,6 @@ export default function MathCourseAlbum({
       setBusy(false);
     }
   }
-  async function like() {
-    if (!catalog) return;
-    setBusy(true);
-    setError("");
-    try {
-      await api.like(context, AlbumID, catalog.ID, reading.data?.likes || {});
-      reading.reload();
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setBusy(false);
-    }
-  }
   if (group && catalog)
     return (
       <MathModelTraining
@@ -206,7 +192,6 @@ export default function MathCourseAlbum({
         />
       </>
     );
-  const likes = reading.data?.likes || {};
   function render(nodes: Row[], parent?: Row): any {
     return nodes.map((row, index) => {
       const type = row.Type || parent?.Type,
@@ -350,17 +335,6 @@ export default function MathCourseAlbum({
           <div className="mc-heading">
             <h3>{mathTitle(catalog)}</h3>
             <div className="mca-actions">
-              <button
-                className="btn btn-secondary"
-                disabled={busy || reading.loading}
-                onClick={like}
-              >
-                <Heart
-                  size={14}
-                  fill={likes.MyLogID ? "currentColor" : "none"}
-                />
-                {likes.MyLogID ? "已赞" : "点赞"} {likes.counts || 0}
-              </button>
               <button
                 className="math-icon-button"
                 aria-label="刷新专辑内容"

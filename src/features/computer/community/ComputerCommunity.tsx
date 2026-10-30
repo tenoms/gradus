@@ -119,7 +119,6 @@ export default function ComputerCommunity() {
     [content, setContent] = useState(""),
     [images, setImages] = useState<string[]>([]),
     [comments, setComments] = useState<Record<string, R[]>>({}),
-    [commentDraft, setCommentDraft] = useState<Record<string, string>>({}),
     [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
@@ -488,21 +487,6 @@ export default function ComputerCommunity() {
                           className="btn btn-secondary"
                           disabled={loading}
                           onClick={() =>
-                            void act(() =>
-                              request(
-                                `/api/user/wx/actSign/content/${item.isLike || item.liked ? "cancel/likes" : "likes"}/${item.id}`,
-                                {},
-                                "POST",
-                              ),
-                            )
-                          }
-                        >
-                          赞 {item.likesNum ?? item.likeNum ?? 0}
-                        </button>
-                        <button
-                          className="btn btn-secondary"
-                          disabled={loading}
-                          onClick={() =>
                             void act(async () => {
                               const commentsData = await request(
                                 "/api/user/wx/actSign/content/comment/list",
@@ -551,50 +535,6 @@ export default function ComputerCommunity() {
                           ))}
                         </div>
                       )}
-                      <form
-                        className="computer-toolbar"
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          void act(async () => {
-                            await request(
-                              "/api/user/wx/actSign/content/comment/add",
-                              {},
-                              "POST",
-                              { cid: item.id, comment: commentDraft[item.id] },
-                            );
-                            setCommentDraft((c) => ({ ...c, [item.id]: "" }));
-                            setComments((c) => ({
-                              ...c,
-                              [item.id]: [
-                                ...(c[item.id] || []),
-                                {
-                                  nickname: session.user?.displayName || "我",
-                                  comment: commentDraft[item.id],
-                                },
-                              ],
-                            }));
-                          }, "评论已发布");
-                        }}
-                      >
-                        <input
-                          className="input"
-                          aria-label="评论内容"
-                          placeholder="写下评论"
-                          value={commentDraft[item.id] || ""}
-                          onChange={(e) =>
-                            setCommentDraft((c) => ({
-                              ...c,
-                              [item.id]: e.target.value,
-                            }))
-                          }
-                        />
-                        <button
-                          className="btn btn-secondary"
-                          disabled={loading || !commentDraft[item.id]?.trim()}
-                        >
-                          评论
-                        </button>
-                      </form>
                     </article>
                   );
                 })}

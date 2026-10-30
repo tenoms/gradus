@@ -145,6 +145,16 @@ export function validatePlatformRequest(name, input) {
     removedMathFeedback({ ...query, ...data })
   )
     throw new ApiError("此接口不属于已启用的学习能力", 403);
+  if (name === "math") {
+    const parameters = { ...query, ...data };
+    if (
+      (requestPath === "/api/sys_give/Inner_sys_give" &&
+        !(Number(parameters.BusType) === 1 && [4, 5].includes(Number(parameters.Type)))) ||
+      (requestPath === "/api/book_highscorealbum_studylog/Inner_book_highscorealbum_studylog" &&
+        parameters.Type === "点赞")
+    )
+      throw new ApiError("此接口不属于已启用的学习能力", 403);
+  }
   if (
     name === "math" &&
     /^\/api\/Master\/(AutoModel|Model)$/.test(requestPath)
@@ -170,9 +180,6 @@ export function validatePlatformRequest(name, input) {
 }
 export function injectMathUser(input, platform, stationId) {
   input = withMathStation(input, stationId);
-  // This source API uses StuID as the recipient (comment author), not the actor.
-  if (input.path === "/api/sys_comment/give")
-    return { ...input, data: { ...input.data }, query: { ...input.query } };
   const userId = platform.stuId || platform.user?.StuID;
   if (!userId) return input;
   const data = { ...input.data };

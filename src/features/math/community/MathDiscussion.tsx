@@ -1,4 +1,3 @@
-import { confirmAction } from "../../../shared/ui/dialogs/InteractionProvider";
 import { loadDiscussionPage } from "./discussion-data.mjs";
 import { useEffect, useState } from "react";
 import {
@@ -7,26 +6,15 @@ import {
   LoaderCircle,
   MessageCircle,
   RefreshCw,
-  Send,
-  ThumbsUp,
-  Trash2,
-  X,
 } from "lucide-react";
 import RichContent from "../../../shared/content/RichContent";
 import {
   mathCommand,
-  mathData,
   mathGet,
-  mathPost,
   mathRows,
 } from "../api/math";
 import type { MathRow } from "../api/math";
-import { AttachmentInput } from "./MathQuestions";
-import {
-  discussionGivePayload,
-  discussionReplyPayload,
-  discussionTree,
-} from "./discussion-model.mjs";
+import { discussionTree } from "./discussion-model.mjs";
 import "./MathDiscussion.css";
 function useDiscussion(key: string, load: () => Promise<any>) {
   const [data, setData] = useState<any>(),
@@ -68,13 +56,7 @@ export default function MathDiscussion({
 }) {
   const [order, setOrder] = useState("hot"),
     [page, setPage] = useState(1),
-    [thread, setThread] = useState<MathRow>(),
-    [reply, setReply] = useState<MathRow>(),
-    [text, setText] = useState(""),
-    [files, setFiles] = useState<string[]>([]),
-    [busy, setBusy] = useState(false),
-    [notice, setNotice] = useState(""),
-    [error, setError] = useState("");
+    [thread, setThread] = useState<MathRow>();
   const limit = 20;
   const remote = useDiscussion(`comments:${qid}:${order}:${page}`, () =>
     loadDiscussionPage({
@@ -87,49 +69,10 @@ export default function MathDiscussion({
       limit,
     }),
   );
-  const rows = remote.data ? mathRows(remote.data[0]) : [];
-  const likes = new Set(
-    (remote.data ? mathRows(remote.data[1]) : []).map((r) => String(r.BusID)),
-  );
-  async function act(work: () => Promise<any>, message = "") {
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      await work();
-      setNotice(message);
-      remote.reload();
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function send() {
-    if (!text.trim() && !files.length) return;
-    await act(async () => {
-      const response = await mathPost(
-        "/api/sys_comment/Add",
-        discussionReplyPayload({ qid, stuid, text, files, target: reply }),
-      );
-      if (
-        Number(mathData(response)) <= 0 ||
-        !/^\d+$/.test(String(mathData(response)))
-      )
-        throw new Error(
-          typeof mathData(response) === "string"
-            ? mathData(response)
-            : "尚未确认发布成功，请刷新后核对。",
-        );
-      setText("");
-      setFiles([]);
-      setReply(undefined);
-    }, "讨论已发布");
-  }
+  const rows = mathRows(remote.data);
   if (thread)
     return (
       <DiscussionThread
-        stuid={stuid}
         qid={qid}
         thread={thread}
         back={() => {
@@ -180,33 +123,12 @@ export default function MathDiscussion({
       ) : !rows.length ? (
         <div className="md-empty">
           <MessageCircle size={25} />
-          <p>还没有讨论，带着你的思考开启交流吧。</p>
+          <p>这道题暂时没有讨论。</p>
         </div>
       ) : (
         rows.map((r, i) => (
           <div className="md-root" key={r.ID || i}>
-            <Comment
-              row={r}
-              stuid={stuid}
-              liked={likes.has(String(r.ID))}
-              busy={busy}
-              onReply={() => setReply({ ...r, Level: 1 })}
-              onLike={() =>
-                void act(() =>
-                  mathPost(
-                    "/api/sys_comment/give",
-                    discussionGivePayload(r, likes.has(String(r.ID))),
-                  ),
-                )
-              }
-              onDelete={async () => {
-                if ((await confirmAction({ title: "删除这条讨论？", description: "这条讨论将从你的学习动态中移除。", confirmLabel: "删除讨论", cancelLabel: "保留讨论", danger: true })))
-                  void act(
-                    () => mathPost("/api/sys_comment/Del", { ID: r.ID }),
-                    "讨论已删除",
-                  );
-              }}
-            />
+            <Comment row={r} />
             <div className="md-preview-replies">
               {(Array.isArray(r._sys_comment) ? r._sys_comment : [])
                 .slice(0, 3)
@@ -246,70 +168,10 @@ export default function MathDiscussion({
           </button>
         </div>
       )}
-      <div className="md-composer">
-        {reply && (
-          <div className="md-reply-target">
-            回复 {name(reply)}
-            <button
-              className="icon-button"
-              aria-label="取消回复"
-              onClick={() => setReply(undefined)}
-            >
-              <X size={15} />
-            </button>
-          </div>
-        )}
-        <label className="field-label">
-          分享你的思路
-          <textarea
-            className="input"
-            rows={4}
-            placeholder="围绕题目，分享解题思路或提出疑问…"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            maxLength={6000}
-          />
-        </label>
-        <AttachmentInput value={files} onChange={setFiles} max={6} />
-        <button
-          className="btn btn-primary"
-          disabled={busy || (!text.trim() && !files.length)}
-          onClick={() => void send()}
-        >
-          <Send size={15} />
-          {busy ? "正在发布…" : reply ? "发布回复" : "发布讨论"}
-        </button>
-      </div>
-      {error && (
-        <p className="error-banner" role="alert">
-          {error}
-        </p>
-      )}
-      {notice && (
-        <p className="notice" role="status">
-          {notice}
-        </p>
-      )}
     </div>
   );
 }
-function Comment({
-  row,
-  stuid,
-  liked,
-  busy,
-  onReply,
-  onLike,
-  onDelete,
-}: {
-  row: MathRow;
-  stuid: string;
-  liked: boolean;
-  busy: boolean;
-  onReply: () => void;
-  onLike: () => void;
-  onDelete: () => void;
-}) {
+function Comment({ row }: { row: MathRow }) {
   const images = Array.isArray(row.Files)
     ? row.Files
     : String(row.Files || "").split(",");
@@ -338,50 +200,21 @@ function Comment({
               </a>
             ))}
         </div>
-        <div className="md-actions">
-          <button
-            className={liked ? "liked" : ""}
-            disabled={busy}
-            onClick={onLike}
-            aria-label={liked ? "取消点赞" : "赞同这条讨论"}
-          >
-            <ThumbsUp size={14} />
-            {Math.max(0, Number(row.Give) || 0)}
-          </button>
-          <button disabled={busy} onClick={onReply}>
-            <MessageCircle size={14} />
-            回复
-          </button>
-          {String(row.StuID) === stuid && (
-            <button disabled={busy} onClick={onDelete}>
-              <Trash2 size={14} />
-              删除
-            </button>
-          )}
-        </div>
       </div>
     </article>
   );
 }
 function DiscussionThread({
-  stuid,
   qid,
   thread,
   back,
   busType = "题目讨论区",
 }: {
-  stuid: string;
   qid: string | number;
   thread: MathRow;
   back: () => void;
   busType?: string;
 }) {
-  const [target, setTarget] = useState<MathRow>(),
-    [text, setText] = useState(""),
-    [files, setFiles] = useState<string[]>([]),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
-    [notice, setNotice] = useState("");
   const remote = useDiscussion(`thread:${thread.ID}:${qid}`, () =>
     Promise.all([
       mathCommand("GetCommentInfoByID_lt", { ID: thread.ID, t: Date.now() }),
@@ -391,60 +224,16 @@ function DiscussionThread({
         BusID: qid,
         BusType: busType,
       }),
-      mathCommand("GetUserCommentGiveList_lt", {
-        StuID: stuid,
-        PID: qid,
-        t: Date.now(),
-        Type: busType,
-      }),
     ]),
   );
   const root = remote.data ? mathRows(remote.data[0])[0] : thread;
   const rows = remote.data
     ? discussionTree(mathRows(remote.data[1]), thread.ID)
     : [];
-  const likes = new Set(
-    (remote.data ? mathRows(remote.data[2]) : []).map((r) => String(r.BusID)),
-  );
-  async function act(work: () => Promise<any>, message = "") {
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      await work();
-      setNotice(message);
-      remote.reload();
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setBusy(false);
-    }
-  }
   function renderComment(row: MathRow) {
     return (
       <div className="md-thread-node" key={row.ID}>
-        <Comment
-          row={row}
-          stuid={stuid}
-          liked={likes.has(String(row.ID))}
-          busy={busy}
-          onReply={() => setTarget(row)}
-          onLike={() =>
-            void act(() =>
-              mathPost(
-                "/api/sys_comment/give",
-                discussionGivePayload(row, likes.has(String(row.ID))),
-              ),
-            )
-          }
-          onDelete={async () => {
-            if ((await confirmAction({ title: "删除这条回复？", description: "删除后，这条回复将不再显示。", confirmLabel: "删除回复", cancelLabel: "保留回复", danger: true })))
-              void act(
-                () => mathPost("/api/sys_comment/Del", { ID: row.ID }),
-                "回复已删除",
-              );
-          }}
-        />
+        <Comment row={row} />
         {row.children?.length > 0 && (
           <div className="md-nested">{row.children.map(renderComment)}</div>
         )}
@@ -470,70 +259,7 @@ function DiscussionThread({
         <>
           {renderComment(root)}
           <div className="md-thread-replies">{rows.map(renderComment)}</div>
-          <div className="md-composer">
-            <div className="md-reply-target">
-              回复 {name(target || root)}
-              {target && (
-                <button
-                  className="icon-button"
-                  aria-label="取消指定回复"
-                  onClick={() => setTarget(undefined)}
-                >
-                  <X size={15} />
-                </button>
-              )}
-            </div>
-            <textarea
-              className="input"
-              aria-label="回复讨论内容"
-              rows={4}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              maxLength={6000}
-            />
-            <AttachmentInput value={files} onChange={setFiles} max={6} />
-            <button
-              className="btn btn-primary"
-              disabled={busy || (!text.trim() && !files.length)}
-              onClick={() =>
-                void act(async () => {
-                  const result = await mathPost(
-                    "/api/sys_comment/Add",
-                    discussionReplyPayload({
-                      qid,
-                      stuid,
-                      text,
-                      files,
-                      target: target || { ...root, Level: 1 },
-                      busType,
-                    }),
-                  );
-                  if (
-                    !/^\d+$/.test(String(mathData(result))) ||
-                    Number(mathData(result)) <= 0
-                  )
-                    throw new Error("尚未确认回复成功，请刷新后核对。");
-                  setText("");
-                  setFiles([]);
-                  setTarget(undefined);
-                }, "回复已发布")
-              }
-            >
-              <Send size={15} />
-              {busy ? "正在发布…" : "发布回复"}
-            </button>
-          </div>
         </>
-      )}
-      {error && (
-        <p className="error-banner" role="alert">
-          {error}
-        </p>
-      )}
-      {notice && (
-        <p className="notice" role="status">
-          {notice}
-        </p>
       )}
     </div>
   );
@@ -553,7 +279,6 @@ export function MathDiscussionInbox({ stuid }: { stuid: string }) {
     const root = Number(selected.Level) === 3 ? selected.PPID : selected.PID;
     return (
       <DiscussionThread
-        stuid={stuid}
         qid={selected.BusID}
         busType={selected.BusType || "题目讨论区"}
         thread={{ ID: root }}

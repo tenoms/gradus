@@ -6,7 +6,7 @@ import { sharedOperation, stripSharedPersonalState } from '../../../server/integ
 const privateMathCommands = [
   'GetSysUserQuestionBookList', 'GetUserCourseQrcodeBookListPager1', 'GetUserCourseQrcodeBookListPager11',
   'GetUserCourseQrcodePhotoBookListPager1', 'GetUserCourseQrcodeBookList2',
-  'GetUserCommentGiveList_lt', 'GetUserReplyCommentList_lt', 'GetUserReplyCommentNoReadCount_ltmath',
+  'GetUserReplyCommentList_lt', 'GetUserReplyCommentNoReadCount_ltmath',
   'GeKstUserPaperInfo', 'GetKsPaperQuestionAndksUserRecordListNew', 'GetDryAppliInfoStuID',
 ];
 
