@@ -31,6 +31,66 @@ test('public payload sanitization keeps question content and correct answers but
   assert.equal(clean.data[0]._c_course_users_record,undefined);
 });
 
+test('persisted day-based review settings rebase public review dates and preserve explicit review markers',async()=>{
+  const database=await createTestDatabase();
+  try{
+    const store=await createResourceStore(database,{publicRefreshAfterDays:45});
+    assert.equal((await store.status()).settings.refreshAfterDays,45);
+    const save=(id,options)=>{
+      const identity=resourceIdentity('math',a,config,{...question,query:{ID:id}});
+      return store.save(identity.source,{...inferResourceRequest('math',identity.request),scope:'public'},{data:[{QuestionID:id,QuestionTitle:`题目${id}`}]},options);
+    };
+    const selector=({sourceId,platform,key,revision})=>({sourceId,platform,key,revision});
+    const ordinary=await save(42),marked=await save(43),withoutDate=await save(44,{expiresAt:null});
+    const started=Date.now();
+    assert.ok(Date.parse(ordinary.expiresAt)>=Date.parse(ordinary.syncedAt)+45*86_400_000-1000);
+    await database.query(`UPDATE ${database.upstream('resources')} SET synced_at=now()-interval '5 day' WHERE request_key=$1`,[marked.key]);
+    const invalidated=await store.invalidate(selector(marked));
+    assert.ok(Date.parse(invalidated.expiresAt)<=Date.parse(invalidated.syncedAt),'an explicit marker remains distinguishable on older content');
+    const changed=await store.updateSettings({revision:0,enabled:true,refreshAfterDays:7});
+    assert.equal(changed.refreshAfterDays,7);assert.equal(changed.revision,1);
+    const rebased=await store.detail(selector(ordinary));
+    assert.equal(Date.parse(rebased.expiresAt)-Date.parse(rebased.syncedAt),7*86_400_000);
+    assert.equal((await store.detail(selector(invalidated))).expiresAt,invalidated.expiresAt);
+    assert.equal((await store.detail(selector(withoutDate))).expiresAt,null);
+    assert.equal((await store.updateSettings({revision:1,enabled:false})).refreshAfterDays,7,'omitting days retains the configured cycle');
+    const reopened=await createResourceStore(database,{publicRefreshAfterDays:2});
+    assert.equal((await reopened.getSettings()).refreshAfterDays,7,'startup defaults do not replace a persisted setting');
+    const saved=await save(45);
+    assert.ok(Date.parse(saved.expiresAt)>=started+7*86_400_000);
+    const edited=await store.update({...selector(saved),response:{data:[{QuestionID:45,QuestionTitle:'已修订'}]}});
+    assert.ok(Date.parse(edited.expiresAt)>=started+7*86_400_000);
+    for(const refreshAfterDays of [0,3651,1.5,'7',null])await assert.rejects(()=>store.updateSettings({revision:2,enabled:true,refreshAfterDays}),{status:400});
+    await assert.rejects(()=>store.updateSettings({revision:0,enabled:true,refreshAfterDays:1}),{status:409});
+    assert.equal((await store.getSettings()).refreshAfterDays,7);
+    assert.equal((await store.detail(selector(ordinary))).expiresAt,rebased.expiresAt,'a rejected settings write leaves resource dates intact');
+    assert.equal((await store.updateSettings({revision:2,enabled:true,refreshAfterDays:1})).refreshAfterDays,1);
+    assert.equal((await store.updateSettings({revision:3,enabled:true,refreshAfterDays:3650})).refreshAfterDays,3650);
+  }finally{await database.close();}
+});
+
+test('public entity reads keep saved content usable while account and volatile sources require explicit inspection',async()=>{
+  const database=await createTestDatabase();
+  try{
+    const store=await createResourceStore(database),identity=resourceIdentity('math',a,config,question);
+    const observation={...inferResourceRequest('math',identity.request),scope:'public'};
+    await store.save(identity.source,observation,body,{expiresAt:'2000-01-01T00:00:00Z'});
+    assert.equal((await store.findEntities({sourceId:identity.source.id,platform:'math'})).length,1);
+    await store.save(identity.source,observation,body,{expiresAt:null});
+    assert.equal((await store.findEntities({sourceId:identity.source.id,platform:'math'})).length,1,'a missing review date does not hide saved public content');
+    const privateResources=[];
+    for(const scope of ['account','volatile']){
+      const source={id:`${scope}-source`,platform:'math',accountRef:'account-a',scope};
+      privateResources.push(await store.save(source,{...observation,scope},body,{expiresAt:'2100-01-01T00:00:00Z'}));
+      assert.equal((await store.findEntities({sourceId:source.id,platform:'math'})).length,0,`${scope} entities do not become shared content`);
+      assert.equal((await store.findEntities({sourceId:source.id,platform:'math',includeExpired:true})).length,1,'legacy inspection remains scoped to the explicitly chosen source');
+    }
+    await store.updateSettings({revision:0,enabled:true,refreshAfterDays:1});
+    for(const saved of privateResources)assert.equal((await store.detail({sourceId:saved.sourceId,platform:saved.platform,key:saved.key})).expiresAt,saved.expiresAt,'public review settings leave private resource dates alone');
+    assert.equal((await store.findEntities({sourceId:'another-account',platform:'math',includeExpired:true})).length,0);
+  }finally{await database.close();}
+});
+
 test('resource management queries, CAS editing, invalidation and deletion operate on shared PostgreSQL content without touching Web records',async()=>{
   const database=await createTestDatabase();
   try{
@@ -48,7 +108,7 @@ test('resource management queries, CAS editing, invalidation and deletion operat
     await assert.rejects(()=>store.update({...selector,revision:saved.revision,response:body}),{status:409});
     const expired=await store.invalidate({...selector,revision:edited.revision});assert.equal(expired.expired,true);assert.equal(expired.revision,edited.revision+1);
     assert.equal((await store.lookup(identity.source.id,'math',identity.request)).expired,true);
-    assert.equal((await store.findEntities({sourceId:identity.source.id,platform:'math'})).length,0,'invalidated resources cannot leak through entity reads');
+    assert.equal((await store.findEntities({sourceId:identity.source.id,platform:'math'})).length,1,'public content remains available to personal records after its review date');
     assert.equal((await store.findEntities({sourceId:identity.source.id,platform:'math',includeExpired:true})).length,1);
     const refreshed=await store.save(identity.source,observation,{SuccessResponse:true,data:[{QuestionID:42,QuestionTitle:'上游更新'}]});assert.equal(refreshed.expired,false);assert.ok(refreshed.revision>expired.revision);
     await assert.rejects(()=>store.remove({...selector,revision:expired.revision}),{status:409});

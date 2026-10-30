@@ -51,7 +51,7 @@ export function validateRuntimeConfig(runtime) {
   integer(runtime.database.connectionTimeoutMs, 'database.connectionTimeoutMs');
   integer(runtime.session.lifetimeMs, 'session.lifetimeMs', 1);
   if (typeof runtime.session.secureCookies !== 'boolean') fail('session.secureCookies', '必须为布尔值');
-  integer(runtime.resources.publicTtlMs, 'resources.publicTtlMs');
+  integer(runtime.resources.publicRefreshAfterDays, 'resources.publicRefreshAfterDays', 1, 3650);
   integer(runtime.accounts.directoryCacheTtlMs, 'accounts.directoryCacheTtlMs');
   integer(runtime.accounts.assignmentTtlMs, 'accounts.assignmentTtlMs', 1);
   integer(runtime.upstream.requestTimeoutMs, 'upstream.requestTimeoutMs', 1);

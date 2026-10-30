@@ -147,6 +147,9 @@ try {
   const beforeInvalidate=upstreamCalls.length;
   managed=(await request(`${managedPath}/invalidate`,{auth:admin,body:{revision:managed.revision}})).value;
   assert.equal(managed.expired,true);assert.equal(upstreamCalls.length,beforeInvalidate,'标记需要更新不主动读取上游');
+  const staleQuestion=await get(b,'math','/api/question_list/GetQuestionByQuestionNew',{ID:questionId});
+  assert.equal(staleQuestion.WebResourceLabel,'Web资源管理验收标记','待复核资源立即返回本地内容');
+  await app.locals.resourceSync.waitForIdle();
   const refreshedQuestion=await get(b,'math','/api/question_list/GetQuestionByQuestionNew',{ID:questionId});
   assert.equal(refreshedQuestion.WebResourceLabel,undefined);
   assert.equal(callsTo(beforeInvalidate,'/api/question_list/GetQuestionByQuestionNew').length,1,'下次访问时读取一次资源并更新公共资源');
@@ -155,7 +158,7 @@ try {
   const afterRefresh=upstreamCalls.length;
   await get(a,'math','/api/question_list/GetQuestionByQuestionNew',{ID:questionId});
   assert.equal(upstreamCalls.length,afterRefresh,'刷新后的公共资源继续由另一用户复用');
-  record('资源标记失效后仅下次学习访问刷新并保存',{passed:true,refreshUpstreamRequests:1});
+  record('资源标记待复核后下次访问先返回本地再后台更新',{passed:true,refreshUpstreamRequests:1});
   const beforeDelete=upstreamCalls.length;
   await request(managedPath,{auth:admin,method:'DELETE',body:{revision:managed.revision}});
   assert.equal((await history(a)).data[5][0].MyAnswer,'架构验收用户A');

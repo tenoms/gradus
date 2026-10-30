@@ -107,6 +107,6 @@ export async function createApp(overrides = {}) {
   app.locals.identityStore = identities;
   app.locals.configuration = configuration;
   app.locals.connections = connections;
-  app.locals.close = async () => { await identities.close(); await configuration.close(); await database.close(); };
+  app.locals.close = async () => { await resourceSync.waitForIdle(); await identities.close(); await configuration.close(); await database.close(); };
   return app;
 }

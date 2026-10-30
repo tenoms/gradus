@@ -9,7 +9,7 @@ const dataSource = await readFile(new URL("resource-data.ts", resourceDirectory)
 const dataCode = ts.transpileModule(dataSource, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
 const resourceData = await import(`data:text/javascript;base64,${Buffer.from(dataCode).toString("base64")}`);
 const source = {};
-for (const file of ["ResourceManager", "ResourceDialog"]) {
+for (const file of ["ResourceCenter", "ResourceManager", "ResourceDialog"]) {
   const text = await readFile(new URL(`${file}.tsx`, resourceDirectory), "utf8");
   const ast = ts.createSourceFile(`${file}.tsx`, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   source[file] = ts.transpileModule(ast.statements.filter(node => !ts.isImportDeclaration(node)).map(node => node.getText(ast).replace(/^export\s+(?:default\s+)?/, "")).join("\n"), {
@@ -35,13 +35,13 @@ function textOf(node) {
 function controller(component, options, request) {
   const values = [], refs = [], dependencies = [], cleanup = [];
   let cursor = 0, refCursor = 0, effectCursor = 0, dirty = false, effects = [];
-  const executable = component === "ResourceDialog" ? source.ResourceDialog : source.ResourceManager;
+  const executable = source[component] || source.ResourceManager;
   const fixture = { options, calls: [] };
   const create = runInNewContext(`${executable}\n${component};`, {
     ...resourceData, ApiError, URLSearchParams, React: { Fragment: "fragment" },
     element: (type, props, ...children) => ({ type, props: props || {}, children }),
-    ...Object.fromEntries(["Check", "CircleAlert", "Clock3", "Database", "Download", "Edit3", "ExternalLink", "FileJson", "Layers3", "Link2", "LoaderCircle", "RefreshCw", "Search", "SlidersHorizontal", "Trash2", "X"].map(name => [name, name])),
-    ResourceDialog: "ResourceDialog", Pagination: "Pagination", useDialogFocus() {},
+    ...Object.fromEntries(["Check", "CircleAlert", "Clock3", "Database", "Download", "Edit3", "ExternalLink", "FileJson", "FolderOpen", "Layers3", "Link2", "LoaderCircle", "RefreshCw", "Search", "SlidersHorizontal", "Trash2", "X"].map(name => [name, name])),
+    ResourceDialog: "ResourceDialog", ResourceManager: "ResourceManager", SettingSwitch: "SettingSwitch", Pagination: "Pagination", useDialogFocus() {},
     api: async (path, input) => { fixture.calls.push({ path, input }); return request(path, input); },
     useState(initial) {
       const index = cursor++;
@@ -198,4 +198,50 @@ test("missing business names and source labels fall back to readable categories 
   assert.equal(resourceData.displayName({ ...row, title: "GetLessons", command: "GetLessons", typeLabel: "课程课时" }), "课程课时");
   assert.equal(resourceData.sourceName({ id: "f".repeat(64), platform: "math", accountRef: "private-source-ref" }), "考研数学账号资源");
   assert.equal(resourceData.entityName("analysis"), "题目解析"); assert.equal(resourceData.entityName("file"), "附件");
+});
+
+const syncState = { settings: { enabled: true, revision: 3, refreshAfterDays: 30, updatedAt: "2026-10-30T03:00:00.000Z" }, resources: { total: 1, byPlatform: { math: 1 }, mediaReferences: 0 } };
+const changeRefreshDays = (fixture, value) => { fixture.find(node => node.type === "input" && node.props.id === "resource-refresh-days").props.onChange({ target: { value } }); fixture.render(); };
+const submitRefreshDays = fixture => { fixture.find(node => node.type === "form" && node.props.className === "resource-refresh-settings").props.onSubmit({ preventDefault() {} }); fixture.render(); };
+
+test("resource review days save with the current switch and revision while existing content stays readable", async () => {
+  const f = controller("ResourceCenter", {}, async (_path, input) => input ? { ...syncState, settings: { ...JSON.parse(input.body), revision: 4 } } : syncState);
+  await f.flush();
+  changeRefreshDays(f, "45"); submitRefreshDays(f); await f.flush();
+  assert.deepEqual(JSON.parse(f.calls[1].input.body), { enabled: true, revision: 3, refreshAfterDays: 45 });
+  assert.match(textOf(f.tree), /已保存复核期限：45 天/);
+  assert.match(textOf(f.tree), /仍立即返回本地内容/); assert.match(textOf(f.tree), /YYB 不可用不影响已有内容/);
+  assert.equal(f.button("保存期限").props.disabled, true);
+  f.find(node => node.type === "SettingSwitch").props.onChange(false); f.render(); await f.flush();
+  assert.deepEqual(JSON.parse(f.calls.at(-1).input.body), { enabled: false, revision: 4, refreshAfterDays: 45 });
+  assert.match(textOf(f.tree), /已有公共资源仍可使用，不再后台更新或自动保存/);
+});
+
+test("invalid resource review days never reach the settings write", async () => {
+  const f = controller("ResourceCenter", {}, async () => syncState);
+  await f.flush();
+  for (const days of ["", "0", "1.5", "3651"]) { changeRefreshDays(f, days); submitRefreshDays(f); }
+  assert.equal(f.calls.length, 1); assert.match(textOf(f.tree), /1–3650 天的整数/);
+});
+
+test("resource settings conflicts read the latest revision before a deliberate retry", async () => {
+  let writes = 0;
+  const latest = { ...syncState, settings: { enabled: false, revision: 7, refreshAfterDays: 90 } };
+  const f = controller("ResourceCenter", {}, async (_path, input) => {
+    if (input) { if (++writes === 1) throw new ApiError("设置已更新", 409); return { ...latest, settings: { ...JSON.parse(input.body), revision: 8 } }; }
+    return writes ? latest : syncState;
+  });
+  await f.flush(); changeRefreshDays(f, "60"); submitRefreshDays(f); await f.flush();
+  assert.equal(writes, 1); assert.equal(f.find(node => node.type === "input" && node.props.id === "resource-refresh-days").props.value, "90");
+  assert.equal(f.find(node => node.type === "SettingSwitch").props.checked, false);
+  assert.match(textOf(f.tree), /已读取最新状态/);
+  changeRefreshDays(f, "60"); submitRefreshDays(f); await f.flush();
+  assert.deepEqual(JSON.parse(f.calls.at(-1).input.body), { enabled: false, revision: 7, refreshAfterDays: 60 });
+});
+
+test("public review status never describes content as unavailable and private resources retain realtime status", () => {
+  assert.equal(resourceData.validityName({ ...row, expired: true }), "待复核");
+  assert.equal(resourceData.validityName({ ...row, expiresAt: null }), "待复核");
+  assert.equal(resourceData.validityName(row), "暂不需复核");
+  for (const scope of ["account", "volatile"]) assert.equal(resourceData.validityName({ ...row, scope, expiresAt: null }), "实时更新");
 });

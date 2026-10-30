@@ -8,7 +8,7 @@ test('configured session, payload, resource, account and diagnostic policies rea
   runtimeConfig.session = { lifetimeMs: 45_000, secureCookies: true };
   runtimeConfig.http.jsonBodyLimit = 256;
   runtimeConfig.http.uploadBodyLimit = 32;
-  runtimeConfig.resources.publicTtlMs = 10_000;
+  runtimeConfig.resources.publicRefreshAfterDays = 2;
   runtimeConfig.accounts.directoryCacheTtlMs = 0;
   runtimeConfig.accounts.assignmentTtlMs = 60_000;
   runtimeConfig.diagnostics.recentRequests = 2;
@@ -30,6 +30,7 @@ test('configured session, payload, resource, account and diagnostic policies rea
     assert.equal(upload.status, 413);
     const enabled = await app.request('/api/admin/resource-sync', { auth: admin, method: 'PUT', body: { revision: 0, enabled: true } });
     assert.equal(enabled.status, 200);
+    assert.equal((await enabled.json()).settings.refreshAfterDays, 2);
     const started = Date.now();
     for (const ID of [1, 2]) {
       const response = await app.request('/api/learning/platform/math', { auth: learner, body: { path: '/api/question_list/GetQuestionByQuestionNew', query: { ID } } });
@@ -40,12 +41,23 @@ test('configured session, payload, resource, account and diagnostic policies rea
     assert.equal(listing.resources.length, 2);
     for (const resource of listing.resources) {
       const expiry = new Date(resource.expiresAt).getTime();
-      assert.ok(expiry >= started + runtimeConfig.resources.publicTtlMs);
-      assert.ok(expiry <= Date.now() + runtimeConfig.resources.publicTtlMs);
+      const reviewAfterMs = runtimeConfig.resources.publicRefreshAfterDays * 86_400_000;
+      assert.ok(expiry >= started + reviewAfterMs);
+      assert.ok(expiry <= Date.now() + reviewAfterMs);
     }
     const assignment = (await app.app.locals.database.query(`SELECT expires_at FROM ${app.app.locals.database.web('account_assignments')} WHERE user_id=$1`, [learner.userId])).rows[0];
     assert.ok(Number(assignment.expires_at) >= started + runtimeConfig.accounts.assignmentTtlMs);
     assert.ok(Number(assignment.expires_at) <= Date.now() + runtimeConfig.accounts.assignmentTtlMs);
+    const reviewSettings = await app.request('/api/admin/resource-sync', { auth: admin, method: 'PUT', body: { revision: 1, enabled: true, refreshAfterDays: 3 } });
+    assert.equal(reviewSettings.status, 200);
+    assert.equal((await reviewSettings.json()).settings.refreshAfterDays, 3);
+    const rebased = await app.app.locals.resourceStore.list({ platform: 'math', scope: 'public' });
+    for (const resource of rebased.resources) assert.equal(Date.parse(resource.expiresAt) - Date.parse(resource.syncedAt), 3 * 86_400_000);
+    const invalidReview = await app.request('/api/admin/resource-sync', { auth: admin, method: 'PUT', body: { revision: 2, enabled: true, refreshAfterDays: 0 } });
+    assert.equal(invalidReview.status, 400);
+    const disabled = await app.request('/api/admin/resource-sync', { auth: admin, method: 'PUT', body: { revision: 2, enabled: false } });
+    assert.equal(disabled.status, 200);
+    assert.equal((await disabled.json()).settings.refreshAfterDays, 3);
     for (let index = 0; index < 4; index++) await app.request('/api/health');
     const operations = await (await app.request('/api/admin/operations', { auth: admin })).json();
     assert.equal(operations.recentRequests.length, 2);

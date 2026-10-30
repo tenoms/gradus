@@ -13,9 +13,11 @@ const iso = value => value instanceof Date ? value.toISOString() : value;
 const safeSource = row => ({ id: row.id, platform: row.platform, accountRef: row.account_ref, scope:row.metadata?.scope||'account', createdAt: iso(row.created_at), lastSeenAt: iso(row.last_seen_at) });
 const summary = row => ({sourceId:row.source_id,platform:row.platform,key:row.request_key,scope:row.scope,kind:row.kind,path:row.request?.path||'',command:row.request?.data?.command||'',...resourcePresentation(row),revision:row.revision,syncedAt:iso(row.synced_at),changedAt:iso(row.changed_at),expiresAt:iso(row.expires_at)||null,expired:row.scope!=='public'||!row.expires_at||new Date(row.expires_at).getTime()<=Date.now(),mediaCount:Number(row.media_count||0),entityCount:Number(row.entity_count||0)});
 const expires = value => {if(value===null)return null;const date=new Date(value);if(Number.isNaN(date.getTime()))throw new ApiError('资源更新期限格式不正确',400);return date.toISOString();};
-const safeSettings = row => ({ enabled: row.enabled, revision: row.revision, updatedAt: iso(row.updated_at) });
-export async function createResourceStore(database, { publicTtlMs } = readRuntimeConfig().resources) {
-  const defaultExpiry = scope => scope==='public'?new Date(Date.now()+publicTtlMs).toISOString():null;
+const safeSettings = row => ({ enabled: row.enabled, refreshAfterDays: row.refresh_after_days, revision: row.revision, updatedAt: iso(row.updated_at) });
+const validRefreshDays = value => Number.isSafeInteger(value) && value>=1 && value<=3650;
+export async function createResourceStore(database, { publicRefreshAfterDays } = readRuntimeConfig().resources) {
+  if(!validRefreshDays(publicRefreshAfterDays))throw new ApiError('资源复核周期需为1–3650天的整数',400);
+  const defaultExpiry = async scope => scope==='public'?new Date(Date.now()+(await getSettings()).refreshAfterDays*86_400_000).toISOString():null;
   const resources = database.upstream('resources'), sources = database.upstream('resource_sources');
   const media = database.upstream('resource_media'), entities = database.upstream('resource_entities'), settings = database.web('resource_sync_settings');
   const parameter=(...fields)=>`coalesce(${fields.flatMap(field=>[`nullif(r.context->>'${field}','')`,`nullif(r.request->'query'->>'${field}','')`,`nullif(r.request->'data'->>'${field}','')`]).join(',')})`;
@@ -36,8 +38,9 @@ export async function createResourceStore(database, { publicTtlMs } = readRuntim
     CREATE INDEX IF NOT EXISTS resource_entity_computer_group ON ${entities}(source_id,platform,kind,(payload->>'majorId'),(payload->>'chapterId'),(payload->>'examGroupId'),entity_id);
     CREATE INDEX IF NOT EXISTS resource_entity_examination ON ${entities}(source_id,platform,kind,(payload->>'examinationId'),entity_id);
     CREATE INDEX IF NOT EXISTS resource_entity_practice ON ${entities}(source_id,platform,kind,(payload->>'BusType'),(payload->>'ExanType'),entity_id)`);
-  await database.query(`CREATE TABLE IF NOT EXISTS ${settings} (id integer PRIMARY KEY CHECK(id=1), enabled boolean NOT NULL DEFAULT false, revision integer NOT NULL DEFAULT 0, updated_at timestamptz NOT NULL DEFAULT now())`);
-  await database.query(`INSERT INTO ${settings}(id) VALUES(1) ON CONFLICT DO NOTHING`);
+  await database.query(`CREATE TABLE IF NOT EXISTS ${settings} (id integer PRIMARY KEY CHECK(id=1), enabled boolean NOT NULL DEFAULT false, refresh_after_days integer NOT NULL DEFAULT ${publicRefreshAfterDays} CHECK(refresh_after_days BETWEEN 1 AND 3650), revision integer NOT NULL DEFAULT 0, updated_at timestamptz NOT NULL DEFAULT now())`);
+  await database.query(`ALTER TABLE ${settings} ADD COLUMN IF NOT EXISTS refresh_after_days integer NOT NULL DEFAULT ${publicRefreshAfterDays} CHECK(refresh_after_days BETWEEN 1 AND 3650)`);
+  await database.query(`INSERT INTO ${settings}(id,refresh_after_days) VALUES(1,$1) ON CONFLICT DO NOTHING`,[publicRefreshAfterDays]);
   async function rememberSource(source) {
     if (!source.id || (source.scope!=='public'&&!source.accountRef) || !['math','computer'].includes(source.platform)) throw new ApiError('同步来源缺少账号或平台身份', 400);
     await database.query(`INSERT INTO ${sources}(id,platform,account_ref,metadata) VALUES($1,$2,$3,$4) ON CONFLICT(id) DO UPDATE SET last_seen_at=now()`, [source.id, source.platform, source.accountRef, JSON.stringify(source)]);
@@ -46,10 +49,16 @@ export async function createResourceStore(database, { publicTtlMs } = readRuntim
   async function getSettings() { return safeSettings((await database.query(`SELECT * FROM ${settings} WHERE id=1`)).rows[0]); }
   async function updateSettings(input) {
     if (!input || !Number.isSafeInteger(input.revision) || input.revision < 0 || typeof input.enabled !== 'boolean') throw new ApiError('同步开关及版本格式不正确', 400);
-    if (Object.keys(input).some(key => !['enabled','revision'].includes(key))) throw new ApiError('学习过程同步仅支持启用开关和版本',400);
-    const result = await database.query(`UPDATE ${settings} SET enabled=$1,revision=revision+1,updated_at=now() WHERE id=1 AND revision=$2 RETURNING *`, [input.enabled,input.revision]);
-    if (!result.rows.length) throw new ApiError('同步设置已更新，请重新读取', 409);
-    return safeSettings(result.rows[0]);
+    if (Object.keys(input).some(key => !['enabled','refreshAfterDays','revision'].includes(key))) throw new ApiError('资源同步仅支持启用开关、复核周期和版本',400);
+    if (input.refreshAfterDays!==undefined && !validRefreshDays(input.refreshAfterDays)) throw new ApiError('资源复核周期需为1–3650天的整数',400);
+    return database.transaction(async tx=>{
+      const previous=(await tx.query(`SELECT refresh_after_days FROM ${settings} WHERE id=1 FOR UPDATE`)).rows[0];
+      const result=await tx.query(`UPDATE ${settings} SET enabled=$1,refresh_after_days=coalesce($3,refresh_after_days),revision=revision+1,updated_at=now() WHERE id=1 AND revision=$2 RETURNING *`,[input.enabled,input.revision,input.refreshAfterDays??null]);
+      if(!result.rows.length)throw new ApiError('同步设置已更新，请重新读取',409);
+      if(input.refreshAfterDays!==undefined && input.refreshAfterDays!==previous.refresh_after_days)
+        await tx.query(`UPDATE ${resources} SET expires_at=synced_at+($1*interval '1 day') WHERE scope='public' AND expires_at>synced_at`,[input.refreshAfterDays]);
+      return safeSettings(result.rows[0]);
+    });
   }
   function entityItems(platform, task, response) {
     const body = response?.data ?? response?.Data ?? response;
@@ -88,7 +97,7 @@ export async function createResourceStore(database, { publicTtlMs } = readRuntim
     if(!['public','account','volatile'].includes(scope))throw new ApiError('资源范围格式不正确',400);
     await rememberSource(source);
     const clean=scope==='public'?publicResourceResponse(response):publicPlatformResponse(response),key=resourceKey(task.request),contentHash=hash(clean);
-    const expiresAt=options.expiresAt===undefined?defaultExpiry(scope):expires(options.expiresAt);
+    const expiresAt=options.expiresAt===undefined?await defaultExpiry(scope):expires(options.expiresAt);
     return database.transaction(async tx=>{
       const result=await tx.query(`INSERT INTO ${resources}(source_id,platform,request_key,scope,kind,request,response,content_hash,expires_at,title,context) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT(source_id,platform,request_key) DO UPDATE SET scope=excluded.scope,kind=excluded.kind,request=excluded.request,response=excluded.response,content_hash=excluded.content_hash,synced_at=now(),expires_at=excluded.expires_at,title=excluded.title,context=excluded.context,revision=${resources}.revision+CASE WHEN ${resources}.content_hash<>excluded.content_hash THEN 1 ELSE 0 END,changed_at=CASE WHEN ${resources}.content_hash<>excluded.content_hash THEN now() ELSE ${resources}.changed_at END RETURNING *`,[source.id,source.platform,key,scope,task.kind||task.request.path,JSON.stringify(task.request),JSON.stringify(clean),contentHash,expiresAt,titleFor(task,clean),JSON.stringify(task.context||{})]);
       await derived(tx,source,task,clean,key);
@@ -118,12 +127,12 @@ export async function createResourceStore(database, { publicTtlMs } = readRuntim
     return database.transaction(async tx=>{
       const row=await rowFor(input,true);checkRevision(input,row);
       const clean=row.scope==='public'?publicResourceResponse(input.response):publicPlatformResponse(input.response),task={request:row.request,context:row.context,kind:row.kind};
-      await tx.query(`UPDATE ${resources} SET response=$4,content_hash=$5,title=$6,revision=revision+1,synced_at=now(),changed_at=now(),expires_at=$7 WHERE source_id=$1 AND platform=$2 AND request_key=$3`,[...identity(input),JSON.stringify(clean),hash(clean),titleFor(task,clean),defaultExpiry(row.scope)]);
+      await tx.query(`UPDATE ${resources} SET response=$4,content_hash=$5,title=$6,revision=revision+1,synced_at=now(),changed_at=now(),expires_at=$7 WHERE source_id=$1 AND platform=$2 AND request_key=$3`,[...identity(input),JSON.stringify(clean),hash(clean),titleFor(task,clean),await defaultExpiry(row.scope)]);
       await derived(tx,{id:row.source_id,platform:row.platform},task,clean,row.request_key);
       return detail(input);
     });
   }
-  async function invalidate(input){return database.transaction(async tx=>{const row=await rowFor(input,true);checkRevision(input,row);await tx.query(`UPDATE ${resources} SET expires_at=now()-interval '1 second',revision=revision+1 WHERE source_id=$1 AND platform=$2 AND request_key=$3`,identity(input));return detail(input);});}
+  async function invalidate(input){return database.transaction(async tx=>{const row=await rowFor(input,true);checkRevision(input,row);await tx.query(`UPDATE ${resources} SET expires_at=LEAST(synced_at,now()-interval '1 second'),revision=revision+1 WHERE source_id=$1 AND platform=$2 AND request_key=$3`,identity(input));return detail(input);});}
   async function remove(input){return database.transaction(async tx=>{const row=await rowFor(input,true);checkRevision(input,row);await tx.query(`DELETE FROM ${resources} WHERE source_id=$1 AND platform=$2 AND request_key=$3`,identity(input));return {ok:true};});}
   async function batch(input){
     if(!input||!['invalidate','delete'].includes(input.action)||!Array.isArray(input.resources)||input.resources.length<1||input.resources.length>100)throw new ApiError('批量操作需选择1–100份资源并指定有效操作',400);
@@ -139,7 +148,7 @@ export async function createResourceStore(database, { publicTtlMs } = readRuntim
         const row=await rowFor(item,true);checkRevision(item,row);
         await tx.query(input.action==='delete'
           ?`DELETE FROM ${resources} WHERE source_id=$1 AND platform=$2 AND request_key=$3`
-          :`UPDATE ${resources} SET expires_at=now()-interval '1 second',revision=revision+1 WHERE source_id=$1 AND platform=$2 AND request_key=$3`,identity(item));
+          :`UPDATE ${resources} SET expires_at=LEAST(synced_at,now()-interval '1 second'),revision=revision+1 WHERE source_id=$1 AND platform=$2 AND request_key=$3`,identity(item));
       }
       return {ok:true,count:input.resources.length,action:input.action};
     });
@@ -150,7 +159,9 @@ export async function createResourceStore(database, { publicTtlMs } = readRuntim
     if (!Number.isInteger(limit) || limit < 1 || limit > 1000) throw new ApiError('资源查询每页需为1–1000条', 400);
     const parameters = [sourceId, platform, kind], clauses = ['source_id=$1','platform=$2','kind=$3'];
     if(typeof includeExpired!=='boolean')throw new ApiError('资源期限筛选格式不正确',400);
-    if(!includeExpired)clauses.push(`EXISTS(SELECT 1 FROM ${resources} fresh WHERE fresh.source_id=${entities}.source_id AND fresh.platform=${entities}.platform AND fresh.request_key=${entities}.request_key AND fresh.expires_at>now())`);
+    // Public content remains usable after its suggested review date. The legacy
+    // opt-in also allows inspection of the explicitly selected account's entities.
+    if(!includeExpired)clauses.push(`EXISTS(SELECT 1 FROM ${resources} saved WHERE saved.source_id=${entities}.source_id AND saved.platform=${entities}.platform AND saved.request_key=${entities}.request_key AND saved.scope='public')`);
     if (id !== undefined || ids !== undefined) { const selected = ids || [id]; if (!Array.isArray(selected) || selected.length > 1000) throw new ApiError('资源编号格式不正确', 400); parameters.push(selected.map(String)); clauses.push(`entity_id=ANY($${parameters.length}::text[])`); }
     const filterFields = new Set(['BookID','CatalogID','BusType','ExanType','majorId','chapterId','examGroupId','examinationId','examId','examType','examCategory','sectionId','ProductID','CourseID','AlbumID','PaperID']);
     if (!filters || typeof filters !== 'object' || Array.isArray(filters)) throw new ApiError('资源筛选格式不正确',400);

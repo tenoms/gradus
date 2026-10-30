@@ -47,7 +47,7 @@ test('public mathematical resource is read from PostgreSQL by another Web user o
   }finally{await app.close();}
 });
 
-test('shared practice honors PostgreSQL edits, invalidation, expiry and deletion instead of permanent owned snapshots',async()=>{
+test('shared practice uses PostgreSQL edits, refreshes stale content in the background and rebuilds deleted resources',async()=>{
   const f=fixture(),app=await startHttpApp(f);
   try{
     const {admin,first,second}=await setup(app);
@@ -66,11 +66,14 @@ test('shared practice honors PostgreSQL edits, invalidation, expiry and deletion
     f.setVersion(2);
     const invalidated=await app.request(`${resourcePath(row)}/invalidate`,{auth:admin,body:{revision:row.revision}});assert.equal(invalidated.status,200);row=await invalidated.json();
     assert.equal(f.calls.length,1,'marking stale never starts an upstream request');
-    assert.equal((await learning(app,first,'computer',exerciseInput(1))).data.exercises[0].exerciseStems,'公共题干2');assert.equal(f.calls.length,2);
+    assert.equal((await learning(app,first,'computer',exerciseInput(1))).data.exercises[0].exerciseStems,'管理员修订的题干');
+    await app.app.locals.resourceSync.waitForIdle();assert.equal(f.calls.length,2);
     assert.equal((await learning(app,second,'computer',exerciseInput(1))).data.exercises[0].exerciseStems,'公共题干2');assert.equal(f.calls.length,2);
     f.setVersion(3);
     await app.app.locals.database.query(`UPDATE ${app.app.locals.database.upstream('resources')} SET expires_at=now()-interval '1 second' WHERE source_id=$1 AND platform=$2 AND request_key=$3`,[row.sourceId,row.platform,row.key]);
-    assert.equal((await learning(app,second,'computer',exerciseInput(1))).data.exercises[0].exerciseStems,'公共题干3');assert.equal(f.calls.length,3);
+    assert.equal((await learning(app,second,'computer',exerciseInput(1))).data.exercises[0].exerciseStems,'公共题干2');
+    await app.app.locals.resourceSync.waitForIdle();assert.equal(f.calls.length,3);
+    assert.equal((await learning(app,second,'computer',exerciseInput(1))).data.exercises[0].exerciseStems,'公共题干3');
     row=(await resources(app,admin,'computer'))[0];
     const removed=await app.request(resourcePath(row),{auth:admin,method:'DELETE',body:{revision:row.revision}});assert.equal(removed.status,200);
     assert.equal((await learning(app,first,'computer',exerciseInput(1))).data.exercises[0].exerciseStems,'公共题干3');assert.equal(f.calls.length,4,'cache removal triggers a read only on the next visit');

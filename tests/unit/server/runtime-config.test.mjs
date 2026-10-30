@@ -5,11 +5,11 @@ import { createDatabase } from '../../../server/infrastructure/database.mjs';
 import { requestJson, createUpstreamClient } from '../../../server/integrations/upstream.mjs';
 import { platformConfigFixture } from '../../support/platform-config.mjs';
 
-test('runtime defaults preserve the existing listener, session and resource lifetimes', () => {
+test('runtime defaults preserve listener and session policies with a thirty-day resource review cycle', () => {
   const runtime = readRuntimeConfig({ env: {} });
   assert.equal(runtime.http.port, 3001);
   assert.equal(runtime.session.lifetimeMs, 24 * 60 * 60 * 1000);
-  assert.equal(runtime.resources.publicTtlMs, 6 * 60 * 60 * 1000);
+  assert.equal(runtime.resources.publicRefreshAfterDays, 30);
   assert.equal(runtime.accounts.directoryCacheTtlMs, 30_000);
   assert.equal(runtime.upstream.requestTimeoutMs, 25_000);
 });
@@ -43,6 +43,10 @@ for (const [runtime, field] of [
   [{ database: { maxConnections: 0 } }, 'database.maxConnections'],
   [{ session: { lifetimeMs: 0 } }, 'session.lifetimeMs'],
   [{ session: { secureCookies: 'true' } }, 'session.secureCookies'],
+  [{ resources: { publicRefreshAfterDays: 0 } }, 'resources.publicRefreshAfterDays'],
+  [{ resources: { publicRefreshAfterDays: 3651 } }, 'resources.publicRefreshAfterDays'],
+  [{ resources: { publicRefreshAfterDays: 1.5 } }, 'resources.publicRefreshAfterDays'],
+  [{ resources: { publicRefreshAfterDays: '30' } }, 'resources.publicRefreshAfterDays'],
   [{ upstream: { requestTimeoutMs: 0 } }, 'upstream.requestTimeoutMs'],
   [{ diagnostics: { recentRequests: -1 } }, 'diagnostics.recentRequests'],
 ]) {
@@ -52,6 +56,14 @@ for (const [runtime, field] of [
     assert.throws(() => validateRuntimeConfig(settings), error => error.message.includes(field) && !error.message.includes('hidden-password'));
   });
 }
+
+test('resource review cycle accepts both day limits', () => {
+  for (const publicRefreshAfterDays of [1, 3650]) {
+    const runtime = readRuntimeConfig({ env: {} });
+    runtime.resources.publicRefreshAfterDays = publicRefreshAfterDays;
+    assert.equal(validateRuntimeConfig(runtime).resources.publicRefreshAfterDays, publicRefreshAfterDays);
+  }
+});
 
 test('invalid environment values are rejected rather than silently ignored', () => {
   assert.throws(() => readRuntimeConfig({ env: { PORT: 'not-a-port' } }), /http\.port/);

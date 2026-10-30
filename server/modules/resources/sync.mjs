@@ -16,11 +16,13 @@ function contentOnly(value) {
   return Object.fromEntries(Object.entries(value).filter(([key])=>!sourceState.test(key)).map(([key,item])=>[key,contentOnly(item)]));
 }
 const publicContent=response=>stripSharedPersonalState(contentOnly(publicPlatformResponse(response)));
+const hasContent=value=>Array.isArray(value)?value.some(hasContent):value&&typeof value==='object'?Object.values(value).some(hasContent):typeof value==='string'?value.trim().length>0:typeof value==='number'||value===true;
+const stableContentKind=/^(?:math\.(?:question|questions|analysis)|computer\.(?:question|paper))$/;
 
-/** Resource persistence observes learning requests; it never schedules or discovers upstream work. */
+/** Learning requests alone discover resources; saved public content stays readable during revalidation. */
 export function createResourceSync({store,service,configuration,accountPool}) {
   let lastError='',lastCapturedAt=null;
-  const sourceRequests=new Map(),resourceReads=new Map();
+  const sourceRequests=new Map(),resourceReads=new Map(),refreshes=new Map();
   const configNow=()=>configuration?.snapshot?.()||service.getConfig();
   const recordError=()=>{lastError='本次资源未能保存，将在下次访问时重新同步';};
   async function status(){return {...await store.status(),mode:'learning',lastError,lastCapturedAt,manifest:resourceManifest()};}
@@ -50,23 +52,50 @@ export function createResourceSync({store,service,configuration,accountPool}) {
   }
   async function lookup(args) {
     const cached=await peek(args);
-    return cached.state==='hit'?{...cached.resource,response:publicResourceResponse(cached.resource.response)}:null;
+    return cached.resource?{...cached.resource,response:publicResourceResponse(cached.resource.response)}:null;
   }
   async function inRead(key,work) {
     if(resourceReads.has(key))return resourceReads.get(key);
     const pending=work();resourceReads.set(key,pending);
     try{return await pending;}finally{if(resourceReads.get(key)===pending)resourceReads.delete(key);}
   }
+  function refresh(key,work) {
+    if(refreshes.has(key))return;
+    const pending=(async()=>{
+      try {
+        if(!(await store.getSettings()).enabled)return;
+        await work();
+      } catch {lastError='资源更新暂未完成，已保存内容仍可使用';}
+    })();
+    refreshes.set(key,pending);
+    void pending.finally(()=>{if(refreshes.get(key)===pending)refreshes.delete(key);});
+  }
+  async function waitForIdle() {
+    while(refreshes.size)await Promise.all([...refreshes.values()]);
+  }
   async function read(args) {
     const config=args.config||configNow(),identity=resourceIdentity(args.platform,sourceSession(args.session,args.platform),config,args.request);
+    const key=`response:${identity.source.id}:${resourceKey(identity.request)}`;
+    const fetch=async previous=>{
+      const response=await args.load();
+      if(identity.scope==='public'&&!succeeded(response))throw new ApiError('资源暂时无法更新，请稍后重试',502);
+      if(previous&&stableContentKind.test(previous.kind||inferResourceRequest(args.platform,identity.request).kind)) {
+        const body=response?.data??response?.Data;
+        if(!hasContent(body)||(resourceRows(previous.response).length>0&&!resourceRows(response).length))
+          throw new ApiError('本次未取得资源正文，已保存内容保持不变',502);
+      }
+      await capture({...args,config,response});
+      return identity.scope==='public'?publicResourceResponse(response):response;
+    };
     const load=async()=>{
       const current=await peek({...args,config});
-      if(current.state==='hit')return publicResourceResponse(current.resource.response);
-      const response=await args.load();
-      await capture({...args,response});
-      return current.identity.scope==='public'?publicResourceResponse(response):response;
+      if(current.resource) {
+        if(current.state==='stale')refresh(key,()=>fetch(current.resource));
+        return publicResourceResponse(current.resource.response);
+      }
+      return fetch();
     };
-    return identity.scope==='public'?inRead(`response:${identity.source.id}:${resourceKey(identity.request)}`,load):load();
+    return identity.scope==='public'?inRead(key,load):load();
   }
   async function acquire(session,name,{force=false,invalidToken}={}) {
     if(accountPool?.acquireSource && session.user?.id) {
@@ -115,10 +144,8 @@ export function createResourceSync({store,service,configuration,accountPool}) {
       return {imported:true,persisted,cacheState,questions,total,questionIds,examId:data?.examId??data?.examinationId,response:clean};
     };
     const identity=resourceIdentity(platform,sourceSession(session,platform),config,request);
-    const load=async()=>{
-      const latest=await peek(args);
-      if(latest.state==='hit')return result(latest.resource.response,'hit',true);
-      if(latest.state==='miss'&&fallbackResponse&&!(await store.getSettings()).enabled)return result(fallbackResponse,'miss');
+    const key=`questions:${identity.source.id}:${resourceKey(identity.request)}`;
+    const fetch=async(cacheState)=>{
       const source=await acquire(session,platform);
       return inSource(sourceForSession(platform,{...session,...source},config).id,async()=>{
         if(query.examGroupId) {
@@ -134,11 +161,22 @@ export function createResourceSync({store,service,configuration,accountPool}) {
           response=await requestSource({session,name:platform,path:'/api/exam/wx/practice/examExercise',input:{method:'GET',query:{examId:firstData.examId},data:{}},source});
         }
         if(!succeeded(response))throw new ApiError('题目暂时无法加载，请稍后重试',502);
+        const parsed=result(response,cacheState);
+        if(!parsed.questions.length)throw new ApiError('本次未取得题目，已保存内容保持不变',502);
         const saved=await capture({...args,request:current,response});
-        return result(response,latest.state,saved.captured);
+        return {...parsed,persisted:saved.captured};
       });
     };
-    return identity.scope==='public'?inRead(`questions:${identity.source.id}:${resourceKey(identity.request)}`,load):load();
+    const load=async()=>{
+      const latest=await peek(args);
+      if(latest.resource) {
+        if(latest.state==='stale')refresh(key,()=>fetch('stale'));
+        return result(latest.resource.response,latest.state,true);
+      }
+      if(latest.state==='miss'&&fallbackResponse&&!(await store.getSettings()).enabled)return result(fallbackResponse,'miss');
+      return fetch(latest.state);
+    };
+    return identity.scope==='public'?inRead(key,load):load();
   }
-  return {status,updateSettings,capture,peek,lookup,read,requestSource,ensureQuestions,findEntities:options=>store.findEntities(options),list:options=>store.list(options)};
+  return {status,updateSettings,capture,peek,lookup,read,requestSource,ensureQuestions,waitForIdle,findEntities:options=>store.findEntities(options),list:options=>store.list(options)};
 }

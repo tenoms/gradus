@@ -38,7 +38,7 @@ export default function ResourceDialog({ item, onClose, onChanged }: { item: Res
       }
       const updated = await api<ResourceDetail>(action === "invalidate" ? `${path}/invalidate` : path, { method: action === "invalidate" ? "POST" : "PATCH", body: JSON.stringify({ revision: resource.revision, ...(action === "save" ? { response } : {}) }) });
       accept(updated);
-      const text = action === "save" ? resource.scope === "public" ? "资源内容已保存。" : "资源内容已保存，后续访问时仍会实时更新。" : "已标记需更新，下次访问时将获取最新内容。";
+      const text = action === "save" ? resource.scope === "public" ? "资源内容已保存。" : "资源内容已保存，后续访问时仍会实时更新。" : "已标记待复核，本地内容仍可使用；开启同步时，下次访问会尝试后台更新。";
       setNotice(text); onChanged(text);
     } catch (cause) { setConflict(cause instanceof ApiError && cause.status === 409); setError(message(cause)); }
     finally { pendingRef.current = false; setBusy(""); }
@@ -59,9 +59,10 @@ export default function ResourceDialog({ item, onClose, onChanged }: { item: Res
           <dl className="resource-metadata">
             <div><dt>资源类型</dt><dd>{typeName(resource.kind, resource.typeLabel)}</dd></div><div><dt>资源状态</dt><dd>{validityName(resource)}</dd></div>
             <div><dt>最近同步</dt><dd>{dateTime(resource.syncedAt)}</dd></div><div><dt>最近内容变更</dt><dd>{dateTime(resource.changedAt)}</dd></div>
-            <div><dt>资源来源</dt><dd>{sourceName(resource.source)}</dd></div><div><dt>有效期</dt><dd>{resource.expiresAt ? dateTime(resource.expiresAt) : "实时更新"}</dd></div>
+            <div><dt>资源来源</dt><dd>{sourceName(resource.source)}</dd></div><div><dt>{resource.scope === "public" ? "下次复核" : "更新方式"}</dt><dd>{resource.scope === "public" ? resource.expiresAt ? dateTime(resource.expiresAt) : "下次访问尝试复核" : "实时更新"}</dd></div>
           </dl>
 
+          {resource.scope === "public" && <p className="resource-inline-help">本地内容长期可读。待复核仅表示建议更新，开启同步时会在访问后尝试后台更新；更新失败不影响本次使用。</p>}
           <section className="resource-derived"><h3><FileJson size={16} />内容统计 <span>{resource.entityCount || 0}</span></h3>{resource.entities?.length ? <div className="resource-entity-list">{resource.entities.map(entity => <span key={entity.kind}>{entityName(entity.kind)}<strong>{entity.count}</strong></span>)}</div> : <p>暂无内容统计。</p>}</section>
           <details className="resource-technical">
             <summary>技术信息</summary>
