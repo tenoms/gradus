@@ -1,89 +1,95 @@
 # 知序 Study · Web 学习系统
 
-数学与计算机小程序资源的统一学习空间。学习者使用独立 Web 账号，按需读取题库、解析、课程、测评、院校与资料；答案、收藏、笔记、计划和进度由 Web 系统持有。可选关联本人小程序账号，单向导入已有学习积累。
+面向考研数学与计算机 408 的学习空间，将题库、解析、课程和测评放在一起，让练习、复习与学习规划相互衔接。用书架整理资料，用错题和笔记积累理解，用计划与报告记录每一步进步。
 
-## 本地运行
+<table>
+  <tr>
+    <td width="50%"><a href=".github/readme/study-overview.jpg"><img src=".github/readme/study-overview.jpg" alt="知序 Study 学习空间" width="100%"></a></td>
+    <td width="50%"><a href=".github/readme/study-practice.jpg"><img src=".github/readme/study-practice.jpg" alt="练习与课程：数学题解对照、计算机 408 逐题练习与课程目录" width="100%"></a></td>
+  </tr>
+  <tr>
+    <td width="50%"><a href=".github/readme/study-progress.jpg"><img src=".github/readme/study-progress.jpg" alt="个人学习积累：分科学习报告、错题本与学习笔记" width="100%"></a></td>
+    <td width="50%"><a href=".github/readme/study-admin.jpg"><img src=".github/readme/study-admin.jpg" alt="系统管理：管理总览、资源中心与运行诊断" width="100%"></a></td>
+  </tr>
+</table>
 
-使用 Node.js 24（最低 22.13）及 PostgreSQL 14+。运行时版本记录在 `.node-version`，依赖由 `package-lock.json` 锁定。
+## 主要功能
+
+| 空间 | 功能 |
+| --- | --- |
+| 考研数学 | 教辅与真题、个人书架、题目解析、专辑与模型训练、课程、测评、院校、答疑与资料 |
+| 计算机 408 | 五科章节练习、专项与整卷练习、作答报告、课程录播与弹幕、院校与社区 |
+| 个人学习 | 学习计划、每日目标、分科报告、错题、收藏、笔记、历史记录与备份，跨设备继续学习 |
+| 系统管理 | 用户与注册、学习账号分配、YYB 服务、平台设置、资源渐进式同步、公告、主题与运行诊断 |
+
+## 快速开始
+
+### 准备环境
+
+- Node.js 24（最低 22.13，推荐版本见 [.node-version](.node-version)）
+- PostgreSQL 14+，以及可用的数据库和连接账号
 
 ```sh
 cp .env.example .env
-# 填写 DATABASE_URL
+# 编辑 .env，填写 DATABASE_URL 和 STUDY_SCHEMA_PREFIX
 npm ci
 npm run dev
 ```
 
+启动后打开：
+
 - [学习空间](http://127.0.0.1:5173/learn/)
 - [管理空间](http://127.0.0.1:5173/admin/)
 
-首次进入管理空间创建管理员，确认 `.env` 或管理端中的两科平台参数，再配置 YYB 服务和系统账号池、创建学习账号；也可在管理端开启访客注册。管理与学习会话独立，管理员进入学习空间时单独登录。
+### 首次使用
+
+1. 进入管理空间，创建管理员账号。
+2. 在“平台集成配置”中填写并启用需要使用的学习平台，在“账号与服务”中添加 YYB 服务并选择可分配的账号。
+3. 创建学习账号，或开启用户注册，然后登录学习空间开始学习。
+
+平台参数也可通过 `.env` 配置；未由环境变量指定的项目可在管理端维护。填写方式见[环境变量示例](.env.example)和[系统配置](config/README.md)。
+
+### 构建与运行
 
 ```sh
 npm run build
 npm start
 ```
 
-生产构建由同源 Express 服务提供，默认地址为 [http://127.0.0.1:3001/learn/](http://127.0.0.1:3001/learn/)。运维默认值统一放在 `config/system.json`；`.env` 保存数据库连接、平台接口与秘密及可选部署覆盖项。HTTPS 部署设置安全 cookie，反向代理保留原 Host。各配置入口和更新方式见[系统配置](config/README.md)。
+默认提供 [学习空间](http://127.0.0.1:3001/learn/)和[管理空间](http://127.0.0.1:3001/admin/)。使用 HTTPS 时设置 `COOKIE_SECURE=1`，反向代理需保留原始 `Host`。端口及其他部署参数见[系统配置](config/README.md)。
 
-## 主要能力
+## 资源更新与记录导入
 
-| 空间 | 能力 |
-| --- | --- |
-| 数学 | 教辅与真题、个人书架、题干与解析、专辑与模型训练、课程、测评、答疑、笔记与复习 |
-| 计算机 | 五科章节与练习组、逐题练习与试卷、作答报告、解析、课程录播与弹幕、院校、社区 |
-| 个人学习 | 跨设备学习计划、目标与活动，独立收藏、错题、笔记、历史记录和备份 |
-| 管理 | 用户与注册、多个 YYB 服务及共享账号池、平台配置、公共资源管理、审计与运行诊断 |
+### 渐进式更新学习资源
 
-小程序支付、直播与客服不在本项目范围内。
+管理端“资源中心”可开启渐进式同步。资源随学习者访问逐步保存，已有公共资源可直接使用，缺失内容通过已配置的学习平台与 YYB 服务获取。
 
-## 数据与同步
+- 默认每 30 天建议复核一次，可在资源中心调整。开启同步时，到期资源仍可阅读，并在访问时尝试后台更新。
+- YYB 暂不可用时，已保存的公共资源仍可使用。
+- 关闭同步后停止自动保存和后台更新，已有资源与学习记录保留。
+- 同步随实际访问进行，不会预先抓取全部内容或自动下载视频。
 
-PostgreSQL 分为两个数据域：`<前缀>_web` 保存 Web 用户、会话、配置及个人学习记录，`<前缀>_upstream` 保存已访问的资源响应、实体和媒体引用。前缀由 `.env` 中的 `STUDY_SCHEMA_PREFIX` 显式提供；示例配置 `study` 对应 `study_web` 和 `study_upstream`。
+### 导入已有学习记录
 
-已保存的公共资源长期从本地数据库读取，只有缺失内容才需要等待系统 YYB 账号池补齐。管理端“资源中心”可设置复核天数（默认 30 天）；开启资源渐进式同步时，超过期限的资源在访问后尝试后台更新，YYB 不可用不影响已有内容。浏览目录保存目录，打开题目或解析时再保存对应内容；不会遍历全书、预抓下一题或自动下载视频。关闭同步不再自动保存或后台更新，已有公共资源仍可使用。
+在个人中心关联自己的小程序账号，选择需要的书架、收藏、错题、笔记和历史记录，预览后导入。导入不会改动小程序中的原有记录，这里的新增与修改也不会同步回小程序。
 
-完整题干和解析按平台域、题号与内容形态跨入口复用。题组有可靠的有序清单且全部正文齐备时，可以本地创建新的个人练习；数学复用已取得题组进行重练，计算机支持逐题积累后整卷练习及整卷反向提供单题。目录题号和标题不当作完整正文，随机或个性化选题不被固定为公共题组。
-
-目录加载会合并并发请求并短期复用稳定目录，题目、播放器及其他栏目模块随访问加载。完整资源入库与个人记录归属不受前端缓存影响。
-
-个人中心可关联本人微信账号，明确选择同步范围后导入已有记录。个人同步与公共资源同步使用独立开关，均从小程序接口向 Web 读取；Web 答案、笔记和进度不回写小程序。
-
-`config/system.json` 只包含运维默认值及科目、缓存等通用参数。真实平台地址、App ID 与 OCR、OAuth、录播密钥可在本机 `.env` 填写，也可在管理端维护。按字段采用显式环境变量优先、否则使用管理端值的规则；界面标明环境接管的字段。打印和播放器公开地址通过会话响应传给浏览器，提交的配置不包含提供商域名。原小程序目录与 `yyb.txt` 属于开发资产，启动、构建和真实验收均无需这些文件。
-
-## 源码组织
-
-```text
-src/app/             学习、管理入口与路由装配
-src/features/        math、computer、admin、identity、learning 业务模块
-src/shared/          通用请求、会话、UI、富文本与媒体
-server/app.mjs       服务端模块装配
-server/modules/      身份、账号池、资源、学习、个人同步与管理
-server/integrations/ YYB 与两科平台协议、配置和策略
-server/infrastructure/ PostgreSQL、错误类型及运行诊断
-shared/              两端共用的领域校验
-config/              唯一系统配置与配置说明
-tests/unit/          按业务分类的单元与交互契约测试
-tests/integration/   使用独立 PostgreSQL schema 的集成测试
-tests/support/       测试数据库与 HTTP 应用夹具
-scripts/checks/      仓库依赖与生产构建验证
-scripts/live/        真实 YYB 接口验收
-scripts/maintenance/ 生成物清理
-docs/                现行架构与运行说明
-docs/history/        按日期归档的迁移和验收记录
-```
-
-模块依赖规则、日常维护与验证流程见[开发指南](CONTRIBUTING.md)及[代码架构](docs/architecture.md)。
-
-## 验证与维护
+## 开发与维护
 
 ```sh
-npm run check             # 结构、类型、全部测试与构建依赖检查
-npm run build             # 生成可运行生产构建
-npm run verify:directories # 真实只读目录验收，需要有效 YYB 配置
-npm run clean             # 清理 dist 与 TypeScript 增量产物
-npm run clean:reports     # 同时清理 artifacts 内本机验收产物
+npm run check              # 检查源码结构、类型、测试和构建依赖
+npm run build              # 生成生产构建
+npm run verify:directories # 验证真实资源目录，需要有效的 YYB 配置
+npm run clean              # 清理构建产物
+npm run clean:reports      # 同时清理本机验收产物
 ```
 
-自动化测试在各自独立的 PostgreSQL schema 中运行并清理，CI 提供临时数据库。真实接口验收按相同优先级读取环境与管理配置，再在独立临时库中使用真实账号验证，应按[开发指南](CONTRIBUTING.md)选择对应入口。
+自动化测试使用独立的临时数据空间，不访问真实 YYB 账号。真实接口验收、生成物管理和开发约定见[开发指南](CONTRIBUTING.md)。
 
-当前说明以源码和现行文档为准；旧测试数量、迁移清单及阶段实测集中在[文档索引](docs/README.md)下的历史档案中。
+| 文档 | 内容 |
+| --- | --- |
+| [系统配置](config/README.md) | 环境变量、平台设置、资源复核周期与主题配置 |
+| [开发指南](CONTRIBUTING.md) | 开发流程、测试、真实接口验收与日常维护 |
+| [代码架构](docs/architecture.md) | 源码组织与模块依赖 |
+| [数据架构](docs/data-architecture.md) | 学习记录、公共资源与个人导入 |
+| [多 YYB 服务](docs/multi-yyb-services.md) | 服务连接、账号池与账号分配 |
+| [文档索引](docs/README.md) | 技术参考与历史记录 |
