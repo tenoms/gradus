@@ -39,14 +39,6 @@ a {
   color: inherit;
   text-decoration: none;
 }
-button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline: 3px solid var(--accent-border);
-  outline-offset: 3px;
-}
 button {
   border: 0;
   background: none;
@@ -333,7 +325,8 @@ svg {
   border-radius: 9px;
   background: var(--surface-soft);
 }
-.subject-switch:focus-within { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+html:not([data-input-modality="pointer"]) .subject-switch:has(select:focus-visible) { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.subject-switch select:focus-visible { outline: none; }
 .subject-switch:hover { border-color: var(--accent-border); }
 .subject-switch select {
   appearance: none;
@@ -1279,7 +1272,8 @@ svg {
 .input::placeholder {
   color: var(--accent);
 }
-.input:focus {
+:is(input, textarea).input:focus,
+html:not([data-input-modality="pointer"]) select.input:focus-visible {
   border-color: var(--accent-border);
 }
 .form-row {
@@ -1562,7 +1556,7 @@ svg {
   box-shadow: 0 1px 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 .tabs > button:is(.active, [aria-pressed="true"], [aria-current="page"]):hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--on-accent); }
-.tabs > button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; box-shadow: inset 0 0 0 3px var(--surface); }
+html:not([data-input-modality="pointer"]) .tabs > button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; box-shadow: inset 0 0 0 3px var(--surface); }
 .tabs > button:active:not(:disabled) { transform: translateY(1px); }
 .tabs > button:disabled { color: var(--muted); opacity: .5; cursor: not-allowed; box-shadow: none; }
 .date-filter {

@@ -14,9 +14,8 @@
   color: var(--warning); border-color: var(--warning-border); background: var(--warning-soft);
 }
 :is(.computer-session, .math-workspace) :is(.computer-sheet, .math-answer-sheet, .computing-sheet, .math-exam-sheet) > button[aria-current="step"] {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  box-shadow: none;
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 .math-workspace .mrq-question-grid > .answer-progress-correct .mrq-number { color: var(--success); background: var(--success-soft); }
 .math-workspace .mrq-question-grid > .answer-progress-incorrect .mrq-number { color: var(--danger); background: var(--danger-soft); }

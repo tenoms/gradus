@@ -52,6 +52,9 @@ button[aria-busy="true"], button.is-pending { cursor: wait; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible {
   outline: 2px solid var(--focus-ring); outline-offset: 3px;
 }
+html[data-input-modality="pointer"] :is(button, a, select, summary, [tabindex]):not(input):not(textarea):not([contenteditable]):focus {
+  outline: none;
+}
 ::selection { background: var(--accent-border); color: var(--ink); }
 .panel { border-radius: var(--radius-lg); background: var(--surface); border-color: var(--border); box-shadow: var(--shadow); }
 .btn { min-height: 40px; font-size: 13px; border-radius: var(--radius-sm); padding: 9px 16px; transition: background var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast); }
@@ -65,7 +68,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .icon-button:hover:not(:disabled) { background: var(--surface-soft); }
 .input { min-height: 42px; padding: 10px 12px; font-size: 13px; line-height: 1.55; color: var(--ink); background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); }
 .input::placeholder { color: var(--muted); opacity: 1; }
-.input:focus { border-color: var(--accent); }
+:is(input, textarea).input:focus,
+html:not([data-input-modality="pointer"]) select.input:focus-visible { border-color: var(--accent); }
 .input:disabled { background: var(--surface-soft); color: var(--muted); cursor: not-allowed; }
 .field-label { font-size: 13px; color: var(--text-secondary); }
 textarea.input { line-height: 1.8; }

@@ -920,7 +920,7 @@
 .computer-sheet button.drafted { border-color: var(--accent-border); color: var(--accent); background: var(--accent-soft); }
 .computer-sheet button.answered { color: var(--success); background: var(--success-soft); }
 .computer-sheet button.skipped { border-style: dashed; }
-.computer-sheet button.active { color: var(--on-accent); background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ink) 8%, transparent); }
+.computer-sheet button.active { color: var(--on-accent); background: var(--accent); border-color: var(--accent); }
 .learning-workbench .computer-question-stem,
 .learning-workbench .computer-question-answer .rich-content,
 .learning-workbench .computer-analysis .rich-content { font-size: var(--reading-size, 16px); line-height: 1.95; }
