@@ -168,6 +168,17 @@ export function reportLaunch(
     readOnly: true,
   };
 }
+async function personalExerciseIds(path: string, majorId: string, examCategory: number): Promise<string[]> {
+  const ids: string[] = [];
+  let pageNum = 1, pages = 1;
+  do {
+    const data = await computerRequest(path, { majorId, examCategory, pageNum, pageSize: 100 });
+    ids.push(...records(data).map(item => String(item.exerciseId || "")).filter(Boolean));
+    pages = Number(data?.pages || Math.ceil(Number(data?.total || 0) / 100) || 1);
+    pageNum++;
+  } while (pageNum <= pages);
+  return [...new Set(ids)];
+}
 export const computerLearningApi = {
   subjects: () => computerRequest("/api/exam/wx/personal/majorCustomList"),
   updateSubject: (subject: R, remove = false) =>
@@ -190,19 +201,10 @@ export const computerLearningApi = {
         : "/api/exam/wx/personal/collectExerciseList",
       query,
     ),
-  async collectionIds(majorId: string, examCategory: number): Promise<string[]> {
-    const ids: string[] = [];
-    let pageNum = 1, pages = 1;
-    do {
-      const data = await computerRequest("/api/exam/wx/personal/collectExerciseList", {
-        majorId, examCategory, pageNum, pageSize: 100,
-      });
-      ids.push(...records(data).map(item => String(item.exerciseId || "")).filter(Boolean));
-      pages = Number(data?.pages || Math.ceil(Number(data?.total || 0) / 100) || 1);
-      pageNum++;
-    } while (pageNum <= pages);
-    return [...new Set(ids)];
-  },
+  collectionIds: (majorId: string, examCategory: number) =>
+    personalExerciseIds("/api/exam/wx/personal/collectExerciseList", majorId, examCategory),
+  mistakeIds: (majorId: string, examCategory: number) =>
+    personalExerciseIds("/api/exam/wx/personal/incorrectExerciseList", majorId, examCategory),
   async collect(question: R, majorId: string, chapterId: string, examCategory: number, remove = false) {
     const result = await computerRequest("/api/exam/wx/personal/collectExercise", {
       exerciseId: question.exerciseId || question.id,

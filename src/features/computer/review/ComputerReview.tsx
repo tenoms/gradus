@@ -314,7 +314,6 @@ export default function ComputerReview({
         await computerLearningApi.markMistake(item,major,item.chapterId,category,true);
       else
         await computerLearningApi.collect(item, major, item.chapterId || "", category, true);
-      if (tab === "mistakes") setNotice("已从错题本移除");
       list.reload();
       dates.reload();
       counts.reload();
@@ -602,11 +601,16 @@ export default function ComputerReview({
                             重做
                           </button>
                           <button
-                            className="computer-text-link"
+                            className={tab === "mistakes" ? "btn btn-primary" : "computer-text-link"}
+                            aria-pressed={tab === "mistakes" ? true : undefined}
                             disabled={busy}
                             onClick={async () => {
+                              if (tab === "mistakes") {
+                                void remove(item);
+                                return;
+                              }
                               if (
-                                await confirmAction({ title: tab === "mistakes" ? "从错题本移除这道题？" : "取消收藏这道题？", description: "已有作答和学习记录会保留。", confirmLabel: tab === "mistakes" ? "移出错题本" : "取消收藏", cancelLabel: "保留题目", danger: true })
+                                await confirmAction({ title: "取消收藏这道题？", description: "已有作答和学习记录会保留。", confirmLabel: "取消收藏", cancelLabel: "保留题目", danger: true })
                               )
                                 void remove(item);
                             }}

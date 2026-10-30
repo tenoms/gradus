@@ -32,7 +32,7 @@ import {
   mathTables,
 } from "../api/math";
 import type { MathRow, NoteKind } from "../api/math";
-import type { MathFavoriteControl } from "./use-math-favorite";
+import type { MathQuestionMarkControl } from "./use-math-question-mark";
 import { AttachmentInput } from "../shared/MathAttachmentInput";
 import {
   moveNotesPayload,
@@ -77,7 +77,7 @@ export default function MathNotebook({
 }: {
   stuid: string;
   initialKind: NoteKind;
-  renderQuestion: (row: MathRow, favorite?: MathFavoriteControl) => ReactNode;
+  renderQuestion: (row: MathRow, favorite?: MathQuestionMarkControl, mistake?: MathQuestionMarkControl) => ReactNode;
 }) {
   const { subject } = useMathLearningPlan();
   useEffect(() => setCatalog("0"), [subject]);
@@ -774,7 +774,7 @@ export default function MathNotebook({
                   {kind === "收藏" ? (
                     <Star size={19} fill="currentColor" />
                   ) : (
-                    <BookOpen size={19} />
+                    <BookOpen size={19} fill={kind === "错题" ? "currentColor" : "none"} stroke={kind === "错题" ? "var(--on-accent)" : "currentColor"} />
                   )}
                 </span>
                 <div className="mn-entry-content">
@@ -859,36 +859,38 @@ export default function MathNotebook({
 function NotebookBankQuestion({ row, stuid, renderQuestion }: {
   row: MathRow;
   stuid: string;
-  renderQuestion: (row: MathRow, favorite?: MathFavoriteControl) => ReactNode;
+  renderQuestion: (row: MathRow, favorite?: MathQuestionMarkControl, mistake?: MathQuestionMarkControl) => ReactNode;
 }) {
   const qid = row.QuestionID;
   const scope = row.BusID ?? 0;
-  const remote = useNotes(JSON.stringify(["bank-favorite", stuid, String(qid), String(scope)]), () =>
-    mathGet("/api/rel_question_log/GetListByPage", { StuID: stuid, Type: "收藏", QuestionID: qid, BusID: scope, page: 1, limit: 100 }),
+  const remote = useNotes(JSON.stringify(["bank-marks", stuid, String(qid), String(scope)]), () =>
+    mathGet("/api/rel_question_log/GetListByPage", { StuID: stuid, QuestionID: qid, BusID: scope, page: 1, limit: 100 }),
   );
   const [records, setRecords] = useState<MathRow[]>();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const favorites = records ?? mathRows(remote.data);
-  const toggle = async () => {
+  const [failedKind, setFailedKind] = useState<"收藏" | "错题">("收藏");
+  const marks = records ?? mathRows(remote.data);
+  const toggle = async (kind: "收藏" | "错题") => {
     if (saving || remote.loading || remote.error) return;
     setSaving(true);
     setError("");
+    setFailedKind(kind);
     try {
-      const existing = favorites[0];
+      const existing = marks.find(record => record.Type === kind);
       if (existing) {
         const response = await mathPost("/api/rel_question_log/Del_rel_question_log", { ID: existing.ID });
-        if (mathData(response) === false) throw new Error("取消收藏未成功，请重试");
-        setRecords(favorites.filter(record => record.ID !== existing.ID));
+        if (mathData(response) === false) throw new Error(`取消${kind}未成功，请重试`);
+        setRecords(marks.filter(record => record.ID !== existing.ID));
       } else {
-        const payload = { Type: "收藏", QuestionID: qid, StuID: stuid, BusID: scope, ID: 0, UpdateColumns: "ID,Content" };
+        const payload = { Type: kind, QuestionID: qid, StuID: stuid, BusID: scope, ID: 0, UpdateColumns: "ID,Content" };
         const response = await mathPost("/api/rel_question_log/Inner_rel_question_log", payload);
         const id = Number(mathData(response));
-        if (mathData(response) === false || !id) throw new Error("保存收藏未成功，请重试");
-        setRecords([{ ...payload, ID: id }]);
+        if (mathData(response) === false || !id) throw new Error(`保存${kind}未成功，请重试`);
+        setRecords([...marks, { ...payload, ID: id }]);
       }
     } catch (e: any) {
-      setError(e.message || "收藏更新失败，请重试");
+      setError(e.message || `${kind}更新失败，请重试`);
     } finally {
       setSaving(false);
     }
@@ -900,11 +902,15 @@ function NotebookBankQuestion({ row, stuid, renderQuestion }: {
           <span>{error || remote.error}</span>
           <button className="text-link" disabled={saving || remote.loading} onClick={() => {
             if (remote.error) remote.reload();
-            else void toggle();
+            else void toggle(failedKind);
           }}>重试</button>
         </div>
       )}
-      {renderQuestion(row, { active: favorites.length > 0, busy: saving || remote.loading || !!remote.error, toggle: () => void toggle() })}
+      {renderQuestion(
+        row,
+        { active: marks.some(record => record.Type === "收藏"), busy: saving || remote.loading || !!remote.error, toggle: () => void toggle("收藏") },
+        { active: marks.some(record => record.Type === "错题"), busy: saving || remote.loading || !!remote.error, toggle: () => void toggle("错题") },
+      )}
     </>
   );
 }

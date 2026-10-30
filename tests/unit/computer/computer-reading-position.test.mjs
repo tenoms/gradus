@@ -27,8 +27,8 @@ const deferred = () => {
   return { promise, resolve, reject };
 };
 
-function session({ data = {}, launch = {}, cache = new Map(), load, save = async () => true, report = { examRecord: { id: "own-record" }, answerList: [] }, buildAnswer, confirm = async () => true, collectionIds = async () => [], collect = async () => true } = {}) {
-  const hooks = [], loads = [], saves = [], studyTimers = [], activities = [], collectionLoads = [], collectionWrites = [];
+function session({ data = {}, launch = {}, cache = new Map(), load, save = async () => true, report = { examRecord: { id: "own-record" }, answerList: [] }, buildAnswer, confirm = async () => true, collectionIds = async () => [], collect = async () => true, mistakeIds = async () => [], markMistake = async () => true, submit = async () => ({ examRecordId: "own-record" }) } = {}) {
+  const hooks = [], loads = [], saves = [], studyTimers = [], activities = [], collectionLoads = [], collectionWrites = [], mistakeLoads = [], mistakeWrites = [];
   let cursor = 0, dirty = true, pending = [], tree;
   const scope = {
     ...workflow,
@@ -62,7 +62,7 @@ function session({ data = {}, launch = {}, cache = new Map(), load, save = async
     localStorage: { getItem: key => cache.get(key), setItem: (key, value) => cache.set(key, value), removeItem: key => cache.delete(key) },
     request: async (...args) => {
       loads.push(args);
-      if (args[0].endsWith("/submitExam")) return { examRecordId: "own-record" };
+      if (args[0].endsWith("/submitExam")) return submit(...args);
       return load ? load(...args) : { exercises: [question(args[1].number)], examRecordId: "own-record" };
     },
     computerLearningApi: {
@@ -70,6 +70,8 @@ function session({ data = {}, launch = {}, cache = new Map(), load, save = async
       submittedReport: async () => report,
       collectionIds: async (...args) => { collectionLoads.push(args); return collectionIds(...args); },
       collect: async (...args) => { collectionWrites.push(args); return collect(...args); },
+      mistakeIds: async (...args) => { mistakeLoads.push(args); return mistakeIds(...args); },
+      markMistake: async (...args) => { mistakeWrites.push(args); return markMistake(...args); },
     },
     exerciseSource: () => "",
     typeNames: { 4: "综合题" },
@@ -105,7 +107,7 @@ function session({ data = {}, launch = {}, cache = new Map(), load, save = async
   }
   render();
   return {
-    loads, saves, render, settle, cache, activities, collectionLoads, collectionWrites,
+    loads, saves, render, settle, cache, activities, collectionLoads, collectionWrites, mistakeLoads, mistakeWrites,
     answer: value => elements(node => node.type === "textarea" && node.props?.["aria-label"] === "填写答案")[0].props.onChange({ target: { value } }),
     answerInput: () => elements(node => node.type === "textarea" && node.props?.["aria-label"] === "填写答案")[0]?.props,
     studyTimer: () => studyTimers.at(-1),
@@ -121,6 +123,7 @@ function session({ data = {}, launch = {}, cache = new Map(), load, save = async
     notice: () => elements(node => node.props?.className === "computer-notice").map(textOf).join(""),
     favorite: () => elements(node => node.type === "button" && ["收藏题目", "取消收藏"].includes(node.props?.["aria-label"]))[0]?.props,
     favoriteFill: () => elements(node => node.type === "Star")[0]?.props.fill,
+    mistake: () => elements(node => node.type === "ComputerQuestionTools")[0]?.props.mistake,
     retry: () => elements(node => node.type === "Status")[0]?.props.retry?.(),
     unmount: () => { for (const hook of hooks) hook.cleanup?.(); },
   };
@@ -424,5 +427,103 @@ test("numeric favorite IDs from the initial response match string question IDs",
   pending.resolve(["42"]); await view.settle();
   assert.equal(view.favoriteFill(), "currentColor");
   assert.equal(view.favorite().disabled, false);
+  view.unmount();
+});
+
+test("mistake state restores from saved records, flips independently and survives reopening", async () => {
+  const mistakes = new Set(["q1"]);
+  const options = {
+    launch: { readOnly: true },
+    collectionIds: async () => ["q1"],
+    mistakeIds: async () => [...mistakes],
+    markMistake: async (item, major, chapter, category, remove) => {
+      if (remove) mistakes.delete(item.exerciseId);
+      else mistakes.add(item.exerciseId);
+      return true;
+    },
+    confirm: async () => assert.fail("mistake toggles should not ask for confirmation"),
+  };
+  const view = session(options);
+  assert.equal(view.mistake().busy, true);
+  await view.settle();
+  assert.equal(view.mistake().active, true);
+  view.mistake().toggle(); await view.settle();
+  assert.equal(view.mistake().active, false);
+  assert.equal(view.favoriteFill(), "currentColor", "removing a mistake preserves its separate favorite");
+  assert.equal(view.notice(), "");
+  assert.equal(view.mistakeWrites[0][4], true);
+  view.unmount();
+  const reopened = session(options); await reopened.settle();
+  assert.equal(reopened.mistake().active, false);
+  reopened.mistake().toggle(); await reopened.settle();
+  assert.equal(reopened.mistake().active, true);
+  assert.equal(reopened.mistakeWrites[0][4], false);
+  assert.equal(reopened.notice(), "");
+  reopened.unmount();
+  const savedAgain = session(options); await savedAgain.settle();
+  assert.equal(savedAgain.mistake().active, true);
+  savedAgain.unmount();
+});
+
+test("mistake state is reloaded when visiting cached questions rather than inferred from stale counters", async () => {
+  const mistakes = new Set(["q2"]);
+  const view = session({
+    data: { exercises: [{ ...question(1), incorrectNumber: 12 }] },
+    mistakeIds: async () => [...mistakes],
+  });
+  await view.settle();
+  assert.equal(view.mistake().active, false, "a historical wrong count does not imply current membership");
+  view.button("下一题").onClick(); await view.settle();
+  assert.equal(view.mistake().active, true);
+  mistakes.delete("q2");
+  view.workbench().previous(); await view.settle();
+  assert.equal(view.mistake().active, false);
+  view.button("下一题").onClick(); await view.settle();
+  assert.equal(view.mistake().active, false);
+  assert.equal(view.mistakeLoads.length, 4);
+  assert.equal(view.loads.length, 1, "membership refresh preserves cached question content");
+  view.unmount();
+});
+
+test("mistake read retries and failed removals preserve the actual button state", async () => {
+  let reads = 0, writes = 0;
+  const view = session({
+    mistakeIds: async () => { if (++reads === 1) throw new Error("offline"); return ["q1"]; },
+    markMistake: async () => { if (++writes === 1) throw new Error("remove failed"); return true; },
+  });
+  await view.settle();
+  assert.match(view.mistake().error, /错题状态暂时无法读取/);
+  view.mistake().retry(); await view.settle();
+  assert.equal(view.mistake().active, true);
+  view.mistake().toggle(); await view.settle();
+  assert.equal(view.mistake().active, true);
+  assert.equal(view.mistake().error, "remove failed");
+  assert.equal(view.mistake().busy, false);
+  view.mistake().toggle(); await view.settle();
+  assert.equal(view.mistake().active, false);
+  assert.equal(view.mistake().error, "");
+  assert.equal(writes, 2);
+  view.unmount();
+});
+
+test("a successful wrong answer refreshes automatically saved mistakes without changing favorites", async () => {
+  const mistakes = new Set();
+  const view = session({
+    collectionIds: async () => ["q1"],
+    mistakeIds: async () => [...mistakes],
+    buildAnswer: ({ question, answer }) => ({ exerciseId: question.exerciseId, answer, answerType: 2 }),
+    submit: async (path, query, method, payload) => {
+      for (const answer of payload.answers) if (answer.answerType === 2) mistakes.add(answer.exerciseId);
+      return { examRecordId: "own-record" };
+    },
+  });
+  await view.settle();
+  assert.equal(view.mistake().active, false);
+  view.answer("incorrect answer"); await view.settle();
+  view.button("提交答案").onClick(); await view.settle();
+  assert.equal(view.mistake().active, true);
+  assert.equal(view.mistakeLoads.length, 2);
+  assert.equal(view.favoriteFill(), "currentColor");
+  assert.equal(view.mistakeWrites.length, 0, "submission already saved the mistake, so do not add a duplicate");
   view.unmount();
 });

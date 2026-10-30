@@ -1,4 +1,5 @@
-.math-favorite-button[aria-pressed="true"] {
+.math-favorite-button[aria-pressed="true"],
+.math-mistake-button[aria-pressed="true"] {
   color: var(--accent);
   background: var(--accent-soft);
   border-color: var(--accent-border);

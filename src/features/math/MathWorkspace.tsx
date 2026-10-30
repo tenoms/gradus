@@ -169,7 +169,7 @@ export default function MathWorkspace({ section }: { section: string }) {
       <MathNotebook
         stuid={stuid}
         initialKind={section === "review" ? "错题" : "笔记"}
-        renderQuestion={(row, favorite) => <QuestionReader row={row} stuid={stuid} favorite={favorite} />}
+        renderQuestion={(row, favorite, mistake) => <QuestionReader row={row} stuid={stuid} favorite={favorite} mistake={mistake} />}
       />
     );
   else if (section === "community")

@@ -40,7 +40,7 @@ function bankQuestion({ row = { QuestionID: 42, BusID: 7 }, initial = [], post =
   const component = runInNewContext(`${executable('NotebookBankQuestion')}\nNotebookBankQuestion;`, runtime);
   function render() {
     cursor = 0;
-    tree = component({ row, stuid: 'current-student', renderQuestion: (question, favorite) => element('QuestionReader', { row: question, favorite }) });
+    tree = component({ row, stuid: 'current-student', renderQuestion: (question, favorite, mistake) => element('QuestionReader', { row: question, favorite, mistake }) });
   }
   const find = predicate => nodes(tree).find(predicate);
   render();
@@ -78,7 +78,7 @@ test('opening a bank notebook entry preserves its question and scope and returns
   assert.equal(rendered.length, 0, 'bank entries go through their own favorite controller');
   const question = bankQuestion({ row: bank.props.row, initial: [{ ID: 88, Type: '收藏' }] });
   await question.load();
-  assert.deepEqual(question.reads, [{ route: '/api/rel_question_log/GetListByPage', query: { StuID: 'current-student', Type: '收藏', QuestionID: 905, BusID: 13, page: 1, limit: 100 } }]);
+  assert.deepEqual(question.reads, [{ route: '/api/rel_question_log/GetListByPage', query: { StuID: 'current-student', QuestionID: 905, BusID: 13, page: 1, limit: 100 } }]);
   assert.equal(question.main().props.favorite.active, true);
   nodes(tree).find(node => node.type === 'button').props.onClick();
   assert.equal(state[8], undefined);
@@ -138,5 +138,52 @@ test('notebook bank read and write failures retain favorite state and expose a w
     assert.equal(view.main().props.favorite.active, !active);
     assert.equal(view.alert(), undefined);
     assert.equal(view.reloads(), 0);
+  }
+});
+
+test('notebook bank restores and toggles mistakes independently while retaining favorites and answer records', async () => {
+  const view = bankQuestion({ row: { QuestionID: 907, BusID: 11, MyAnswer: 'B' }, initial: [{ ID: 401, Type: '收藏' }, { ID: 402, Type: '错题' }, { ID: 403, Type: '题目', MyAnswer: 'B' }], post: async route => ({ data: route.includes('/Del_') ? true : 404 }) });
+  const row = view.main().props.row;
+  assert.equal(view.main().props.mistake.active, true);
+  assert.equal(view.main().props.favorite.active, true);
+  view.main().props.mistake.toggle();
+  view.render();
+  assert.equal(view.main().props.mistake.busy, true);
+  await settle(); view.render();
+  assert.equal(view.main().props.mistake.active, false);
+  assert.equal(view.main().props.favorite.active, true);
+  assert.deepEqual(view.writes[0], { route: '/api/rel_question_log/Del_rel_question_log', data: { ID: 402 } });
+  view.main().props.mistake.toggle();
+  await settle(); view.render();
+  assert.equal(view.main().props.mistake.active, true);
+  assert.deepEqual(view.writes[1], { route: '/api/rel_question_log/Inner_rel_question_log', data: { Type: '错题', QuestionID: 907, StuID: 'current-student', BusID: 11, ID: 0, UpdateColumns: 'ID,Content' } });
+  assert.equal(view.main().props.favorite.active, true);
+  assert.equal(view.main().props.row, row);
+  assert.equal(view.main().props.row.MyAnswer, 'B');
+  assert.equal(view.notice(), undefined);
+  assert.equal(view.alert(), undefined);
+  assert.equal(view.reloads(), 0);
+});
+
+test('notebook bank retries the failed mistake operation without toggling the favorite instead', async () => {
+  for (const active of [false, true]) {
+    let fail = true;
+    const view = bankQuestion({ initial: [{ ID: 501, Type: '收藏' }, ...(active ? [{ ID: 502, Type: '错题' }] : [])], post: async route => {
+      if (fail) return { data: false };
+      return { data: route.includes('/Del_') ? true : 503 };
+    } });
+    view.main().props.mistake.toggle();
+    await settle(); view.render();
+    assert.equal(view.main().props.mistake.active, active);
+    assert.equal(view.main().props.favorite.active, true);
+    assert.match(textOf(view.alert()), /错题未成功/);
+    fail = false;
+    view.retry().props.onClick();
+    await settle(); view.render();
+    assert.equal(view.main().props.mistake.active, !active);
+    assert.equal(view.main().props.favorite.active, true);
+    assert.equal(view.alert(), undefined);
+    assert.equal(view.reloads(), 0);
+    assert.ok(view.writes.every(call => call.route.includes('/Del_') ? call.data.ID === 502 : call.data.Type === '错题'));
   }
 });

@@ -15,11 +15,11 @@ const executable = ts.transpileModule(component.getText(ast), {
 const nodes = tree => !tree || typeof tree !== 'object' ? [] : [tree, ...(tree.props?.children || []).flat(Infinity).flatMap(nodes)];
 const textOf = tree => !tree || typeof tree === 'boolean' ? '' : typeof tree === 'string' ? tree : (tree.props?.children || []).flat(Infinity).map(textOf).join('');
 
-function reader({ qid = 42, scope = 7, initial = [], post = async () => ({ data: 101 }) } = {}) {
+function reader({ qid = 42, scope = 7, initial = [], answers = [], gradeState = 1, post = async () => ({ data: 101 }) } = {}) {
   const states = [], refs = [], effects = [], reads = [], writes = [], savedAnswers = [];
   const data = [
     { data: [{ QuestionID: qid, QuestionTxt: '当前题干' }] },
-    { data: [[], [], [], [], initial, []] },
+    { data: [[], [], [], [], initial, answers] },
     { data: [[], []] },
   ];
   let stateCursor, refCursor, effectCursor, tree, load, reloads = 0;
@@ -48,7 +48,7 @@ function reader({ qid = 42, scope = 7, initial = [], post = async () => ({ data:
     mathRows: response => response?.data || [],
     mathTables: response => response?.data || [],
     mathPost: async (route, payload) => { writes.push({ route, payload: structuredClone(payload) }); return post(route, payload); },
-    relatedGradeState: () => 1,
+    relatedGradeState: () => gradeState,
     ...Object.fromEntries(['State', 'ArrowLeft', 'Star', 'Flag'].map(name => [name, name])),
   };
   const renderComponent = runInNewContext(`${executable}\nRelatedReader;`, runtime);
@@ -155,4 +155,74 @@ test('failed favorite creation or cancellation keeps the previous stars and draf
     assert.equal(view.reloads(), 0);
     assert.equal(view.writes.length, 1);
   }
+});
+
+test('related mistakes restore and toggle independently of favorites and saved answers', async () => {
+  const view = reader({ qid: 904, scope: 12, initial: [{ ID: 41, Type: '收藏' }, { ID: 42, Type: '错题' }], answers: [{ ID: 43, Type: '题目', MyAnswer: 'B', State: 2, IsSubmit: 1 }], post: async route => ({ data: route.includes('/Del_') ? true : 44 }) });
+  assert.equal(view.main().props.mistake.active, true);
+  assertFavorite(view, true);
+  view.draft().props.onChange({ target: { value: '保留编辑中的笔记' } });
+  view.render();
+  view.main().props.mistake.toggle();
+  await settle(); view.render();
+  assert.equal(view.main().props.mistake.active, false);
+  assertFavorite(view, true);
+  assert.deepEqual(view.writes[0], { route: '/api/rel_question_log/Del_rel_question_log', payload: { ID: 42 } });
+  assert.equal(view.main().props.row.MyAnswer, 'B');
+  assert.equal(view.main().props.readOnly, true);
+  view.main().props.mistake.toggle();
+  await settle(); view.render();
+  assert.equal(view.main().props.mistake.active, true);
+  assert.deepEqual(view.writes[1], { route: '/api/rel_question_log/Inner_rel_question_log', payload: { Type: '错题', QuestionID: 904, StuID: 'current-student', BusID: 12, ID: 0, UpdateColumns: 'ID,Content' } });
+  assertFavorite(view, true);
+  assert.equal(view.main().props.row.MyAnswer, 'B');
+  assert.equal(view.draft().props.value, '保留编辑中的笔记');
+  assert.equal(view.notice(), undefined);
+  assert.equal(view.savedAnswers.length, 0);
+  assert.equal(view.reloads(), 0);
+});
+
+test('a wrong answer immediately marks the same related reader and the next click removes that persisted mistake', async () => {
+  const view = reader({ qid: 905, scope: 0, gradeState: 2, initial: [{ ID: 61, Type: '收藏' }], post: async (route, payload) => ({ data: route.includes('/Del_') ? true : payload.Type === '错题' ? 63 : payload.Type === '题目' ? 62 : true }) });
+  await view.main().props.onAnswered('B', false, { options: [{ ID: 1 }] });
+  view.render();
+  assert.equal(view.main().props.mistake.active, true);
+  assertFavorite(view, true);
+  assert.equal(view.main().props.row.MyAnswer, 'B');
+  assert.equal(view.main().props.readOnly, true);
+  assert.equal(view.savedAnswers.length, 1);
+  assert.equal(view.savedAnswers[0].ID, 62);
+  assert.equal(view.savedAnswers[0].IsSubmit, 1);
+  assert.deepEqual(view.writes.find(call => call.payload.Type === '错题'), { route: '/api/rel_question_log/Inner_rel_question_log', payload: { Type: '错题', QuestionID: 905, StuID: 'current-student', BusID: 0, ID: 0 } });
+  view.main().props.mistake.toggle();
+  await settle(); view.render();
+  assert.equal(view.main().props.mistake.active, false);
+  assert.deepEqual(view.writes.at(-1), { route: '/api/rel_question_log/Del_rel_question_log', payload: { ID: 63 } });
+  assert.equal(view.writes.filter(call => call.payload.Type === '错题').length, 1, 'the first click after automatic marking removes instead of adding the mistake again');
+  assert.equal(view.main().props.row.MyAnswer, 'B');
+  assert.equal(view.savedAnswers.length, 1);
+  assert.equal(view.reloads(), 0);
+});
+
+test('failed mistake writes preserve the previous mark and an automatic-mark failure still preserves the saved answer', async () => {
+  for (const active of [false, true]) {
+    const view = reader({ initial: [{ ID: 71, Type: '收藏' }, ...(active ? [{ ID: 72, Type: '错题' }] : [])], post: async () => ({ data: false }) });
+    view.main().props.mistake.toggle();
+    await settle(); view.render();
+    assert.equal(view.main().props.mistake.active, active);
+    assertFavorite(view, true);
+    assert.match(textOf(view.notice()), /未成功/);
+    assert.equal(view.savedAnswers.length, 0);
+    assert.equal(view.reloads(), 0);
+  }
+  const automatic = reader({ gradeState: 2, initial: [{ ID: 81, Type: '收藏' }], post: async (_route, payload) => ({ data: payload.Type === '错题' ? false : payload.Type === '题目' ? 82 : true }) });
+  await automatic.main().props.onAnswered('A', false, { options: [{ ID: 1 }] });
+  automatic.render();
+  assert.equal(automatic.main().props.mistake.active, false);
+  assertFavorite(automatic, true);
+  assert.equal(automatic.main().props.row.MyAnswer, 'A');
+  assert.equal(automatic.main().props.readOnly, true);
+  assert.equal(automatic.savedAnswers.length, 1);
+  assert.equal(automatic.savedAnswers[0].IsSubmit, 1);
+  assert.match(textOf(automatic.notice()), /错题标记未保存/);
 });

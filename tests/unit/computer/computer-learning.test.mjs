@@ -350,6 +350,20 @@ test("favorite state reads every local page and normalizes saved question IDs", 
   assert.deepEqual(await adapter.computerLearningApi.collectionIds("major", 1), []);
 });
 
+test("mistake IDs read the complete separate local list with category filters", async () => {
+  const calls = [];
+  globalThis.__computerLearningRequest = async (...args) => {
+    calls.push(args);
+    assert.equal(args[0], "/api/exam/wx/personal/incorrectExerciseList");
+    return { list: [{ exerciseId: args[1].pageNum === 1 ? 42 : "last" }], total: 101, pages: 2 };
+  };
+  assert.deepEqual(await adapter.computerLearningApi.mistakeIds("major", 2), ["42", "last"]);
+  assert.deepEqual(calls.map(call => call[1]), [
+    { majorId: "major", examCategory: 2, pageNum: 1, pageSize: 100 },
+    { majorId: "major", examCategory: 2, pageNum: 2, pageSize: 100 },
+  ]);
+});
+
 test("favorite writes retain source question identity and reject unconfirmed results", async () => {
   const calls = [];
   globalThis.__computerLearningRequest = async (...args) => { calls.push(args); return true; };

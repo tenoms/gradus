@@ -10,25 +10,19 @@ export default function ComputerQuestionTools({
   majorId,
   chapterId = "",
   examCategory = 1,
+  mistake,
   onRelated,
 }: {
   question: R;
   majorId: string;
   chapterId?: string;
   examCategory?: number;
+  mistake: { active: boolean; busy: boolean; error: string; retry?: () => void; toggle: () => void };
   onRelated: (data: R) => void;
 }) {
   const [busy, setBusy] = useState(false),
-    [markedWrong,setMarkedWrong] = useState(Number(question.incorrectNumber)>0),
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
-  async function toggleMistake() {
-    setBusy(true);setError("");
-    try {
-      await computerLearningApi.markMistake(question,majorId,chapterId,examCategory,markedWrong);
-      setMarkedWrong(!markedWrong);setNotice(markedWrong?"已从错题本移除":"已加入错题本");
-    } catch(error:any) {setError(error.message);} finally {setBusy(false);}
-  }
   async function share() {
     setError("");
     try {
@@ -64,7 +58,15 @@ export default function ComputerQuestionTools({
   return (
     <div className="computer-question-tools">
       <div className="computer-toolbar">
-        <button className="btn btn-secondary" disabled={busy} onClick={()=>void toggleMistake()}>{markedWrong?"移出错题本":"加入错题本"}</button>
+        <button
+          className={`btn ${mistake.active ? "btn-primary" : "btn-secondary"}`}
+          aria-pressed={mistake.active}
+          aria-busy={mistake.busy}
+          disabled={busy || mistake.busy}
+          onClick={mistake.retry || mistake.toggle}
+        >
+          {mistake.retry ? "重新读取错题状态" : mistake.active ? "移出错题本" : "加入错题本"}
+        </button>
         <button
           className="btn btn-secondary"
           disabled={busy}
@@ -81,9 +83,9 @@ export default function ComputerQuestionTools({
           {notice}
         </p>
       )}
-      {error && (
+      {(mistake.error || error) && (
         <p className="computer-error" role="alert">
-          {error}
+          {mistake.error || error}
         </p>
       )}
     </div>

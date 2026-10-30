@@ -6,7 +6,7 @@ import {
   Star,
 } from "lucide-react";
 import MathNoteEditor from "../notebook/MathNoteEditor";
-import { useMathFavorite } from "../notebook/use-math-favorite";
+import { useMathQuestionMark } from "../notebook/use-math-question-mark";
 import MathDiscussion from "../community/MathDiscussion";
 import type { NoteKind } from "../api/math";
 import "../community/MathDiscussion.css";
@@ -25,13 +25,20 @@ export default function MathQuestionTools({
 }) {
   const [kind, setKind] = useState<NoteKind>(),
     [discussion, setDiscussion] = useState(false);
-  const favorite = useMathFavorite(stuid, qid);
+  const favorite = useMathQuestionMark(stuid, qid, "收藏");
+  const mistake = useMathQuestionMark(stuid, qid, "错题");
   return (
     <div className="mqt-tools">
       <div className="mqt-actions">
-        <button className="btn btn-secondary" onClick={() => setKind("错题")}>
-          <BookOpen size={15} />
-          加入错题
+        <button
+          className="btn btn-secondary math-mistake-button"
+          aria-pressed={mistake.active}
+          aria-busy={mistake.loading}
+          disabled={mistake.loading}
+          onClick={mistake.error ? mistake.reload : mistake.active ? () => void mistake.remove() : () => setKind("错题")}
+        >
+          <BookOpen size={15} fill={mistake.active ? "currentColor" : "none"} stroke={mistake.active ? "var(--on-accent)" : "currentColor"} />
+          {mistake.error ? "重新读取错题状态" : mistake.active ? "移出错题本" : "加入错题"}
         </button>
         <button
           className="btn btn-secondary math-favorite-button"
@@ -56,6 +63,7 @@ export default function MathQuestionTools({
         </button>
       </div>
       {favorite.removeError && <p className="error-banner" role="alert">{favorite.removeError}</p>}
+      {mistake.removeError && <p className="error-banner" role="alert">{mistake.removeError}</p>}
       {discussion && (
         <div className="panel mqt-discussion">
           <MathDiscussion stuid={stuid} qid={qid} />
@@ -70,7 +78,10 @@ export default function MathQuestionTools({
           source={source}
           isCourse={isCourse}
           close={() => setKind(undefined)}
-          onSaved={() => { if (kind === "收藏") favorite.saved(); }}
+          onSaved={() => {
+            if (kind === "收藏") favorite.saved();
+            else if (kind === "错题") mistake.saved();
+          }}
         />
       )}
     </div>

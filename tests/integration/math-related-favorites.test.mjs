@@ -130,3 +130,48 @@ test('book favorites cancel only the selected question and owner, remain cancele
     assert.deepEqual(sources.calls, [], 'book favorite cancellation and restoration never require a YYB or upstream request');
   } finally { await app.close(); }
 });
+
+test('related mistakes restore and toggle without changing favorites, saved answers, other scopes or owners', async () => {
+  const sources = offlineSources(), app = await startHttpApp(sources);
+  try {
+    const admin = await app.setup(), first = await learner(app, admin, 'related.mistakes.first'), second = await learner(app, admin, 'related.mistakes.second');
+    const scope = { QuestionID: 42, BusID: 7 };
+    const answerId = await save(app, first, { ...scope, Type: '题目', MyAnswer: 'A', State: 2, IsSubmit: 1 });
+    const mistakeId = await save(app, first, { ...scope, Type: '错题' });
+    const favoriteId = await save(app, first, { ...scope, Type: '收藏' });
+    const noteId = await save(app, first, { ...scope, Type: '笔记', Content: '保留笔记' });
+    const otherQuestionId = await save(app, first, { QuestionID: 43, BusID: 7, Type: '错题' });
+    const otherScopeId = await save(app, first, { QuestionID: 42, BusID: 8, Type: '错题' });
+    const otherOwnerId = await save(app, second, { ...scope, Type: '错题' });
+    const bookId = await save(app, first, { QuestionID: 42, Type: '错题' }, 'sys_user_book_question');
+    const reconnected = await app.login('learning', 'related.mistakes.first', 'learner-password-123');
+    const restored = await command(app, reconnected, 'GetUserLogQuestionList_zyk', scope);
+    assert.equal(restored[4].find(row => row.Type === '错题').ID, mistakeId);
+    assert.equal(restored[5][0].ID, answerId);
+    await math(app, first, { path: '/api/rel_question_log/Del_rel_question_log', method: 'POST', data: { ID: mistakeId, StuID: second.userId } });
+
+    const remaining = await command(app, first, 'GetUserLogQuestionList_zyk', scope);
+    assert.equal(remaining[4].some(row => row.Type === '错题'), false);
+    assert.equal(remaining[4].find(row => row.Type === '收藏').ID, favoriteId);
+    assert.equal(remaining[4].find(row => row.Type === '笔记').ID, noteId);
+    assert.equal(remaining[5][0].ID, answerId);
+    assert.equal(remaining[5][0].MyAnswer, 'A');
+    assert.equal(remaining[5][0].State, 2);
+    assert.equal(remaining[5][0].IsSubmit, 1);
+    const listMistake = (auth, query, origin) => list(app, auth, { Type: '错题', page: 1, limit: 100, ...query }, origin);
+    assert.equal((await listMistake(first, { QuestionID: 43, BusID: 7 })).data[0].ID, otherQuestionId);
+    assert.equal((await listMistake(first, { QuestionID: 42, BusID: 8 })).data[0].ID, otherScopeId);
+    assert.equal((await listMistake(second, scope)).data[0].ID, otherOwnerId);
+    assert.equal((await listMistake(first, { QuestionID: 42 }, 'sys_user_book_question')).data[0].ID, bookId);
+    const laterLogin = await app.login('learning', 'related.mistakes.first', 'learner-password-123');
+    assert.equal((await listMistake(laterLogin, scope)).count, 0);
+    const addedAgain = await save(app, laterLogin, { ...scope, Type: '错题' });
+    assert.notEqual(addedAgain, mistakeId);
+    assert.equal((await listMistake(laterLogin, scope)).data[0].ID, addedAgain);
+    const grouped = await command(app, laterLogin, 'GetUserQuestionLogTypeList_zyk', scope);
+    assert.equal(grouped[0][0].ID, addedAgain);
+    assert.equal(grouped[1][0].ID, favoriteId);
+    assert.equal(grouped[4][0].ID, answerId);
+    assert.deepEqual(sources.calls, []);
+  } finally { await app.close(); }
+});

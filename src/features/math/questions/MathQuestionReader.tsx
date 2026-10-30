@@ -19,8 +19,8 @@ import { mathOptionFeedback, mathQuestionChoice, mathQuestionMedia, mathQuestion
 import "./math-choice-feedback.css";
 import LearningWorkbench, { LearningWorkbenchScope } from "../../learning/workbench/LearningWorkbench";
 import MathNoteEditor from "../notebook/MathNoteEditor";
-import { useMathFavorite } from "../notebook/use-math-favorite";
-import type { MathFavoriteControl } from "../notebook/use-math-favorite";
+import { useMathQuestionMark } from "../notebook/use-math-question-mark";
+import type { MathQuestionMarkControl } from "../notebook/use-math-question-mark";
 import MathDiscussion from "../community/MathDiscussion";
 import MathContentMarks from "./MathContentMarks";
 import MathQuestionVideo from "./MathQuestionVideo";
@@ -138,6 +138,7 @@ function QuestionReader({
   isCourse,
   selfAssessmentOnly = false,
   favorite: favoriteControl,
+  mistake: mistakeControl,
 }: {
   row: MathRow;
   book?: MathRow;
@@ -155,7 +156,8 @@ function QuestionReader({
     correct: boolean,
     details?: { question: MathRow; options: MathRow[] },
   ) => Promise<void>;
-  favorite?: MathFavoriteControl;
+  favorite?: MathQuestionMarkControl;
+  mistake?: MathQuestionMarkControl;
 }) {
   const qid = mathQuestionId(row);
   const remote = useRemote(`question-${qid}`, async () => {
@@ -185,11 +187,16 @@ function QuestionReader({
   const [viewSyncError, setViewSyncError] = useState(""),
     viewRecordKey = useRef("");
   const [noteKind, setNoteKind] = useState<NoteKind>();
-  const favorite = useMathFavorite(stuid, qid, !favoriteControl);
+  const favorite = useMathQuestionMark(stuid, qid, "收藏", !favoriteControl);
+  const mistake = useMathQuestionMark(stuid, qid, "错题", !mistakeControl);
   const isFavorite = favoriteControl?.active ?? favorite.active;
+  const isMistake = mistakeControl?.active ?? mistake.active;
   const favoriteLabel = !favoriteControl && favorite.error
     ? "重新读取收藏状态"
     : isFavorite ? "取消收藏" : "加入收藏";
+  const mistakeLabel = !mistakeControl && mistake.error
+    ? "重新读取错题状态"
+    : isMistake ? "移出错题本" : "加入错题本";
   const [trainingFile, setTrainingFile] = useState<MathRow>();
   const [selected, setSelected] = useState<string[]>(
     row.MyAnswer ? String(row.MyAnswer).split(",") : [],
@@ -308,7 +315,7 @@ function QuestionReader({
       setSaving(false);
     }
   };
-  const navigationDisabled = saving || remote.loading || !!noteKind || favoriteControl?.busy || favorite.removing;
+  const navigationDisabled = saving || remote.loading || !!noteKind || favoriteControl?.busy || favorite.removing || mistakeControl?.busy || mistake.removing;
   return (
     <LearningWorkbench
       title={`第 ${row.QuestionSort || q.QuestionID || qid} 题`}
@@ -340,11 +347,15 @@ function QuestionReader({
         </span>
         <div className="math-question-tools">
           <button
-            title="加入错题本"
-            aria-label="加入错题本"
-            onClick={() => setNoteKind("错题")}
+            className="math-mistake-button"
+            title={mistakeLabel}
+            aria-label={mistakeLabel}
+            aria-pressed={isMistake}
+            aria-busy={mistakeControl?.busy || mistake.loading}
+            disabled={mistakeControl?.busy || mistake.loading}
+            onClick={mistakeControl?.toggle || (mistake.error ? mistake.reload : mistake.active ? () => void mistake.remove() : () => setNoteKind("错题"))}
           >
-            <FileText size={17} />
+            <FileText size={17} fill={isMistake ? "currentColor" : "none"} stroke={isMistake ? "var(--on-accent)" : "currentColor"} />
           </button>
           <button
             className="math-favorite-button"
@@ -367,6 +378,7 @@ function QuestionReader({
         </div>
       </div>
       {favorite.removeError && <p className="error-banner" role="alert">{favorite.removeError}</p>}
+      {mistake.removeError && <p className="error-banner" role="alert">{mistake.removeError}</p>}
       <div className="tabs math-question-tabs">
         {[
           "题目",
@@ -652,7 +664,10 @@ function QuestionReader({
           }
           isCourse={isCourse ?? row.IsCourse === "2"}
           close={() => setNoteKind(undefined)}
-          onSaved={() => { if (noteKind === "收藏") favorite.saved(); }}
+          onSaved={() => {
+            if (noteKind === "收藏") favorite.saved();
+            else if (noteKind === "错题") mistake.saved();
+          }}
         />
       )}
     </div>

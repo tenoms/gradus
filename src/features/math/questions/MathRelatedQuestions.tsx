@@ -25,7 +25,7 @@ import {
   mathTables,
 } from "../api/math";
 import type { MathRow } from "../api/math";
-import type { MathFavoriteControl } from "../notebook/use-math-favorite";
+import type { MathQuestionMarkControl } from "../notebook/use-math-question-mark";
 import {
   matchesRelatedProperties,
   relatedGradeState,
@@ -52,7 +52,8 @@ export interface RelatedReaderProps {
     details?: { question: MathRow; options: MathRow[] },
   ) => Promise<void>;
   readOnly?: boolean;
-  favorite?: MathFavoriteControl;
+  favorite?: MathQuestionMarkControl;
+  mistake?: MathQuestionMarkControl;
 }
 function useData(key: string, load: () => Promise<any>) {
   const [data, setData] = useState<any>(),
@@ -890,6 +891,7 @@ function RelatedReader({
   const previous = exercise || tables[5]?.[0] || {};
   const annotations: MathRow[] = annotationRecords ?? tables[4] ?? [];
   const isFavorite = annotations.some(r => r.Type === "收藏");
+  const isMistake = annotations.some(r => r.Type === "错题");
   const current = {
     ...row,
     ...previous,
@@ -927,7 +929,7 @@ function RelatedReader({
         if (mathData(response) === false || !id) throw new Error("保存未成功，请重试");
         setAnnotationRecords([...annotations.filter(row => row !== existing), { ...existing, ...payload, ID: id }]);
       }
-      if (Type !== "收藏") setNotice(Type === "笔记"
+      if (Type !== "收藏" && Type !== "错题") setNotice(Type === "笔记"
           ? "题库笔记已保存"
           : existing
             ? `已取消${Type}`
@@ -973,14 +975,23 @@ function RelatedReader({
         UpdateColumns: "ID,IsSubmit,Notes",
       });
       result.IsSubmit = 1;
-      if (State > 1 && !annotations.some((r) => r.Type === "错题"))
-        await mathPost("/api/rel_question_log/Inner_rel_question_log", {
+      if (State > 1 && !isMistake) {
+        const mistake = {
           Type: "错题",
           QuestionID: row.QuestionID,
           StuID: stuid,
           BusID: scope,
           ID: 0,
-        });
+        };
+        try {
+          const response = await mathPost("/api/rel_question_log/Inner_rel_question_log", mistake);
+          const id = Number(mathData(response));
+          if (mathData(response) === false || !id) throw new Error("错题标记未保存，请重试加入错题本");
+          setAnnotationRecords(current => [...(current ?? annotations).filter(record => record.Type !== "错题"), { ...mistake, ID: id }]);
+        } catch (e: any) {
+          setNotice(e.message || "错题标记未保存，请重试加入错题本");
+        }
+      }
     }
     setExercise(result);
     onSaved(result);
@@ -1008,6 +1019,11 @@ function RelatedReader({
               active: isFavorite,
               busy: busy || detail.loading,
               toggle: () => void flag("收藏"),
+            },
+            mistake: {
+              active: isMistake,
+              busy: busy || detail.loading,
+              toggle: () => void flag("错题"),
             },
           })}
           <div className="panel mrq-annotations">

@@ -111,6 +111,8 @@ export default function ExerciseSession({
     }),
     [collectionChecked, setCollectionChecked] = useState(""),
     [collectionVersion, setCollectionVersion] = useState(0),
+    [mistakeState, setMistakeState] = useState({ key: "", ids: [] as string[], loading: true, error: "", writeError: "" }),
+    [mistakeVersion, setMistakeVersion] = useState(0),
     [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
@@ -143,6 +145,7 @@ export default function ExerciseSession({
   const collectionMajor = String(question.majorId || launch.majorId);
   const collectionKey = JSON.stringify([session?.user?.id, collectionMajor, category, id]);
   const isCollected = collected.includes(id);
+  const isMistake = mistakeState.key === collectionKey && mistakeState.ids.includes(id);
   const immediateChoice = computerImmediateChoice(launch, type);
   const storageKey = `study:computer:draft:${computerDraftScope(session)}:${launch.majorId}:${category}:${launch.data.examRecordId || launch.recordId || examId || launch.chapterId || "random"}:${launch.examType}:${launch.examGroupId || ""}:${launch.redo ? `${launch.redo.kind}:${launch.redo.dateFlag}:${launch.redo.sort}` : ""}`;
   useStudyTimer({
@@ -196,6 +199,19 @@ export default function ExerciseSession({
       });
     return () => { active = false; };
   }, [collectionKey, collectionVersion]);
+  useEffect(() => {
+    if (!id) return;
+    let active = true;
+    setMistakeState({ key: collectionKey, ids: [], loading: true, error: "", writeError: "" });
+    computerLearningApi.mistakeIds(collectionMajor, category)
+      .then(ids => {
+        if (active) setMistakeState({ key: collectionKey, ids, loading: false, error: "", writeError: "" });
+      })
+      .catch((error: any) => {
+        if (active) setMistakeState({ key: collectionKey, ids: [], loading: false, error: `错题状态暂时无法读取：${error.message}`, writeError: "" });
+      });
+    return () => { active = false; };
+  }, [collectionKey, mistakeVersion]);
   function setAnswer(value: string) {
     setAnswers((a) => ({ ...a, [id]: value }));
   }
@@ -279,6 +295,7 @@ export default function ExerciseSession({
         ...s,
         ...Object.fromEntries(payload.answers.map((a) => [a.exerciseId, a])),
       }));
+      setMistakeVersion(version => version + 1);
       if (skip) setSkipped((ids) => [...new Set([...ids, id])]);
       setNotice(all ? "试卷已提交，学习记录已同步。" : [1, 2, 5, 7].includes(type)
         ? payload.answers[0]?.answerType === 1 ? "回答正确，答案已保存。" : "回答有误，已保存作答并显示解析。"
@@ -400,6 +417,22 @@ export default function ExerciseSession({
       setCollected((c) => (removing ? c.filter((x) => x !== id) : [...c, id]));
     } catch (e: any) {
       setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+  async function toggleMistake() {
+    if (loading || mistakeState.key !== collectionKey || mistakeState.loading || mistakeState.error) return;
+    setLoading(true);
+    setMistakeState(current => ({ ...current, writeError: "" }));
+    try {
+      await computerLearningApi.markMistake(question, launch.majorId, launch.chapterId || "", category, isMistake);
+      setMistakeState(current => ({
+        ...current,
+        ids: isMistake ? current.ids.filter(item => item !== id) : [...new Set([...current.ids, id])],
+      }));
+    } catch (error: any) {
+      setMistakeState(current => ({ ...current, writeError: error.message }));
     } finally {
       setLoading(false);
     }
@@ -858,6 +891,13 @@ export default function ExerciseSession({
         majorId={launch.majorId}
         chapterId={launch.chapterId}
         examCategory={category}
+        mistake={{
+          active: isMistake,
+          busy: loading || mistakeState.key !== collectionKey || mistakeState.loading,
+          error: mistakeState.key === collectionKey ? mistakeState.error || mistakeState.writeError : "",
+          retry: mistakeState.error ? () => setMistakeVersion(version => version + 1) : undefined,
+          toggle: () => void toggleMistake(),
+        }}
         onRelated={(data) =>
           setRelated({
             data,
