@@ -6,7 +6,6 @@
     "/api/exam/wx/article/articleList",
     "/api/exam/wx/banner/bannerList",
     "/api/exam/wx/banner/click/save",
-    "/api/exam/wx/bulletComment/add/",
     "/api/exam/wx/course/comment/list",
     "/api/exam/wx/course/courseList",
     "/api/exam/wx/course/get_play_info/v2",

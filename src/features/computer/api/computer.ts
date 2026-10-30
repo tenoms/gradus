@@ -60,12 +60,15 @@ async function readComputerResponse(
   method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
   data?: any,
 ): Promise<any> {
-  let response = await platformRequest("computer", {
+  const input = {
     path,
     method,
     query,
     data,
-  });
+  };
+  let response = await (path === "/api/exam/wx/lessonHistory/add/"
+    ? platformRequest("computer", input, { keepalive: true })
+    : platformRequest("computer", input));
   if (response && response.statusCode && response.data)
     response = response.data;
   const emptyHistory =

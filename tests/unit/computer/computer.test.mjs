@@ -126,6 +126,13 @@ test("request forwards query, body and method without changing the API contract"
     },
   ]);
 });
+test("automatic lesson progress keeps its request alive when leaving the page", async () => {
+  let seen;
+  globalThis.__computerTestRequest = async (...args) => { seen=args; return {code:200,data:true}; };
+  const data={courseId:'course',lessonId:'lesson',watchHistoryTime:5,progress:'5%',time:5,historyModifyDate:123};
+  assert.equal(await adapter.computerRequest('/api/exam/wx/lessonHistory/add/',{},'POST',data),true);
+  assert.deepEqual(seen,['computer',{path:'/api/exam/wx/lessonHistory/add/',method:'POST',query:{},data},{keepalive:true}]);
+});
 test("actual exercise response normalization preserves options and merges scored subquestions", () => {
   assert.equal(adapter.extractExercises({exerciseId:'random-one',exerciseType:1,collected:false}).length,1);
   const q = {

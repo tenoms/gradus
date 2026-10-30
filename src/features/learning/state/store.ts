@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { api } from "../../../shared/api/client";
+import { createId } from "../../../shared/lib/id.mjs";
 import { applyStudyChange, createStudySync, emptyStudyData } from "./study-sync.mjs";
 import type { StudyChange, SyncStatus } from "./study-sync.mjs";
 import { validateStudyData } from "../../../../shared/study-data.mjs";
@@ -17,7 +18,7 @@ function emit() { listeners.forEach(listener => listener()); }
 function key() { return `study-space:v2:${scope}`; }
 type WithoutChangeId<T> = T extends { id: string } ? Omit<T, "id"> : never;
 function change(value: WithoutChangeId<StudyChange>) {
-  const operation = { ...value, id: crypto.randomUUID() } as StudyChange;
+  const operation = { ...value, id: createId() } as StudyChange;
   if (synchronizer) synchronizer.change(operation);
   else {
     current = applyStudyChange(current, operation);
@@ -60,7 +61,7 @@ export function useStudyData() { return useSyncExternalStore(subscribe, () => cu
 export function useStudySync() { return useSyncExternalStore(subscribe, () => syncStatus, () => syncStatus); }
 export function retryStudySync() { return synchronizer?.sync(true); }
 export function addTask(task: Omit<StudyTask, "id" | "done" | "createdAt">) {
-  change({ kind: "task.add", task: { ...task, id: crypto.randomUUID(), done: false, createdAt: new Date().toISOString() } });
+  change({ kind: "task.add", task: { ...task, id: createId(), done: false, createdAt: new Date().toISOString() } });
 }
 export function toggleTask(id: string) {
   const task = current.tasks.find(task => task.id === id);
@@ -70,7 +71,7 @@ export function deleteTask(id: string) { change({ kind: "task.delete", taskId: i
 export function setGoal(goalMinutes: number) { change({ kind: "goal.set", goalMinutes }); }
 export function setMathPlan(mathPlan: NonNullable<StudyData["mathPlan"]>) { change({ kind: "math-plan.set", mathPlan }); }
 export function recordActivity(activity: Omit<Activity, "id" | "at">) {
-  change({ kind: "activity.add", activity: { ...activity, id: crypto.randomUUID(), at: new Date().toISOString() } });
+  change({ kind: "activity.add", activity: { ...activity, id: createId(), at: new Date().toISOString() } });
 }
 export const recordStudy = recordActivity;
 export function exportStudyData() {

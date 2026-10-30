@@ -16,7 +16,7 @@ export function sourceForSession(platform, session, config) {
     baseUrl: platformConfig.baseUrl, appId: platformConfig.appId, stationId: platformConfig.stationId ?? null, tenantCode: platformConfig.tenantCode ?? null };
   return { ...source, id: createHash('sha256').update(JSON.stringify(source)).digest('hex') };
 }
-const unsafe = /(?:\/auth\/|\/OAuth2\/|\/master\/exec|pay|payment|live|helper|address|redeem|coupon|activation|(?:^|\/)(?:Inner|Del|Update|Set|RelPaper|Experience|Unlock|Scan|SearchUpload|Add|Save|Submit|Reset|Retry|Cancel)|\/(?:add|save|delete|submit|reset|retry|collectExercise|incorrectExercise)(?:\/|$)|\/practice\/exerciseList|\/choice_question_exercise\/GetPaper|\/sys_msg_push\/GetQuestionAwardVip|\/banner\/click|\/lessonHistory\/|\/bulletComment\/add)/i;
+const unsafe = /(?:\/auth\/|\/OAuth2\/|\/master\/exec|pay|payment|live|helper|address|redeem|coupon|activation|(?:^|\/)(?:Inner|Del|Update|Set|RelPaper|Experience|Unlock|Scan|SearchUpload|Add|Save|Submit|Reset|Retry|Cancel)|\/(?:add|save|delete|submit|reset|retry|collectExercise|incorrectExercise)(?:\/|$)|\/practice\/exerciseList|\/choice_question_exercise\/GetPaper|\/sys_msg_push\/GetQuestionAwardVip|\/banner\/click|\/lessonHistory\/)/i;
 export function isReadableResource(platform, request) {
   try { validatePlatformRequest(platform, request); } catch { return false; }
   if (platform==='math' && request.path==='/api/c_paper/RelPaperByStuBySpecial2' && String(request.method).toUpperCase()==='POST') return true;

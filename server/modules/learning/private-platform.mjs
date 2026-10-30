@@ -139,6 +139,16 @@ export async function createPrivatePlatformStore({ database, resourceStore, pers
   }
   async function computer(userId,input,platform,sourceId,resourceContext) {
     const p = { ...input.query,...input.data }, path=input.path, action=path.split('/').at(-1);
+    if (path==='/api/exam/wx/lessonHistory/add/') {
+      const validId=value=>typeof value==='string' && value.trim().length>0 || typeof value==='number' && Number.isFinite(value);
+      if (!validId(p.courseId) || !validId(p.lessonId)) throw new ApiError('缺少课程或课时标识',400);
+      if (!['watchHistoryTime','time','historyModifyDate'].every(field=>typeof p[field]==='number' && Number.isFinite(p[field]) && p[field]>=0) || !/^(?:100|[1-9]?\d)%$/.test(p.progress)) throw new ApiError('课时进度格式不正确',400);
+      await put(userId,'computer','lesson-history',JSON.stringify([sourceId,String(p.courseId),String(p.lessonId)]),{
+        sourceId,courseId:String(p.courseId),lessonId:String(p.lessonId),watchHistoryTime:p.watchHistoryTime,
+        progress:p.progress,historyModifyDate:p.historyModifyDate,time:p.time,
+      });
+      return success('computer',true);
+    }
     if (/\/user\/(?:detail|updateUserInfo|modelInfo\/update)$/.test(path)) {
       if (action !== 'detail') await put(userId,'computer','profile','profile',{...p,...(p.name ? {nickName:p.name} : {})});
       return success('computer',await profile(userId,'computer',platform.user || {}));
@@ -384,6 +394,15 @@ export async function createPrivatePlatformStore({ database, resourceStore, pers
     const response=await invoke();
     await rememberQuestions(userId,name,response,sourceId,input);
     const safe=stripSharedPersonalState(response);
+    if(name==='computer' && input.path==='/api/exam/wx/lesson/lessonList') {
+      const courseId=String({...input.query,...input.data}.courseId || '');
+      const history=(await list(userId,name,'lesson-history')).filter(row=>row.sourceId===sourceId && row.courseId===courseId);
+      const byLesson=new Map(history.map(row=>[row.lessonId,row]));
+      for(const lesson of records(unwrap(safe))) {
+        const own=byLesson.get(String(lesson.id));
+        Object.assign(lesson,{watchHistoryTime:own?.watchHistoryTime ?? 0,progress:own?.progress ?? '0%',historyModifyDate:own?.historyModifyDate ?? null});
+      }
+    }
     if(name==='computer' && input.path==='/api/exam/wx/practice/examination/group/list') {
       const data=unwrap(safe),groups=records(data),exams=await list(userId,name,'exams'),answers=await list(userId,name,'answers');
       for(const group of groups) {

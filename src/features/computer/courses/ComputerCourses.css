@@ -153,13 +153,6 @@
 .cc-courses .computer-player > .computer-toolbar {
   margin-top: 16px;
 }
-.cc-courses .computer-player > .computer-toolbar > label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-  color: var(--text-secondary);
-}
 @media (max-width: 600px) {
   .cc-course-title {
     flex-direction: column;

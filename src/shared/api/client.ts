@@ -134,8 +134,10 @@ export interface PlatformRequest {
 export function platformRequest<T = any>(
   platform: Platform,
   request: PlatformRequest,
+  options: Pick<RequestInit, "keepalive"> = {},
 ): Promise<T> {
   return api<T>(`/api/platform/${platform}`, {
+    ...options,
     method: "POST",
     body: JSON.stringify(request),
   });

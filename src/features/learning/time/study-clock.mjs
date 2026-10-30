@@ -1,8 +1,10 @@
+import { createId } from "../../../shared/lib/id.mjs";
+
 const shanghaiDay = timestamp => new Date(timestamp + 8 * 3600000).toISOString().slice(0, 10);
 const nextMidnight = day => Date.parse(`${day}T00:00:00+08:00`) + 86400000;
 
 /** One foreground learning context owns each elapsed second; media takes precedence over reading. */
-export function createStudyClock({ report, now = Date.now, makeId = () => crypto.randomUUID(), idleMs = 300000, flushMs = 30000 }) {
+export function createStudyClock({ report, now = Date.now, makeId = createId, idleMs = 300000, flushMs = 30000 }) {
   const sessions = new Map();
   let foreground = false, last = now(), lastInteraction = last, lastFlush = last, order = 0;
 

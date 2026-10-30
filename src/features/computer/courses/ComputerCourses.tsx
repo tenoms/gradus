@@ -1,5 +1,4 @@
 import { WorkspaceBar, WorkspaceTabs } from "../../../shared/ui/workspace-bar/WorkspaceBar";
-import ComputerCourseDanmaku from "./ComputerCourseDanmaku";
 import Pagination from "../../../shared/ui/pagination/Pagination";
 import { usePagination } from "../../../shared/ui/pagination/use-pagination";
 import { useEffect, useRef, useState } from "react";
@@ -9,10 +8,7 @@ import {
   BookOpen,
   FileText,
   LoaderCircle,
-  MessageCircle,
   Play,
-  RefreshCw,
-  Video,
 } from "lucide-react";
 import RichContent from "../../../shared/content/RichContent";
 import LearningVideo from "../../../shared/media/LearningVideo";
@@ -117,7 +113,6 @@ export default function ComputerCourses() {
     [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
-    [rate, setRate] = useState("1"),
     [search, setSearch] = useState("");
   const list = useResource(
     "/api/exam/wx/course/courseList",
@@ -144,10 +139,15 @@ export default function ComputerCourses() {
     playStart = useRef(0),
     studySeconds = useRef(0);
   const recordedPlayback = useRef(false);
-  const saveOnLeave = useRef<() => void>(() => {});
+  const playbackPosition = useRef({ currentTime: 0, duration: 0 });
+  const savedProgress = useRef(new Map<string, R>());
+  const progressKey = (courseId: unknown, lessonId: unknown) => JSON.stringify([String(courseId), String(lessonId)]);
   const subcourses = course ? orderedSubcourses(course) : [];
   const files = courseAttachments(lesson, detail.data);
-  const lessonRows = records(lessons.data);
+  const lessonRows = records(lessons.data).map(item => ({
+    ...item,
+    ...savedProgress.current.get(progressKey(groupCourseId, item.id)),
+  }));
   const lessonPages = Number(
     lessons.data?.pages ||
       Math.ceil(Number(lessons.data?.total || 0) / 100) ||
@@ -164,26 +164,34 @@ export default function ComputerCourses() {
     if (playStart.current) studySeconds.current += (now - playStart.current) / 1000;
     playStart.current = playing && !document.hidden ? now : 0;
   }
-  saveOnLeave.current = () => {
-    const element = videoRef.current;
-    trackPlayback(false);
-    if (element) void saveProgress(element, true);
-  };
   useEffect(() => {
     if (!video) return;
     const element = videoRef.current;
+    lastSave.current = Number(lesson?.watchHistoryTime || 0);
+    studySeconds.current = 0;
+    playStart.current = 0;
+    recordedPlayback.current = false;
+    const position = playbackPosition.current = {
+      currentTime: lastSave.current,
+      duration: element?.duration || 0,
+    };
+    const onLeave = () => {
+      trackPlayback(false);
+      if (element) void saveProgress(element, true);
+    };
     const visibility = () => {
-      if (document.hidden) saveOnLeave.current();
+      if (document.hidden) onLeave();
       else if (element && !element.paused && !element.seeking && element.readyState >= 3) trackPlayback(true);
     };
     document.addEventListener("visibilitychange", visibility);
-    window.addEventListener("pagehide", saveOnLeave.current);
-    const onLeave = saveOnLeave.current;
+    window.addEventListener("pagehide", onLeave);
     return () => {
+      trackPlayback(false);
+      void saveProgress(position, true);
       document.removeEventListener("visibilitychange", visibility);
       window.removeEventListener("pagehide", onLeave);
     };
-  }, [video]);
+  }, [video, lesson?.id]);
   async function play(item: R) {
     const directUrl = safeLink(item.videoUrl || item.playUrl);
     if (!String(item.mediaId || "").trim() && !directUrl) {
@@ -196,7 +204,11 @@ export default function ComputerCourses() {
     trackPlayback(false);
     setVideo("");
     setNotice("");
-    setLesson({ ...item, _studyCourseId: groupCourseId });
+    setLesson({
+      ...item,
+      ...savedProgress.current.get(progressKey(groupCourseId, item.id)),
+      _studyCourseId: groupCourseId,
+    });
     try {
       const data = directUrl ? null : await request(
         item.storagePlatform === "Tencent"
@@ -211,23 +223,26 @@ export default function ComputerCourses() {
       );
       if (!url) throw new Error("视频暂时无法播放，请稍后重试。");
       setVideo(url);
-      lastSave.current = Number(item.watchHistoryTime || 0);
-      studySeconds.current = 0;
-      playStart.current = 0;
-      recordedPlayback.current = false;
     } catch (e: any) {
       setError(e.message);
     } finally {
       setLoading(false);
     }
   }
-  async function saveProgress(element: HTMLVideoElement, force = false) {
+  async function saveProgress(element: Pick<HTMLVideoElement, "currentTime" | "duration">, force = false) {
     if (!lesson || !course) return;
+    Object.assign(playbackPosition.current, {
+      currentTime: element.currentTime,
+      duration: element.duration,
+    });
     trackPlayback(playStart.current > 0);
     const elapsed = studySeconds.current;
     if (!elapsed && element.currentTime === lastSave.current) return;
-    if (!force && element.currentTime - lastSave.current < 30) return;
-    lastSave.current = element.currentTime;
+    if (!force && elapsed < 30 && Math.abs(element.currentTime - lastSave.current) < 30) return;
+    const previousSave = lastSave.current;
+    const session = playbackPosition.current;
+    const position = element.currentTime;
+    lastSave.current = position;
     studySeconds.current = 0;
     const payload = lessonProgress({
       lesson,
@@ -238,8 +253,22 @@ export default function ComputerCourses() {
     });
     try {
       await request("/api/exam/wx/lessonHistory/add/", {}, "POST", payload);
-      setNotice("学习进度已同步");
+      const progress = {
+        watchHistoryTime: payload.watchHistoryTime,
+        progress: payload.progress,
+        historyModifyDate: payload.historyModifyDate,
+      };
+      savedProgress.current.set(progressKey(payload.courseId, lesson.id), progress);
+      setLesson(current => current?.id === lesson.id && current?._studyCourseId === payload.courseId
+        ? { ...current, ...progress }
+        : current);
+      setError(current => current.startsWith("学习进度保存失败：") ? "" : current);
+      setNotice("学习进度已自动保存");
     } catch (e: any) {
+      if (session === playbackPosition.current) {
+        studySeconds.current += elapsed;
+        if (lastSave.current === position) lastSave.current = previousSave;
+      }
       setError(`学习进度保存失败：${e.message}`);
     }
   }
@@ -403,7 +432,7 @@ export default function ComputerCourses() {
                 <>
                   <LearningVideo
                     ref={videoRef}
-                    key={video}
+                    key={`${lesson?.id}:${video}`}
                     src={video}
                     controls
                     playsInline
@@ -412,7 +441,6 @@ export default function ComputerCourses() {
                       e.currentTarget.currentTime = Number(
                         lesson?.watchHistoryTime || 0,
                       );
-                      e.currentTarget.playbackRate = Number(rate);
                     }}
                     onPlaying={() => {
                       trackPlayback(true);
@@ -439,43 +467,7 @@ export default function ComputerCourses() {
                     onEnded={(e) => { trackPlayback(false); void saveProgress(e.currentTarget, true); }}
                     onError={() => { trackPlayback(false); setError("视频暂时无法加载，请重新选择课时后重试。"); }}
                   />
-                  {lesson && (
-                    <ComputerCourseDanmaku
-                      lesson={lesson}
-                      videoRef={videoRef}
-                    />
-                  )}
                   <div className="computer-toolbar">
-                    <label>
-                      播放速度
-                      <select
-                        className="input computer-select"
-                        aria-label="播放速度"
-                        value={rate}
-                        onChange={(e) => {
-                          setRate(e.target.value);
-                          if (videoRef.current)
-                            videoRef.current.playbackRate = Number(
-                              e.target.value,
-                            );
-                        }}
-                      >
-                        {["0.75", "1", "1.25", "1.5", "2"].map((v) => (
-                          <option key={v} value={v}>
-                            {v}×
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => {
-                        if (videoRef.current)
-                          void saveProgress(videoRef.current, true);
-                      }}
-                    >
-                      保存进度
-                    </button>
                     <a
                       className="computer-text-link"
                       href={video}
