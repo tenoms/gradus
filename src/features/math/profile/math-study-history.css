@@ -3,7 +3,6 @@
   white-space: nowrap;
   flex-wrap: nowrap !important;
   border-bottom: 1px solid var(--border);
-  padding-bottom: 6px;
 }
 .msh-tabs > button {
   font-size: 11px !important;

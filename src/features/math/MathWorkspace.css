@@ -490,7 +490,8 @@
   margin-left: auto;
 }
 .math-question-tabs {
-  padding: 0 24px;
+  margin-inline: 24px;
+  max-width: calc(100% - 48px);
   border-bottom: 1px solid var(--border);
 }
 .math-question-body {
@@ -1088,7 +1089,8 @@
     flex-shrink: 0;
   }
   .math-question-tabs {
-    padding: 0 15px;
+    margin-inline: 15px;
+    max-width: calc(100% - 30px);
   }
   .math-practice-filters {
     padding: 20px;
