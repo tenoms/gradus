@@ -17,7 +17,6 @@ test('production archives include runtime files and templates while excluding lo
       'server/index.mjs': 'server entry',
       'server/integrations/math-allowlist.json': '{"math":true}',
       'server/integrations/computer-allowlist.json': '{"computer":true}',
-      'scripts/deploy/start.mjs': 'production startup entry',
       'shared/appearance.mjs': 'shared module', 'config/system.json': '{"runtime":{}}',
       'package.json': '{"name":"study-web","version":"9.8.7","type":"module"}',
       'package-lock.json': '{"lockfileVersion":3}', '.env.example': 'DATABASE_URL=', '.node-version': '24',
@@ -44,13 +43,12 @@ test('production archives include runtime files and templates while excluding lo
     assert.ok(contents.every(name => name.startsWith('study-web/')));
     assert.ok(contents.every(name => !/(?:^|\/)(?:\.env(?:\.(?!example(?:\/|$))[^/]+)?|node_modules|\.git|\.DS_Store|src|tests)(?:\/|$)|\.(?:log|tsbuildinfo)$/.test(name)), 'private or development files must not be packaged');
     assert.ok(!contents.includes('study-web/config/private.json'));
-    assert.deepEqual(contents.filter(name => name.startsWith('study-web/scripts/') && name.endsWith('.mjs')), ['study-web/scripts/deploy/start.mjs']);
+    assert.ok(!contents.some(name => name.startsWith('study-web/scripts/')));
     const extracted = path.join(root, 'extracted');
     await mkdir(extracted);
     execFileSync('tar', ['-xzf', archive, '-C', extracted], tarOptions);
     assert.equal(await readFile(path.join(extracted, 'study-web/server/integrations/math-allowlist.json'), 'utf8'), runtimeFiles['server/integrations/math-allowlist.json']);
     assert.equal(await readFile(path.join(extracted, 'study-web/.env.example'), 'utf8'), runtimeFiles['.env.example']);
-    assert.equal(await readFile(path.join(extracted, 'study-web/scripts/deploy/start.mjs'), 'utf8'), runtimeFiles['scripts/deploy/start.mjs']);
 
     await writeFile(path.join(root, 'dist/assets/app.js'), 'updated application');
     assert.equal(await createProductionArchive(root), archive);

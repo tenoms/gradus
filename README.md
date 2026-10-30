@@ -58,7 +58,7 @@ npm run build
 npm start
 ```
 
-`npm start` 直接启动服务，需提前安装依赖。一键生产启动使用 `npm run start:prod`：首次启动、依赖缺失或依赖清单变化时自动安装生产依赖，再启动服务。安装失败时停止启动；后续依赖齐备且清单未变时直接启动，无需每次重启都下载依赖。
+`npm start` 直接启动服务，需提前安装依赖。Linux/macOS 可使用 `npm run start:prod`：每次按 `package-lock.json` 重新安装生产依赖，成功后以 `NODE_ENV=production` 执行 `npm start`；安装失败则不启动。
 
 默认提供 [学习空间](http://127.0.0.1:3001/learn/)和[管理空间](http://127.0.0.1:3001/admin/)。使用 HTTPS 时设置 `COOKIE_SECURE=1`，反向代理需保留原始 `Host`。端口及其他部署参数见[系统配置](config/README.md)。
 
@@ -70,7 +70,7 @@ npm run package:prod
 
 命令会自动构建，再生成 `artifacts/releases/study-web-1.0.0.tar.gz`。文件名中的版本号来自 `package.json`，重复打包会更新同版本的压缩包。构建机需提供 `tar`，macOS 和 Linux 通常已自带。
 
-压缩包包含 `dist/`、`server/`、`shared/`、`config/system.json`、生产启动脚本、依赖清单、`.env.example` 和 `.node-version`；不包含 `.env`、`node_modules/`、前端源码或测试文件。
+压缩包包含 `dist/`、`server/`、`shared/`、`config/system.json`、依赖清单、`.env.example` 和 `.node-version`；不包含 `.env`、`node_modules/`、前端源码或测试文件。
 
 服务器准备 Node.js 24、PostgreSQL 14+ 和可用数据库，上传压缩包后执行：
 
@@ -83,7 +83,7 @@ test -f .env || cp .env.example .env
 npm run start:prod
 ```
 
-在宝塔 Node 项目管理器中，将项目目录设为解包后的 `study-web` 目录，选择 Node.js 24，并从 `package.json` 中选择 `start:prod`，即可自动准备依赖并启动服务。
+在宝塔 Node 项目管理器中，将项目目录设为解包后的 `study-web` 目录，选择 Node.js 24 和 `package.json` 中的 `start:prod` 命令启动。
 
 安装依赖时需要连接 npm 仓库，运行账号需有项目目录的写权限。
 
@@ -110,7 +110,7 @@ npm run start:prod
 npm run check              # 检查源码结构、类型、测试和构建依赖
 npm run build              # 生成生产构建
 npm run package:prod       # 自动构建并生成服务器部署包
-npm run start:prod         # 自动准备生产依赖并启动服务
+npm run start:prod         # 重新安装生产依赖后启动服务
 npm run verify:directories # 验证真实资源目录，需要有效的 YYB 配置
 npm run clean              # 清理构建产物
 npm run clean:reports      # 同时清理本机验收产物

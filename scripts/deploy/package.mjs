@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const entries = ['dist', 'server', 'shared', 'scripts/deploy/start.mjs', 'config/system.json', 'package.json', 'package-lock.json', '.env.example', '.node-version'];
+const entries = ['dist', 'server', 'shared', 'config/system.json', 'package.json', 'package-lock.json', '.env.example', '.node-version'];
 const excluded = new Set(['node_modules', '.git', '.DS_Store', '.data', 'artifacts', 'coverage']);
 const include = source => {
   const name = path.basename(source);
