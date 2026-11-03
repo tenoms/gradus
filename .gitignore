@@ -1,5 +1,6 @@
-wx*-computer/
-wx*-math/
+/wx*-computer/
+/wx*-math/
+/docs/
 yyb.txt
 .DS_Store
 node_modules/

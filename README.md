@@ -123,7 +123,3 @@ npm run clean:reports      # 同时清理本机验收产物
 | --- | --- |
 | [系统配置](config/README.md) | 环境变量、平台设置、资源复核周期与主题配置 |
 | [开发指南](CONTRIBUTING.md) | 开发流程、测试、真实接口验收与日常维护 |
-| [代码架构](docs/architecture.md) | 源码组织与模块依赖 |
-| [数据架构](docs/data-architecture.md) | 学习记录、公共资源与个人导入 |
-| [多 YYB 服务](docs/multi-yyb-services.md) | 服务连接、账号池与账号分配 |
-| [文档索引](docs/README.md) | 技术参考与历史记录 |

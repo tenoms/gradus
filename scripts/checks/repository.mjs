@@ -68,9 +68,10 @@ const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: '
 for (const file of tracked) {
   if (!existsSync(path.join(root, file))) continue;
   if (/^config\/.*\.json$/.test(file) && file !== 'config/system.json') failures.push(`${file}: 系统配置统一保存于 config/system.json`);
+  if (file.startsWith('docs/')) failures.push(`${file}: docs/ 为本机文档目录，不纳入版本库`);
   if (/^(?:node_modules|dist|artifacts|\.data)\//.test(file) || /(?:^|\/)\.DS_Store$|\.(?:sqlite(?:3)?|log|tsbuildinfo)$/.test(file) || /(?:^|\/)\.env(?:$|\.(?!example$))/.test(file)) failures.push(`${file}: 生成物、本机状态及凭据不应进入版本库`);
 }
-const markdown = [path.join(root, 'README.md'), path.join(root, 'CONTRIBUTING.md'), ...filesIn(path.join(root, 'docs')).filter(file => file.endsWith('.md'))].filter(existsSync);
+const markdown = [path.join(root, 'README.md'), path.join(root, 'CONTRIBUTING.md')].filter(existsSync);
 for (const file of markdown) {
   for (const match of readFileSync(file, 'utf8').matchAll(/\[[^\]]*\]\(([^\s)]+)\)/g)) {
     const link = match[1].replace(/^<|>$/g, '').split('#')[0];

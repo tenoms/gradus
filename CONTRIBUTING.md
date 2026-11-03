@@ -15,7 +15,7 @@ npm run build
 
 ## 代码组织
 
-新增功能放入对应业务模块，页面、模型、请求适配和样式就近维护；跨功能通用能力才进入共享目录。共享模块不反向依赖业务，基础设施不依赖平台适配，前后端目录及完整依赖规则见[代码架构](docs/architecture.md)。
+新增功能放入对应业务模块，页面、模型、请求适配和样式就近维护；跨功能通用能力才进入共享目录。共享模块不反向依赖业务，基础设施不依赖平台适配，前后端目录及完整依赖规则由 `npm run verify:repo`（[scripts/checks/repository.mjs](scripts/checks/repository.mjs)）检查。
 
 调整路径时更新调用方、入口、测试和文档，不保留仅转发旧文件的兼容壳。
 
@@ -70,4 +70,4 @@ node --experimental-strip-types --test tests/unit/shared/account-profile.test.mj
 | `npm run clean` | `dist/` 和根目录的 `*.tsbuildinfo` |
 | `npm run clean:reports` | 上述产物，以及整个 `artifacts/` 目录 |
 
-清理前归档需要保留的验收证据。现行文档放在 `docs/`，阶段性验收和迁移记录按日期归入 `docs/history/`；历史记录应注明适用版本，当前行为以源码和现行文档为准。
+清理前归档需要保留的验收证据。`docs/` 是本机技术参考与验收记录目录，不纳入版本库，提交内容不应链接或依赖其中文件；当前行为以源码为准。
